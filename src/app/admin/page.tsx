@@ -39,7 +39,6 @@ import {
   Tv,
   Users,
   Video,
-  Youtube,
 } from 'lucide-react';
 import { GripVertical } from 'lucide-react';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
