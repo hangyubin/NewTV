@@ -1,0 +1,365 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+
+  /* Glass Morphism Utilities */
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-glass);
+    transition: all var(--duration-normal) var(--transition-smooth);
+  }
+
+  .glass-strong {
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(var(--glass-blur-strong));
+    -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-floating);
+    transition: all var(--duration-normal) var(--transition-smooth);
+  }
+
+  .glass-card {
+    @apply glass rounded-apple-xl;
+  }
+
+  .glass-button {
+    @apply glass rounded-lg;
+    transition: all var(--duration-fast) var(--transition-smooth);
+  }
+
+  .glass-button:hover {
+    background: var(--glass-bg-strong);
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .glass-nav {
+    @apply glass;
+    backdrop-filter: blur(var(--glass-blur-strong));
+    -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+  }
+}
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  
+  /* Apple Design System Variables */
+  /* Glass Morphism Effects */
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-bg-strong: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-shadow: rgba(0, 0, 0, 0.1);
+  --glass-blur: 20px;
+  --glass-blur-strong: 40px;
+  
+  /* Apple-style Border Radius */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 32px;
+  
+  /* Apple-style Shadows */
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-floating: 0 12px 48px rgba(0, 0, 0, 0.18);
+  
+  /* Apple-style Transitions */
+  --transition-smooth: cubic-bezier(0.4, 0.0, 0.2, 1);
+  --transition-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 350ms;
+}
+
+html,
+body {
+  height: 100%;
+  overflow-x: hidden;
+  /* 阻止 iOS Safari 拉动回弹 */
+  overscroll-behavior: none;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+}
+
+/* Dark mode variables */
+.dark {
+  --glass-bg: rgba(0, 0, 0, 0.85);
+  --glass-bg-strong: #1c2026;
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: rgba(0, 0, 0, 0.3);
+}
+
+/* Dark mode navigation with enhanced layering */
+.dark .glass-nav {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.7) 0%,
+    rgba(10, 10, 10, 0.8) 25%,
+    rgba(20, 20, 20, 0.85) 50%,
+    rgba(10, 10, 10, 0.8) 75%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.2);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.2);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 2px 0 20px rgba(0, 0, 0, 0.4);
+}
+
+html:not(.dark) body {
+  background: linear-gradient(
+    180deg,
+    #e6f3fb 0%,
+    #eaf3f7 18%,
+    #f7f7f3 38%,
+    #e9ecef 60%,
+    #dbe3ea 80%,
+    #d3dde6 100%
+  );
+  background-attachment: fixed;
+}
+
+/* Enhanced dark mode background with Apple-style gradient */
+.dark body {
+  background: linear-gradient(
+    180deg,
+    #0a0a0a 0%,
+    #1a1a1a 25%,
+    #2a2a2a 50%,
+    #1a1a1a 75%,
+    #0a0a0a 100%
+  );
+  background-attachment: fixed;
+}
+
+/* 自定义滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(31, 41, 55, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(75, 85, 99, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.5);
+}
+
+/* 视频卡片悬停效果 */
+.video-card-hover {
+  transition: transform 0.3s ease;
+}
+
+.video-card-hover:hover {
+  transform: scale(1.05);
+}
+
+/* 渐变遮罩 */
+.gradient-overlay {
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.8) 100%
+  );
+}
+
+/* 隐藏移动端（<768px）垂直滚动条 */
+@media (max-width: 767px) {
+  html,
+  body {
+    -ms-overflow-style: none; /* IE & Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none; /* Chrome Safari */
+  }
+}
+
+/* 隐藏所有滚动条（兼容 WebKit、Firefox、IE/Edge） */
+* {
+  -ms-overflow-style: none; /* IE & Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+*::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* View Transitions API 动画 */
+@keyframes slide-from-top {
+  from {
+    clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
+  }
+  to {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  }
+}
+
+@keyframes slide-from-bottom {
+  from {
+    clip-path: polygon(0 100%, 100% 100%, 100% 100%, 0 100%);
+  }
+  to {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.8s;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  animation-fill-mode: both;
+}
+
+/*
+  切换时，旧的视图不应该有动画，它应该在下面，等待被新的视图覆盖。
+  这可以防止在动画完成前，页面底部提前变色。
+*/
+::view-transition-old(root) {
+  animation: none;
+}
+
+/* 从浅色到深色：新内容（深色）从顶部滑入 */
+html.dark::view-transition-new(root) {
+  animation-name: slide-from-top;
+}
+
+/* 从深色到浅色：新内容（浅色）从底部滑入 */
+html:not(.dark)::view-transition-new(root) {
+  animation-name: slide-from-bottom;
+}
+
+/* 强制播放器内部的 video 元素高度为 100%，并保持内容完整显示 */
+div[data-media-provider] video {
+  height: 100%;
+  object-fit: contain;
+}
+
+.art-poster {
+  background-size: contain !important; /* 使图片完整展示 */
+  background-position: center center !important; /* 居中显示 */
+  background-repeat: no-repeat !important; /* 防止重复 */
+  background-color: #000 !important; /* 其余区域填充为黑色 */
+}
+
+
+
+/* 隐藏移动端竖屏时的 pip 按钮 */
+@media (max-width: 768px) {
+  .art-control-pip {
+    display: none !important;
+  }
+
+  .art-control-fullscreenWeb {
+    display: none !important;
+  }
+
+  .art-control-volume {
+    display: none !important;
+  }
+
+  /* 调整移动端控制栏按钮间距，确保所有图标都能正常显示和点击 */
+  .art-controls-right {
+    gap: 1px !important;
+    padding-right: 2px !important;
+    margin-right: -4px !important;
+  }
+
+  .art-controls-left {
+    gap: 1px !important;
+    padding-left: 4px !important;
+  }
+
+  .art-control {
+    min-width: 28px !important;
+    width: 28px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-size: 14px !important;
+  }
+
+  /* 弹幕开关按钮在移动端的特殊样式 */
+  .art-danmaku-toggle-button {
+    margin-left: 1px !important;
+    min-width: 28px !important;
+    width: 28px !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* 强制移除所有控制栏按钮的圆形背景 */
+  .art-controls .art-control,
+  .art-controls [class*="art-control"],
+  .art-danmaku-toggle-button {
+    background: transparent !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* 调整播放器控制栏整体间距 */
+  .art-controls {
+    padding: 0 2px !important;
+  }
+
+  .art-bottom {
+    padding: 0 2px !important;
+  }
+
+  /* 确保全屏按钮可见 */
+  .art-control-fullscreen,
+  .art-control-fullscreenWeb {
+    display: flex !important;
+    min-width: 28px !important;
+    width: 28px !important;
+  }
+}
+
+/* 强制设置弹幕元素的z-index低于AI聊天界面 */
+.artplayer-plugin-danmuku,
+.artplayer-plugin-danmuku *,
+.apd-danmaku,
+.apd-danmaku *,
+.art-danmaku,
+.art-danmaku *,
+[class*="danmaku"],
+[class*="danmu"] {
+  z-index: 10 !important;
+}
+
+/* 确保弹幕容器不会覆盖AI聊天界面 */
+.artplayer .artplayer-plugin-danmuku,
+.artplayer .apd-danmaku {
+  z-index: 10 !important;
+  position: relative !important;
+}
+
+/* 弹幕文字元素 */
+.artplayer-plugin-danmuku .apd-danmaku-item,
+.apd-danmaku-item {
+  z-index: 10 !important;
+}
