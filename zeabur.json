@@ -8,6 +8,8 @@
   },
   "env": {
     "NODE_ENV": "production",
-    "USERNAME": "admin"
+    "USERNAME": "admin",
+    "NEXT_PUBLIC_STORAGE_TYPE": "kvrocks",
+    "KVROCKS_URL": "redis://localhost:6666"
   }
 }
