@@ -118,10 +118,7 @@ export async function POST(request: NextRequest) {
         ...(currentConfig.SiteConfig || {}),
         ...(partialConfig.SiteConfig || {}),
       },
-      // 确保YouTubeChannels字段不会在配置更新时丢失
-      YouTubeChannels: partialConfig.YouTubeChannels !== undefined
-        ? partialConfig.YouTubeChannels
-        : currentConfig.YouTubeChannels || [],
+
     };
 
     // 保存新配置
