@@ -1,0 +1,14 @@
+{
+  "build": {
+    "command": "pnpm build",
+    "outputPath": ".next",
+    "installCommand": "pnpm install --frozen-lockfile"
+  },
+  "run": {
+    "command": "pnpm start",
+    "port": 3000
+  },
+  "env": {
+    "NODE_ENV": "production"
+  }
+}
