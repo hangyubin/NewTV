@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Cat, Clapperboard, Clover, Cloud, Ellipsis, Film, Home, Radio, Star, Tv, Youtube } from 'lucide-react';
+import { Cat, Clapperboard, Clover, Cloud, Ellipsis, Film, Home, Radio, Star, Tv } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -42,7 +42,6 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
     { icon: Film, label: '电影', href: '/douban?type=movie' },
     { icon: Tv, label: '剧集', href: '/douban?type=tv' },
     { icon: Radio, label: '直播', href: '/live' },
-    { icon: Youtube, label: 'YouTube', href: '/youtube' },
     { icon: Ellipsis, label: '更多', href: '#more' },
   ]);
 
@@ -79,10 +78,7 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
       return decodedActive === '/live' || decodedActive.startsWith('/live/');
     }
 
-    // YouTube页面匹配
-    if (href === '/youtube') {
-      return decodedActive === '/youtube' || decodedActive.startsWith('/youtube/');
-    }
+
 
     // 处理豆瓣类型页面的匹配
     if (href.startsWith('/douban?type=')) {

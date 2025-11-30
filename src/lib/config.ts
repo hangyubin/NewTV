@@ -239,10 +239,7 @@ async function getInitConfig(configFile: string, subConfig: {
     },
   };
 
-  // 如果旧配置中存在YouTubeChannels，则保留
-  if (oldConfig && (oldConfig as any).YouTubeChannels) {
-    (adminConfig as any).YouTubeChannels = (oldConfig as any).YouTubeChannels;
-  }
+
 
   // 补充用户信息
   let userNames: string[] = [];
@@ -385,14 +382,7 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
     };
   }
 
-  // 确保 YouTubeChannels 字段存在，但不重置已有数据
-  if (!(adminConfig as any).YouTubeChannels) {
-    (adminConfig as any).YouTubeChannels = [];
-  } else if (!Array.isArray((adminConfig as any).YouTubeChannels)) {
-    // 如果存在但不是数组，尝试修复而不是重置
-    console.warn('YouTubeChannels字段存在但不是数组，尝试修复:', (adminConfig as any).YouTubeChannels);
-    (adminConfig as any).YouTubeChannels = [];
-  }
+
 
   // 站长变更自检
   const ownerUser = process.env.USERNAME;

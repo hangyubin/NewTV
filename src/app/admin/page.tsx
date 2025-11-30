@@ -39,7 +39,6 @@ import {
   Tv,
   Users,
   Video,
-  Youtube,
 } from 'lucide-react';
 import { GripVertical } from 'lucide-react';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
@@ -4975,8 +4974,8 @@ const DraggableChannelItem = ({
   );
 };
 
-// YouTube频道配置组件
-const YouTubeChannelConfig = ({
+// 已移除 YouTube 频道配置组件
+// const YouTubeChannelConfig = ({
   config,
   refreshConfig,
 }: {
@@ -5480,7 +5479,6 @@ function AdminPageClient() {
     aiConfig: false,
     categoryConfig: false,
     cloudDiskConfig: false,
-    youtubeChannels: false,
     configFile: false,
     dataMigration: false,
   });
@@ -5712,21 +5710,6 @@ function AdminPageClient() {
               onToggle={() => toggleTab('cloudDiskConfig')}
             >
               <CloudDiskConfigComponent config={config} refreshConfig={fetchConfig} />
-            </CollapsibleTab>
-
-            {/* YouTube频道配置标签 */}
-            <CollapsibleTab
-              title='YouTube频道配置'
-              icon={
-                <Youtube
-                  size={20}
-                  className='text-gray-600 dark:text-gray-400'
-                />
-              }
-              isExpanded={expandedTabs.youtubeChannels}
-              onToggle={() => toggleTab('youtubeChannels')}
-            >
-              <YouTubeChannelConfig config={config} refreshConfig={fetchConfig} />
             </CollapsibleTab>
 
             {/* 数据迁移标签 - 仅站长可见 */}
