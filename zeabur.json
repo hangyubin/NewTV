@@ -1,11 +1,9 @@
 {
   "build": {
-    "command": "pnpm build",
-    "outputPath": ".next",
-    "installCommand": "pnpm install --frozen-lockfile"
+    "type": "docker",
+    "dockerfile": "Dockerfile"
   },
   "run": {
-    "command": "pnpm start",
     "port": 3000
   },
   "env": {
