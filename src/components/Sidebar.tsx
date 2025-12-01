@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Cat, Clover, Clapperboard, Cloud, Film, Home, Menu, Radio, Search, Star, Tv } from 'lucide-react';
+import { Cat, Clover, Clapperboard, Film, Home, Menu, Radio, Search, Star, Tv } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -191,13 +191,7 @@ const Sidebar = ({ onToggle, defaultCollapsed }: SidebarProps) => {
       });
     }
 
-    if (runtimeConfig?.CLOUD_DISK_CONFIG?.enabled) {
-      newItems.push({
-        icon: Cloud,
-        label: runtimeConfig.CLOUD_DISK_CONFIG.name || '网盘',
-        href: '/cloud-disk',
-      });
-    }
+
 
     if (newItems.length > 0) {
       setMenuItems((prevItems) => [...prevItems, ...newItems]);

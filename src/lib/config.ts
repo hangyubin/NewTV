@@ -232,11 +232,7 @@ async function getInitConfig(configFile: string, subConfig: {
     SourceConfig: [],
     CustomCategories: [],
     LiveConfig: [],
-    CloudDiskConfig: {
-      enabled: false,
-      apiUrl: '',
-      name: '网盘',
-    },
+
   };
 
 
@@ -365,13 +361,7 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
   if (!adminConfig.LiveConfig || !Array.isArray(adminConfig.LiveConfig)) {
     adminConfig.LiveConfig = [];
   }
-  if (!adminConfig.CloudDiskConfig) {
-    adminConfig.CloudDiskConfig = {
-      enabled: false,
-      apiUrl: '',
-      name: '网盘',
-    };
-  }
+
   if (!adminConfig.AIConfig) {
     adminConfig.AIConfig = {
       enabled: false,

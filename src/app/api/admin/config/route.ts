@@ -106,10 +106,7 @@ export async function POST(request: NextRequest) {
         ...(currentConfig.UserConfig || {}),
         ...(partialConfig.UserConfig || {}),
       },
-      CloudDiskConfig: {
-        ...(currentConfig.CloudDiskConfig || {}),
-        ...(partialConfig.CloudDiskConfig || {}),
-      },
+      
       AIConfig: {
         ...(currentConfig.AIConfig || {}),
         ...(partialConfig.AIConfig || {}),

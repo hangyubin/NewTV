@@ -46,7 +46,6 @@ const AdminPage = () => {
     liveDataSource: false,
     customCategory: false,
     ai: false,
-    cloudDisk: false,
     dataMigration: false,
   });
 
@@ -146,15 +145,6 @@ const AdminPage = () => {
                   }`}
               >
                 AI设置
-              </button>
-              <button
-                onClick={() => toggleTab('cloudDisk')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'cloudDisk'
-                  ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
-                  : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
-              >
-                云盘设置
               </button>
               <button
                 onClick={() => toggleTab('dataMigration')}
@@ -767,69 +757,6 @@ const AdminPage = () => {
               </div>
             )}
 
-            {/* 云盘设置 */}
-            {activeTab === 'cloudDisk' && (
-              <div className='space-y-6'>
-                <div>
-                  <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
-                    云盘设置
-                  </h4>
-                  <div className='space-y-4'>
-                    <div className='flex items-center justify-between'>
-                      <div>
-                        <div className='font-medium text-gray-900 dark:text-gray-100'>
-                          启用云盘
-                        </div>
-                        <div className='text-sm text-gray-600 dark:text-gray-400'>
-                          控制是否启用云盘功能
-                        </div>
-                      </div>
-                      <div className='flex items-center'>
-                        <button
-                          type="button"
-                          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${(config.CloudDiskConfig?.enabled || false) ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}
-                          role="switch"
-                          aria-checked={config.CloudDiskConfig?.enabled || false}
-                        >
-                          <span
-                            aria-hidden="true"
-                            className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${(config.CloudDiskConfig?.enabled || false) ? 'translate-x-5' : 'translate-x-1'}`}
-                          />
-                        </button>
-                        <span className='ml-3 text-sm font-medium text-gray-900 dark:text-gray-100'>
-                          {(config.CloudDiskConfig?.enabled || false) ? '开启' : '关闭'}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
-                        云盘名称
-                      </label>
-                      <input
-                        type='text'
-                        placeholder='输入云盘名称'
-                        defaultValue={config.CloudDiskConfig?.name || '网盘'}
-                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
-                        云盘API地址
-                      </label>
-                      <input
-                        type='text'
-                        placeholder='输入云盘API地址'
-                        defaultValue={config.CloudDiskConfig?.apiUrl || ''}
-                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            
             {/* 数据迁移 */}
             {activeTab === 'dataMigration' && (
               <div>
