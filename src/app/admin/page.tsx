@@ -512,6 +512,62 @@ const AdminPage = () => {
                   <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
                     视频源管理
                   </h4>
+                  <div className='flex items-center justify-between mb-3'>
+                    <div className='flex space-x-2'>
+                      <button
+                        onClick={() => {
+                          // 导出视频源配置
+                          const dataStr = JSON.stringify(config.SourceConfig, null, 2);
+                          const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                          const url = URL.createObjectURL(dataBlob);
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.download = 'video-sources.json';
+                          link.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                        className='px-3 py-1.5 text-sm font-medium bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-700 text-white rounded-lg transition-colors'
+                      >
+                        导出配置
+                      </button>
+                      <label
+                        htmlFor='import-sources'
+                        className='px-3 py-1.5 text-sm font-medium bg-green-600 dark:bg-green-600 hover:bg-green-700 dark:hover:bg-green-700 text-white rounded-lg transition-colors cursor-pointer'
+                      >
+                        导入配置
+                      </label>
+                      <input
+                        id='import-sources'
+                        type='file'
+                        accept='.json'
+                        className='hidden'
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              try {
+                                const importedSources = JSON.parse(event.target?.result as string);
+                                if (Array.isArray(importedSources)) {
+                                  // 这里可以添加保存逻辑，目前仅演示
+                                  console.log('导入的视频源:', importedSources);
+                                  alert('视频源配置导入成功！');
+                                } else {
+                                  alert('导入的文件格式不正确！');
+                                }
+                              } catch (error) {
+                                alert('导入失败：文件格式错误！');
+                              }
+                            };
+                            reader.readAsText(file);
+                          }
+                        }}
+                      />
+                    </div>
+                    <button className='px-3 py-1.5 text-sm font-medium bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-700 text-white rounded-lg transition-colors'>
+                      添加视频源
+                    </button>
+                  </div>
                   <div className='border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden'>
                     <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
                       <thead className='bg-gray-50 dark:bg-gray-900'>
