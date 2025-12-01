@@ -46,6 +46,7 @@ const AdminPage = () => {
     liveDataSource: false,
     customCategory: false,
     ai: false,
+    cloudDisk: false,
     dataMigration: false,
   });
 
@@ -147,6 +148,15 @@ const AdminPage = () => {
                 AI设置
               </button>
               <button
+                onClick={() => toggleTab('cloudDisk')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'cloudDisk'
+                  ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
+                  : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
+              >
+                云盘设置
+              </button>
+              <button
                 onClick={() => toggleTab('dataMigration')}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'dataMigration'
                   ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
@@ -159,27 +169,169 @@ const AdminPage = () => {
 
             {/* 站点设置 */}
             {activeTab === 'site' && (
-              <div className='space-y-4'>
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
-                      站点名称
-                    </label>
-                    <input
-                      type='text'
-                      placeholder='输入站点名称'
-                      className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                    />
+              <div className='space-y-6'>
+                <div>
+                  <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
+                    基本设置
+                  </h4>
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        站点名称
+                      </label>
+                      <input
+                        type='text'
+                        placeholder='输入站点名称'
+                        defaultValue={config.SiteConfig.SiteName}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                      />
+                    </div>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        公告
+                      </label>
+                      <textarea
+                        placeholder='输入站点公告'
+                        defaultValue={config.SiteConfig.Announcement}
+                        rows={3}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                      />
+                    </div>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        搜索下游最大页数
+                      </label>
+                      <input
+                        type='number'
+                        placeholder='输入搜索下游最大页数'
+                        defaultValue={config.SiteConfig.SearchDownstreamMaxPage}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                      />
+                    </div>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        站点接口缓存时间 (秒)
+                      </label>
+                      <input
+                        type='number'
+                        placeholder='输入站点接口缓存时间'
+                        defaultValue={config.SiteConfig.SiteInterfaceCacheTime}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
-                      公告
-                    </label>
-                    <input
-                      type='text'
-                      placeholder='输入站点公告'
-                      className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                    />
+                </div>
+                
+                <div>
+                  <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
+                    豆瓣代理设置
+                  </h4>
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        豆瓣代理类型
+                      </label>
+                      <input
+                        type='text'
+                        placeholder='输入豆瓣代理类型'
+                        defaultValue={config.SiteConfig.DoubanProxyType}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                      />
+                    </div>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        豆瓣代理地址
+                      </label>
+                      <input
+                        type='text'
+                        placeholder='输入豆瓣代理地址'
+                        defaultValue={config.SiteConfig.DoubanProxy}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                      />
+                    </div>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        豆瓣图片代理类型
+                      </label>
+                      <input
+                        type='text'
+                        placeholder='输入豆瓣图片代理类型'
+                        defaultValue={config.SiteConfig.DoubanImageProxyType}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                      />
+                    </div>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        豆瓣图片代理地址
+                      </label>
+                      <input
+                        type='text'
+                        placeholder='输入豆瓣图片代理地址'
+                        defaultValue={config.SiteConfig.DoubanImageProxy}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
+                    高级设置
+                  </h4>
+                  <div className='space-y-4'>
+                    <div className='flex items-center justify-between'>
+                      <div>
+                        <div className='font-medium text-gray-900 dark:text-gray-100'>
+                          禁用黄色过滤
+                        </div>
+                        <div className='text-sm text-gray-600 dark:text-gray-400'>
+                          控制是否禁用黄色内容过滤
+                        </div>
+                      </div>
+                      <div className='flex items-center'>
+                        <button
+                          type="button"
+                          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${config.SiteConfig.DisableYellowFilter ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}
+                          role="switch"
+                          aria-checked={config.SiteConfig.DisableYellowFilter}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${config.SiteConfig.DisableYellowFilter ? 'translate-x-5' : 'translate-x-1'}`}
+                          />
+                        </button>
+                        <span className='ml-3 text-sm font-medium text-gray-900 dark:text-gray-100'>
+                          {config.SiteConfig.DisableYellowFilter ? '开启' : '关闭'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className='flex items-center justify-between'>
+                      <div>
+                        <div className='font-medium text-gray-900 dark:text-gray-100'>
+                          流畅搜索
+                        </div>
+                        <div className='text-sm text-gray-600 dark:text-gray-400'>
+                          控制是否启用流畅搜索功能
+                        </div>
+                      </div>
+                      <div className='flex items-center'>
+                        <button
+                          type="button"
+                          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${config.SiteConfig.FluidSearch ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}
+                          role="switch"
+                          aria-checked={config.SiteConfig.FluidSearch}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${config.SiteConfig.FluidSearch ? 'translate-x-5' : 'translate-x-1'}`}
+                          />
+                        </button>
+                        <span className='ml-3 text-sm font-medium text-gray-900 dark:text-gray-100'>
+                          {config.SiteConfig.FluidSearch ? '开启' : '关闭'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -353,6 +505,275 @@ const AdminPage = () => {
               </div>
             )}
 
+            {/* 视频源管理 */}
+            {activeTab === 'dataSource' && (
+              <div className='space-y-6'>
+                <div>
+                  <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
+                    视频源管理
+                  </h4>
+                  <div className='border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden'>
+                    <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
+                      <thead className='bg-gray-50 dark:bg-gray-900'>
+                        <tr>
+                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            名称
+                          </th>
+                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            API地址
+                          </th>
+                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            来源
+                          </th>
+                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            状态
+                          </th>
+                          <th className='px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            操作
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className='bg-white dark:bg-black divide-y divide-gray-200 dark:divide-gray-700'>
+                        {config.SourceConfig.map((source) => (
+                          <tr key={source.key} className='hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'>
+                            <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100'>
+                              {source.name}
+                            </td>
+                            <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400'>
+                              {source.api}
+                            </td>
+                            <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400'>
+                              {source.from === 'config' ? '系统配置' : '自定义'}
+                            </td>
+                            <td className='px-6 py-4 whitespace-nowrap'>
+                              <span className={`px-2 py-1 text-xs rounded-full ${source.disabled ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300' : 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300'}`}>
+                                {source.disabled ? '已禁用' : '已启用'}
+                              </span>
+                            </td>
+                            <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2'>
+                              <button className='text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300'>
+                                编辑
+                              </button>
+                              <button className='text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300'>
+                                删除
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 直播源管理 */}
+            {activeTab === 'liveDataSource' && (
+              <div className='space-y-6'>
+                <div>
+                  <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
+                    直播源管理
+                  </h4>
+                  <div className='border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden'>
+                    <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
+                      <thead className='bg-gray-50 dark:bg-gray-900'>
+                        <tr>
+                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            名称
+                          </th>
+                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            地址
+                          </th>
+                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            来源
+                          </th>
+                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            状态
+                          </th>
+                          <th className='px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            操作
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className='bg-white dark:bg-black divide-y divide-gray-200 dark:divide-gray-700'>
+                        {(config.LiveConfig || []).map((liveSource) => (
+                          <tr key={liveSource.key} className='hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'>
+                            <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100'>
+                              {liveSource.name}
+                            </td>
+                            <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400'>
+                              {liveSource.url}
+                            </td>
+                            <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400'>
+                              {liveSource.from === 'config' ? '系统配置' : '自定义'}
+                            </td>
+                            <td className='px-6 py-4 whitespace-nowrap'>
+                              <span className={`px-2 py-1 text-xs rounded-full ${liveSource.disabled ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300' : 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300'}`}>
+                                {liveSource.disabled ? '已禁用' : '已启用'}
+                              </span>
+                            </td>
+                            <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2'>
+                              <button className='text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300'>
+                                编辑
+                              </button>
+                              <button className='text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300'>
+                                删除
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 自定义分类 */}
+            {activeTab === 'customCategory' && (
+              <div className='space-y-6'>
+                <div>
+                  <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
+                    自定义分类
+                  </h4>
+                  <div className='border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden'>
+                    <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
+                      <thead className='bg-gray-50 dark:bg-gray-900'>
+                        <tr>
+                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            名称
+                          </th>
+                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            类型
+                          </th>
+                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            查询
+                          </th>
+                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            来源
+                          </th>
+                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            状态
+                          </th>
+                          <th className='px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            操作
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className='bg-white dark:bg-black divide-y divide-gray-200 dark:divide-gray-700'>
+                        {config.CustomCategories.map((category, index) => (
+                          <tr key={index} className='hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'>
+                            <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100'>
+                              {category.name || `分类${index + 1}`}
+                            </td>
+                            <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400'>
+                              {category.type === 'movie' ? '电影' : '电视剧'}
+                            </td>
+                            <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400'>
+                              {category.query}
+                            </td>
+                            <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400'>
+                              {category.from === 'config' ? '系统配置' : '自定义'}
+                            </td>
+                            <td className='px-6 py-4 whitespace-nowrap'>
+                              <span className={`px-2 py-1 text-xs rounded-full ${category.disabled ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300' : 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300'}`}>
+                                {category.disabled ? '已禁用' : '已启用'}
+                              </span>
+                            </td>
+                            <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2'>
+                              <button className='text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300'>
+                                编辑
+                              </button>
+                              <button className='text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300'>
+                                删除
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* AI设置 */}
+            {activeTab === 'ai' && (
+              <div className='space-y-6'>
+                <div>
+                  <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
+                    AI设置
+                  </h4>
+                  <div className='p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700'>
+                    <ExternalAIConfigComponent />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 云盘设置 */}
+            {activeTab === 'cloudDisk' && (
+              <div className='space-y-6'>
+                <div>
+                  <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
+                    云盘设置
+                  </h4>
+                  <div className='space-y-4'>
+                    <div className='flex items-center justify-between'>
+                      <div>
+                        <div className='font-medium text-gray-900 dark:text-gray-100'>
+                          启用云盘
+                        </div>
+                        <div className='text-sm text-gray-600 dark:text-gray-400'>
+                          控制是否启用云盘功能
+                        </div>
+                      </div>
+                      <div className='flex items-center'>
+                        <button
+                          type="button"
+                          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${(config.CloudDiskConfig?.enabled || false) ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}
+                          role="switch"
+                          aria-checked={config.CloudDiskConfig?.enabled || false}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${(config.CloudDiskConfig?.enabled || false) ? 'translate-x-5' : 'translate-x-1'}`}
+                          />
+                        </button>
+                        <span className='ml-3 text-sm font-medium text-gray-900 dark:text-gray-100'>
+                          {(config.CloudDiskConfig?.enabled || false) ? '开启' : '关闭'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        云盘名称
+                      </label>
+                      <input
+                        type='text'
+                        placeholder='输入云盘名称'
+                        defaultValue={config.CloudDiskConfig?.name || '网盘'}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        云盘API地址
+                      </label>
+                      <input
+                        type='text'
+                        placeholder='输入云盘API地址'
+                        defaultValue={config.CloudDiskConfig?.apiUrl || ''}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {/* 数据迁移 */}
             {activeTab === 'dataMigration' && (
               <div>
