@@ -54,7 +54,7 @@ const AdminPage = () => {
     const res = await fetch('/api/admin/config');
     if (res.ok) {
       const data = await res.json();
-      setConfig(data);
+      setConfig(data.Config);
       setRole(data.Role);
     }
   }, []);
