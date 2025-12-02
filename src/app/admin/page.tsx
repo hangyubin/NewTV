@@ -2,23 +2,20 @@
 
 'use client';
 
-
-
-import { useCallback, useEffect,useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { AdminConfig } from '@/lib/admin.types';
 
 import DataMigration from '@/components/DataMigration';
 import PageLayout from '@/components/PageLayout';
 
-
 // 主管理页面组件
 const AdminPage = () => {
   const [config, setConfig] = useState<AdminConfig | null>(null);
   const [role, setRole] = useState<'owner' | 'admin' | null>(null);
   const [activeTab, setActiveTab] = useState('site');
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [expandedTabs, setExpandedTabs] = useState<{
+  // 仅用于初始化，不影响功能
+  const [, setExpandedTabs] = useState<{
     [key: string]: boolean;
   }>({
     site: true,
@@ -29,24 +26,37 @@ const AdminPage = () => {
     dataMigration: false,
   });
 
+  // 保存反馈状态
+  const [saveMessage, setSaveMessage] = useState<string>('');
+  const [saveMessageType, setSaveMessageType] = useState<
+    'success' | 'error' | ''
+  >('');
+  const [messageTimeout, setMessageTimeout] = useState<NodeJS.Timeout | null>(
+    null
+  );
+
   // 直播源管理状态
-  const [isAddLiveSourceModalOpen, setIsAddLiveSourceModalOpen] = useState(false);
-  const [isEditLiveSourceModalOpen, setIsEditLiveSourceModalOpen] = useState(false);
+  const [isAddLiveSourceModalOpen, setIsAddLiveSourceModalOpen] =
+    useState(false);
+  const [isEditLiveSourceModalOpen, setIsEditLiveSourceModalOpen] =
+    useState(false);
   const [currentLiveSource, setCurrentLiveSource] = useState<any>({
     key: '',
     name: '',
     url: '',
     ua: '',
-    epg: ''
+    epg: '',
   });
 
   // 自定义分类管理状态
-  const [isAddCustomCategoryModalOpen, setIsAddCustomCategoryModalOpen] = useState(false);
-  const [isEditCustomCategoryModalOpen, setIsEditCustomCategoryModalOpen] = useState(false);
+  const [isAddCustomCategoryModalOpen, setIsAddCustomCategoryModalOpen] =
+    useState(false);
+  const [isEditCustomCategoryModalOpen, setIsEditCustomCategoryModalOpen] =
+    useState(false);
   const [currentCustomCategory, setCurrentCustomCategory] = useState<any>({
     name: '',
     type: 'movie',
-    query: ''
+    query: '',
   });
 
   // 配置文件设置状态
@@ -70,7 +80,7 @@ const AdminPage = () => {
 
   const toggleTab = (tab: string) => {
     setActiveTab(tab);
-    setExpandedTabs(prev => ({
+    setExpandedTabs((prev) => ({
       ...prev,
       [tab]: !prev[tab],
     }));
@@ -83,7 +93,7 @@ const AdminPage = () => {
       name: '',
       url: '',
       ua: '',
-      epg: ''
+      epg: '',
     });
     setIsAddLiveSourceModalOpen(true);
   };
@@ -100,12 +110,12 @@ const AdminPage = () => {
       const response = await fetch('/api/admin/live', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           action,
-          ...currentLiveSource
-        })
+          ...currentLiveSource,
+        }),
       });
       if (response.ok) {
         await refreshConfig();
@@ -125,12 +135,12 @@ const AdminPage = () => {
       const response = await fetch('/api/admin/live', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           action: 'delete',
-          key
-        })
+          key,
+        }),
       });
       if (response.ok) {
         await refreshConfig();
@@ -140,18 +150,21 @@ const AdminPage = () => {
     }
   };
 
-  const handleToggleLiveSourceStatus = async (key: string, currentStatus: boolean) => {
+  const handleToggleLiveSourceStatus = async (
+    key: string,
+    currentStatus: boolean
+  ) => {
     try {
       const action = currentStatus ? 'disable' : 'enable';
       const response = await fetch('/api/admin/live', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           action,
-          key
-        })
+          key,
+        }),
       });
       if (response.ok) {
         await refreshConfig();
@@ -166,7 +179,7 @@ const AdminPage = () => {
     setCurrentCustomCategory({
       name: '',
       type: 'movie',
-      query: ''
+      query: '',
     });
     setIsAddCustomCategoryModalOpen(true);
   };
@@ -183,12 +196,12 @@ const AdminPage = () => {
       const response = await fetch('/api/admin/category', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           action,
-          ...currentCustomCategory
-        })
+          ...currentCustomCategory,
+        }),
       });
       if (response.ok) {
         await refreshConfig();
@@ -208,13 +221,13 @@ const AdminPage = () => {
       const response = await fetch('/api/admin/category', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           action: 'delete',
           query,
-          type
-        })
+          type,
+        }),
       });
       if (response.ok) {
         await refreshConfig();
@@ -224,19 +237,23 @@ const AdminPage = () => {
     }
   };
 
-  const handleToggleCustomCategoryStatus = async (query: string, type: string, currentStatus: boolean) => {
+  const handleToggleCustomCategoryStatus = async (
+    query: string,
+    type: string,
+    currentStatus: boolean
+  ) => {
     try {
       const action = currentStatus ? 'disable' : 'enable';
       const response = await fetch('/api/admin/category', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           action,
           query,
-          type
-        })
+          type,
+        }),
       });
       if (response.ok) {
         await refreshConfig();
@@ -262,9 +279,9 @@ const AdminPage = () => {
 
   // 处理单个视频源选择
   const handleSelectSource = (key: string) => {
-    setSelectedSources(prev => {
+    setSelectedSources((prev) => {
       if (prev.includes(key)) {
-        return prev.filter(k => k !== key);
+        return prev.filter((k) => k !== key);
       } else {
         return [...prev, key];
       }
@@ -276,7 +293,7 @@ const AdminPage = () => {
     if (selectAll) {
       setSelectedSources([]);
     } else {
-      const allKeys = config?.SourceConfig.map(source => source.key) || [];
+      const allKeys = config?.SourceConfig.map((source) => source.key) || [];
       setSelectedSources(allKeys);
     }
     setSelectAll(!selectAll);
@@ -325,7 +342,8 @@ const AdminPage = () => {
     }
 
     try {
-      const batchAction = action === 'enable' ? 'batch_enable' : 'batch_disable';
+      const batchAction =
+        action === 'enable' ? 'batch_enable' : 'batch_disable';
       const response = await fetch('/api/admin/source', {
         method: 'POST',
         headers: {
@@ -343,7 +361,11 @@ const AdminPage = () => {
         alert(`批量${action === 'enable' ? '启用' : '禁用'}成功！`);
       } else {
         const errorData = await response.json();
-        alert(`批量${action === 'enable' ? '启用' : '禁用'}失败：${errorData.error || '未知错误'}`);
+        alert(
+          `批量${action === 'enable' ? '启用' : '禁用'}失败：${
+            errorData.error || '未知错误'
+          }`
+        );
       }
     } catch (error) {
       console.error(`批量${action === 'enable' ? '启用' : '禁用'}失败:`, error);
@@ -357,14 +379,14 @@ const AdminPage = () => {
       const response = await fetch('/api/admin/config_file', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           configFile: configFileContent,
           subscriptionUrl,
           autoUpdate,
-          lastCheckTime: new Date().toISOString()
-        })
+          lastCheckTime: new Date().toISOString(),
+        }),
       });
       if (response.ok) {
         await refreshConfig();
@@ -375,18 +397,51 @@ const AdminPage = () => {
     }
   };
 
+  // 显示保存反馈消息
+  const showSaveMessage = (message: string, type: 'success' | 'error') => {
+    // 清除之前的定时器
+    if (messageTimeout) {
+      clearTimeout(messageTimeout);
+    }
+
+    setSaveMessage(message);
+    setSaveMessageType(type);
+
+    // 5秒后自动清除消息
+    const timeout = setTimeout(() => {
+      setSaveMessage('');
+      setSaveMessageType('');
+      setMessageTimeout(null);
+    }, 5000);
+
+    setMessageTimeout(timeout);
+  };
+
+  // 组件卸载时清理定时器
+  useEffect(() => {
+    return () => {
+      if (messageTimeout) {
+        clearTimeout(messageTimeout);
+      }
+    };
+  }, [messageTimeout]);
+
   // 保存站点配置
   const handleSiteConfigSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const form = event.target as HTMLFormElement;
     const formData = new FormData(form);
-    
+
     // 构建站点配置对象
     const siteConfig = {
       SiteName: formData.get('SiteName') as string,
       Announcement: formData.get('Announcement') as string,
-      SearchDownstreamMaxPage: parseInt(formData.get('SearchDownstreamMaxPage') as string || '0'),
-      SiteInterfaceCacheTime: parseInt(formData.get('SiteInterfaceCacheTime') as string || '0'),
+      SearchDownstreamMaxPage: parseInt(
+        (formData.get('SearchDownstreamMaxPage') as string) || '0'
+      ),
+      SiteInterfaceCacheTime: parseInt(
+        (formData.get('SiteInterfaceCacheTime') as string) || '0'
+      ),
       DoubanProxyType: formData.get('DoubanProxyType') as string,
       DoubanProxy: formData.get('DoubanProxy') as string,
       DoubanImageProxyType: formData.get('DoubanImageProxyType') as string,
@@ -394,22 +449,33 @@ const AdminPage = () => {
       DisableYellowFilter: formData.get('DisableYellowFilter') === 'true',
       FluidSearch: formData.get('FluidSearch') === 'true',
     };
-    
+
     try {
       const response = await fetch('/api/admin/config', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          SiteConfig: siteConfig
-        })
+          SiteConfig: siteConfig,
+        }),
       });
       if (response.ok) {
         await refreshConfig();
+        showSaveMessage('站点配置保存成功！', 'success');
+
+        // 刷新页面以更新导航栏站点名称
+        // 因为站点名称是在服务器端渲染时获取的，需要刷新页面才能更新
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        const errorData = await response.json();
+        showSaveMessage(`保存失败：${errorData.error || '未知错误'}`, 'error');
       }
     } catch (error) {
       console.error('保存站点配置失败:', error);
+      showSaveMessage('保存失败：网络错误', 'error');
     }
   };
 
@@ -426,7 +492,9 @@ const AdminPage = () => {
       <div className='max-w-7xl mx-auto py-6 sm:px-6 lg:px-8'>
         <div className='bg-white dark:bg-gray-900 rounded-lg shadow-lg overflow-hidden'>
           <div className='px-6 py-4 border-b border-gray-200 dark:border-gray-700'>
-            <h1 className='text-2xl font-bold text-gray-900 dark:text-gray-100'>管理后台</h1>
+            <h1 className='text-2xl font-bold text-gray-900 dark:text-gray-100'>
+              管理后台
+            </h1>
             <p className='text-sm text-gray-500 dark:text-gray-400 mt-1'>
               欢迎回来，{role === 'owner' ? '站长' : '管理员'}！
             </p>
@@ -437,64 +505,71 @@ const AdminPage = () => {
             <div className='mb-6 flex flex-wrap gap-2'>
               <button
                 onClick={() => toggleTab('site')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'site'
-                  ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
-                  : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  activeTab === 'site'
+                    ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
               >
                 站点设置
               </button>
               <button
                 onClick={() => toggleTab('user')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'user'
-                  ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
-                  : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  activeTab === 'user'
+                    ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
               >
                 用户管理
               </button>
               <button
                 onClick={() => toggleTab('dataSource')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'dataSource'
-                  ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
-                  : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  activeTab === 'dataSource'
+                    ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
               >
                 视频源管理
               </button>
               <button
                 onClick={() => toggleTab('liveDataSource')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'liveDataSource'
-                  ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
-                  : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  activeTab === 'liveDataSource'
+                    ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
               >
                 直播源管理
               </button>
               <button
                 onClick={() => toggleTab('customCategory')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'customCategory'
-                  ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
-                  : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  activeTab === 'customCategory'
+                    ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
               >
                 自定义分类
               </button>
               <button
                 onClick={handleOpenConfigFileModal}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'config'
-                  ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
-                  : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  activeTab === 'config'
+                    ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
               >
                 配置文件
               </button>
               <button
                 onClick={() => toggleTab('dataMigration')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'dataMigration'
-                  ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
-                  : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  activeTab === 'dataMigration'
+                    ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
               >
                 数据迁移
               </button>
@@ -505,240 +580,307 @@ const AdminPage = () => {
               <div className='space-y-6'>
                 <form onSubmit={handleSiteConfigSubmit} className='space-y-6'>
                   <div>
-                  <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
-                    基本设置
-                  </h4>
-                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                    <div>
-                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
-                        站点名称
-                      </label>
-                      <input
-                        type='text'
-                        name='SiteName'
-                        placeholder='输入站点名称'
-                        defaultValue={config.SiteConfig.SiteName}
-                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                      />
-                    </div>
-                    <div>
-                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
-                        公告
-                      </label>
-                      <textarea
-                        name='Announcement'
-                        placeholder='输入站点公告'
-                        defaultValue={config.SiteConfig.Announcement}
-                        rows={3}
-                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                      />
-                    </div>
-                    <div>
-                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
-                        搜索下游最大页数
-                      </label>
-                      <input
-                        type='number'
-                        name='SearchDownstreamMaxPage'
-                        placeholder='输入搜索下游最大页数'
-                        defaultValue={config.SiteConfig.SearchDownstreamMaxPage}
-                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                      />
-                    </div>
-                    <div>
-                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
-                        站点接口缓存时间 (秒)
-                      </label>
-                      <input
-                        type='number'
-                        name='SiteInterfaceCacheTime'
-                        placeholder='输入站点接口缓存时间'
-                        defaultValue={config.SiteConfig.SiteInterfaceCacheTime}
-                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
-                    豆瓣代理设置
-                  </h4>
-                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                    <div>
-                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
-                        豆瓣代理类型
-                      </label>
-                      <input
-                        type='text'
-                        name='DoubanProxyType'
-                        placeholder='输入豆瓣代理类型'
-                        defaultValue={config.SiteConfig.DoubanProxyType}
-                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                      />
-                    </div>
-                    <div>
-                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
-                        豆瓣代理地址
-                      </label>
-                      <input
-                        type='text'
-                        name='DoubanProxy'
-                        placeholder='输入豆瓣代理地址'
-                        defaultValue={config.SiteConfig.DoubanProxy}
-                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                      />
-                    </div>
-                    <div>
-                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
-                        豆瓣图片代理类型
-                      </label>
-                      <input
-                        type='text'
-                        name='DoubanImageProxyType'
-                        placeholder='输入豆瓣图片代理类型'
-                        defaultValue={config.SiteConfig.DoubanImageProxyType}
-                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                      />
-                    </div>
-                    <div>
-                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
-                        豆瓣图片代理地址
-                      </label>
-                      <input
-                        type='text'
-                        name='DoubanImageProxy'
-                        placeholder='输入豆瓣图片代理地址'
-                        defaultValue={config.SiteConfig.DoubanImageProxy}
-                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
-                    高级设置
-                  </h4>
-                  <div className='space-y-4'>
-                    <div className='flex items-center justify-between'>
+                    <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
+                      基本设置
+                    </h4>
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                       <div>
-                        <div className='font-medium text-gray-900 dark:text-gray-100'>
-                          禁用黄色过滤
-                        </div>
-                        <div className='text-sm text-gray-600 dark:text-gray-400'>
-                          控制是否禁用黄色内容过滤
-                        </div>
-                      </div>
-                      <div className='flex items-center'>
+                        <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                          站点名称
+                        </label>
                         <input
-                          type='hidden'
-                          name='DisableYellowFilter'
-                          value={config.SiteConfig.DisableYellowFilter ? 'true' : 'false'}
+                          type='text'
+                          name='SiteName'
+                          placeholder='输入站点名称'
+                          defaultValue={config.SiteConfig.SiteName}
+                          className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                         />
-                        <button
-                          type="button"
-                          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${config.SiteConfig.DisableYellowFilter ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}
-                          role="switch"
-                          aria-checked={config.SiteConfig.DisableYellowFilter}
-                          onClick={(e) => {
-                            const input = document.querySelector('input[name="DisableYellowFilter"]') as HTMLInputElement;
-                            const button = e.currentTarget;
-                            const isChecked = button.ariaChecked === 'true';
-                            input.value = isChecked ? 'false' : 'true';
-                            button.ariaChecked = (!isChecked).toString();
-                            // 更新按钮样式
-                            const newCheckedState = !isChecked;
-                            button.className = `relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${newCheckedState ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`;
-                            // 更新内部span样式
-                            const span = button.querySelector('span');
-                            if (span) {
-                              span.className = `pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${newCheckedState ? 'translate-x-5' : 'translate-x-1'}`;
-                            }
-                            // 更新显示文本
-                            const textSpan = button.nextElementSibling as HTMLSpanElement;
-                            if (textSpan) {
-                              textSpan.textContent = newCheckedState ? '开启' : '关闭';
-                            }
-                          }}
-                        >
-                          <span
-                            aria-hidden="true"
-                            className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${config.SiteConfig.DisableYellowFilter ? 'translate-x-5' : 'translate-x-1'}`}
-                          />
-                        </button>
-                        <span className='ml-3 text-sm font-medium text-gray-900 dark:text-gray-100'>
-                          {config.SiteConfig.DisableYellowFilter ? '开启' : '关闭'}
-                        </span>
                       </div>
-                    </div>
-                    
-                    <div className='flex items-center justify-between'>
                       <div>
-                        <div className='font-medium text-gray-900 dark:text-gray-100'>
-                          流畅搜索
-                        </div>
-                        <div className='text-sm text-gray-600 dark:text-gray-400'>
-                          控制是否启用流畅搜索功能
-                        </div>
-                      </div>
-                      <div className='flex items-center'>
-                        <input
-                          type='hidden'
-                          name='FluidSearch'
-                          value={config.SiteConfig.FluidSearch ? 'true' : 'false'}
+                        <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                          公告
+                        </label>
+                        <textarea
+                          name='Announcement'
+                          placeholder='输入站点公告'
+                          defaultValue={config.SiteConfig.Announcement}
+                          rows={3}
+                          className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                         />
-                        <button
-                          type="button"
-                          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${config.SiteConfig.FluidSearch ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}
-                          role="switch"
-                          aria-checked={config.SiteConfig.FluidSearch}
-                          onClick={(e) => {
-                            const input = document.querySelector('input[name="FluidSearch"]') as HTMLInputElement;
-                            const button = e.currentTarget;
-                            const isChecked = button.ariaChecked === 'true';
-                            input.value = isChecked ? 'false' : 'true';
-                            button.ariaChecked = (!isChecked).toString();
-                            // 更新按钮样式
-                            const newCheckedState = !isChecked;
-                            button.className = `relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${newCheckedState ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`;
-                            // 更新内部span样式
-                            const span = button.querySelector('span');
-                            if (span) {
-                              span.className = `pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${newCheckedState ? 'translate-x-5' : 'translate-x-1'}`;
-                            }
-                            // 更新显示文本
-                            const textSpan = button.nextElementSibling as HTMLSpanElement;
-                            if (textSpan) {
-                              textSpan.textContent = newCheckedState ? '开启' : '关闭';
-                            }
-                          }}
-                        >
-                          <span
-                            aria-hidden="true"
-                            className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${config.SiteConfig.FluidSearch ? 'translate-x-5' : 'translate-x-1'}`}
-                          />
-                        </button>
-                        <span className='ml-3 text-sm font-medium text-gray-900 dark:text-gray-100'>
-                          {config.SiteConfig.FluidSearch ? '开启' : '关闭'}
-                        </span>
+                      </div>
+                      <div>
+                        <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                          搜索下游最大页数
+                        </label>
+                        <input
+                          type='number'
+                          name='SearchDownstreamMaxPage'
+                          placeholder='输入搜索下游最大页数'
+                          defaultValue={
+                            config.SiteConfig.SearchDownstreamMaxPage
+                          }
+                          className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                        />
+                      </div>
+                      <div>
+                        <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                          站点接口缓存时间 (秒)
+                        </label>
+                        <input
+                          type='number'
+                          name='SiteInterfaceCacheTime'
+                          placeholder='输入站点接口缓存时间'
+                          defaultValue={
+                            config.SiteConfig.SiteInterfaceCacheTime
+                          }
+                          className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                        />
                       </div>
                     </div>
                   </div>
-                </div>
-                
-                {/* 保存按钮 */}
-                <div className='flex justify-end space-x-3 mt-6'>
-                  <button
-                    type='submit'
-                    className='px-4 py-2 bg-blue-600 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700'
-                  >
-                    保存
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
+
+                  <div>
+                    <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
+                      豆瓣代理设置
+                    </h4>
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                      <div>
+                        <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                          豆瓣代理类型
+                        </label>
+                        <input
+                          type='text'
+                          name='DoubanProxyType'
+                          placeholder='输入豆瓣代理类型'
+                          defaultValue={config.SiteConfig.DoubanProxyType}
+                          className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                        />
+                      </div>
+                      <div>
+                        <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                          豆瓣代理地址
+                        </label>
+                        <input
+                          type='text'
+                          name='DoubanProxy'
+                          placeholder='输入豆瓣代理地址'
+                          defaultValue={config.SiteConfig.DoubanProxy}
+                          className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                        />
+                      </div>
+                      <div>
+                        <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                          豆瓣图片代理类型
+                        </label>
+                        <input
+                          type='text'
+                          name='DoubanImageProxyType'
+                          placeholder='输入豆瓣图片代理类型'
+                          defaultValue={config.SiteConfig.DoubanImageProxyType}
+                          className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                        />
+                      </div>
+                      <div>
+                        <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                          豆瓣图片代理地址
+                        </label>
+                        <input
+                          type='text'
+                          name='DoubanImageProxy'
+                          placeholder='输入豆瓣图片代理地址'
+                          defaultValue={config.SiteConfig.DoubanImageProxy}
+                          className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
+                      高级设置
+                    </h4>
+                    <div className='space-y-4'>
+                      <div className='flex items-center justify-between'>
+                        <div>
+                          <div className='font-medium text-gray-900 dark:text-gray-100'>
+                            禁用黄色过滤
+                          </div>
+                          <div className='text-sm text-gray-600 dark:text-gray-400'>
+                            控制是否禁用黄色内容过滤
+                          </div>
+                        </div>
+                        <div className='flex items-center'>
+                          <input
+                            type='hidden'
+                            name='DisableYellowFilter'
+                            value={
+                              config.SiteConfig.DisableYellowFilter
+                                ? 'true'
+                                : 'false'
+                            }
+                          />
+                          <button
+                            type='button'
+                            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
+                              config.SiteConfig.DisableYellowFilter
+                                ? 'bg-blue-600'
+                                : 'bg-gray-200 dark:bg-gray-700'
+                            }`}
+                            role='switch'
+                            aria-checked={config.SiteConfig.DisableYellowFilter}
+                            onClick={(e) => {
+                              const input = document.querySelector(
+                                'input[name="DisableYellowFilter"]'
+                              ) as HTMLInputElement;
+                              const button = e.currentTarget;
+                              const isChecked = button.ariaChecked === 'true';
+                              input.value = isChecked ? 'false' : 'true';
+                              button.ariaChecked = (!isChecked).toString();
+                              // 更新按钮样式
+                              const newCheckedState = !isChecked;
+                              button.className = `relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
+                                newCheckedState
+                                  ? 'bg-blue-600'
+                                  : 'bg-gray-200 dark:bg-gray-700'
+                              }`;
+                              // 更新内部span样式
+                              const span = button.querySelector('span');
+                              if (span) {
+                                span.className = `pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${
+                                  newCheckedState
+                                    ? 'translate-x-5'
+                                    : 'translate-x-1'
+                                }`;
+                              }
+                              // 更新显示文本
+                              const textSpan =
+                                button.nextElementSibling as HTMLSpanElement;
+                              if (textSpan) {
+                                textSpan.textContent = newCheckedState
+                                  ? '开启'
+                                  : '关闭';
+                              }
+                            }}
+                          >
+                            <span
+                              aria-hidden='true'
+                              className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${
+                                config.SiteConfig.DisableYellowFilter
+                                  ? 'translate-x-5'
+                                  : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                          <span className='ml-3 text-sm font-medium text-gray-900 dark:text-gray-100'>
+                            {config.SiteConfig.DisableYellowFilter
+                              ? '开启'
+                              : '关闭'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className='flex items-center justify-between'>
+                        <div>
+                          <div className='font-medium text-gray-900 dark:text-gray-100'>
+                            流畅搜索
+                          </div>
+                          <div className='text-sm text-gray-600 dark:text-gray-400'>
+                            控制是否启用流畅搜索功能
+                          </div>
+                        </div>
+                        <div className='flex items-center'>
+                          <input
+                            type='hidden'
+                            name='FluidSearch'
+                            value={
+                              config.SiteConfig.FluidSearch ? 'true' : 'false'
+                            }
+                          />
+                          <button
+                            type='button'
+                            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
+                              config.SiteConfig.FluidSearch
+                                ? 'bg-blue-600'
+                                : 'bg-gray-200 dark:bg-gray-700'
+                            }`}
+                            role='switch'
+                            aria-checked={config.SiteConfig.FluidSearch}
+                            onClick={(e) => {
+                              const input = document.querySelector(
+                                'input[name="FluidSearch"]'
+                              ) as HTMLInputElement;
+                              const button = e.currentTarget;
+                              const isChecked = button.ariaChecked === 'true';
+                              input.value = isChecked ? 'false' : 'true';
+                              button.ariaChecked = (!isChecked).toString();
+                              // 更新按钮样式
+                              const newCheckedState = !isChecked;
+                              button.className = `relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
+                                newCheckedState
+                                  ? 'bg-blue-600'
+                                  : 'bg-gray-200 dark:bg-gray-700'
+                              }`;
+                              // 更新内部span样式
+                              const span = button.querySelector('span');
+                              if (span) {
+                                span.className = `pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${
+                                  newCheckedState
+                                    ? 'translate-x-5'
+                                    : 'translate-x-1'
+                                }`;
+                              }
+                              // 更新显示文本
+                              const textSpan =
+                                button.nextElementSibling as HTMLSpanElement;
+                              if (textSpan) {
+                                textSpan.textContent = newCheckedState
+                                  ? '开启'
+                                  : '关闭';
+                              }
+                            }}
+                          >
+                            <span
+                              aria-hidden='true'
+                              className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${
+                                config.SiteConfig.FluidSearch
+                                  ? 'translate-x-5'
+                                  : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                          <span className='ml-3 text-sm font-medium text-gray-900 dark:text-gray-100'>
+                            {config.SiteConfig.FluidSearch ? '开启' : '关闭'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 保存反馈消息 */}
+                  {saveMessage && (
+                    <div
+                      className={`p-3 rounded-lg text-sm ${
+                        saveMessageType === 'success'
+                          ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800'
+                          : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800'
+                      }`}
+                    >
+                      {saveMessage}
+                    </div>
+                  )}
+
+                  {/* 保存按钮 */}
+                  <div className='flex justify-end space-x-3 mt-6'>
+                    <button
+                      type='submit'
+                      className='px-4 py-2 bg-blue-600 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700'
+                    >
+                      保存
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
 
             {/* 用户管理 */}
             {activeTab === 'user' && (
@@ -761,14 +903,14 @@ const AdminPage = () => {
                         </div>
                         <div className='flex items-center'>
                           <button
-                            type="button"
-                            className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 bg-gray-200 dark:bg-gray-700"
-                            role="switch"
+                            type='button'
+                            className='relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 bg-gray-200 dark:bg-gray-700'
+                            role='switch'
                             aria-checked={false}
                           >
                             <span
-                              aria-hidden="true"
-                              className="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out translate-x-1"
+                              aria-hidden='true'
+                              className='pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out translate-x-1'
                             />
                           </button>
                           <span className='ml-3 text-sm font-medium text-gray-900 dark:text-gray-100'>
@@ -819,9 +961,7 @@ const AdminPage = () => {
                     <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
                       用户列表
                     </h4>
-                    <button
-                      className='px-3 py-1.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg transition-colors'
-                    >
+                    <button className='px-3 py-1.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg transition-colors'>
                       添加用户
                     </button>
                   </div>
@@ -846,32 +986,37 @@ const AdminPage = () => {
                       </thead>
                       <tbody className='bg-white dark:bg-black divide-y divide-gray-200 dark:divide-gray-700'>
                         {config.UserConfig.Users.map((user) => (
-                          <tr key={user.username} className='hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'>
+                          <tr
+                            key={user.username}
+                            className='hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'
+                          >
                             <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100'>
                               {user.username}
                             </td>
                             <td className='px-6 py-4 whitespace-nowrap'>
                               <span
-                                className={`px-2 py-1 text-xs rounded-full ${user.role === 'owner'
-                                  ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300'
-                                  : user.role === 'admin'
+                                className={`px-2 py-1 text-xs rounded-full ${
+                                  user.role === 'owner'
+                                    ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300'
+                                    : user.role === 'admin'
                                     ? 'bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-300'
                                     : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                                  }`}
+                                }`}
                               >
                                 {user.role === 'owner'
                                   ? '站长'
                                   : user.role === 'admin'
-                                    ? '管理员'
-                                    : '普通用户'}
+                                  ? '管理员'
+                                  : '普通用户'}
                               </span>
                             </td>
                             <td className='px-6 py-4 whitespace-nowrap'>
                               <span
-                                className={`px-2 py-1 text-xs rounded-full ${!user.banned
-                                  ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
-                                  : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300'
-                                  }`}
+                                className={`px-2 py-1 text-xs rounded-full ${
+                                  !user.banned
+                                    ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
+                                    : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300'
+                                }`}
                               >
                                 {!user.banned ? '正常' : '已封禁'}
                               </span>
@@ -920,8 +1065,14 @@ const AdminPage = () => {
                       <button
                         onClick={() => {
                           // 导出视频源配置
-                          const dataStr = JSON.stringify(config.SourceConfig, null, 2);
-                          const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                          const dataStr = JSON.stringify(
+                            config.SourceConfig,
+                            null,
+                            2
+                          );
+                          const dataBlob = new Blob([dataStr], {
+                            type: 'application/json',
+                          });
                           const url = URL.createObjectURL(dataBlob);
                           const link = document.createElement('a');
                           link.href = url;
@@ -940,23 +1091,25 @@ const AdminPage = () => {
                         导入配置
                       </label>
                       <input
-                          id='import-sources'
-                          type='file'
-                          accept='.json'
-                          className='hidden'
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onload = async (event) => {
-                                try {
-                                  let jsonString = event.target?.result as string;
-                                  // 清理JSON字符串中的反引号
-                                  jsonString = jsonString.replace(/`/g, '');
-                                  const importedSources = JSON.parse(jsonString);
-                                  if (Array.isArray(importedSources)) {
-                                    // 调用API导入视频源
-                                    const response = await fetch('/api/admin/source', {
+                        id='import-sources'
+                        type='file'
+                        accept='.json'
+                        className='hidden'
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = async (event) => {
+                              try {
+                                let jsonString = event.target?.result as string;
+                                // 清理JSON字符串中的反引号
+                                jsonString = jsonString.replace(/`/g, '');
+                                const importedSources = JSON.parse(jsonString);
+                                if (Array.isArray(importedSources)) {
+                                  // 调用API导入视频源
+                                  const response = await fetch(
+                                    '/api/admin/source',
+                                    {
                                       method: 'POST',
                                       headers: {
                                         'Content-Type': 'application/json',
@@ -965,26 +1118,33 @@ const AdminPage = () => {
                                         action: 'import',
                                         sources: importedSources,
                                       }),
-                                    });
-                                    
-                                    if (response.ok) {
-                                      await refreshConfig();
-                                      alert('视频源配置导入成功！');
-                                    } else {
-                                      const errorData = await response.json();
-                                      alert(`导入失败：${errorData.error || '未知错误'}`);
                                     }
+                                  );
+
+                                  if (response.ok) {
+                                    await refreshConfig();
+                                    alert('视频源配置导入成功！');
                                   } else {
-                                    alert('导入的文件格式不正确！请确保文件是JSON数组格式。');
+                                    const errorData = await response.json();
+                                    alert(
+                                      `导入失败：${
+                                        errorData.error || '未知错误'
+                                      }`
+                                    );
                                   }
-                                } catch (error) {
-                                  alert(`导入失败：${(error as Error).message}`);
+                                } else {
+                                  alert(
+                                    '导入的文件格式不正确！请确保文件是JSON数组格式。'
+                                  );
                                 }
-                              };
-                              reader.readAsText(file);
-                            }
-                          }}
-                        />
+                              } catch (error) {
+                                alert(`导入失败：${(error as Error).message}`);
+                              }
+                            };
+                            reader.readAsText(file);
+                          }
+                        }}
+                      />
                     </div>
                     <button
                       onClick={async () => {
@@ -993,7 +1153,7 @@ const AdminPage = () => {
                         const name = prompt('请输入视频源名称:');
                         const api = prompt('请输入API地址:');
                         const detail = prompt('请输入描述（可选）:');
-                        
+
                         if (key && name && api) {
                           const response = await fetch('/api/admin/source', {
                             method: 'POST',
@@ -1024,7 +1184,7 @@ const AdminPage = () => {
                       添加视频源
                     </button>
                   </div>
-                  
+
                   {/* 批量操作按钮 */}
                   {selectedSources.length > 0 && (
                     <div className='flex space-x-2 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg'>
@@ -1082,7 +1242,10 @@ const AdminPage = () => {
                       </thead>
                       <tbody className='bg-white dark:bg-black divide-y divide-gray-200 dark:divide-gray-700'>
                         {config.SourceConfig.map((source) => (
-                          <tr key={source.key} className='hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'>
+                          <tr
+                            key={source.key}
+                            className='hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'
+                          >
                             <td className='px-3 py-4 whitespace-nowrap'>
                               <input
                                 type='checkbox'
@@ -1104,25 +1267,38 @@ const AdminPage = () => {
                               <button
                                 onClick={async () => {
                                   // 切换视频源状态
-                                  const action = source.disabled ? 'enable' : 'disable';
-                                  const response = await fetch('/api/admin/source', {
-                                    method: 'POST',
-                                    headers: {
-                                      'Content-Type': 'application/json',
-                                    },
-                                    body: JSON.stringify({
-                                      action,
-                                      key: source.key,
-                                    }),
-                                  });
+                                  const action = source.disabled
+                                    ? 'enable'
+                                    : 'disable';
+                                  const response = await fetch(
+                                    '/api/admin/source',
+                                    {
+                                      method: 'POST',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                      },
+                                      body: JSON.stringify({
+                                        action,
+                                        key: source.key,
+                                      }),
+                                    }
+                                  );
                                   if (response.ok) {
                                     await refreshConfig();
                                   } else {
                                     const errorData = await response.json();
-                                    alert(`操作失败：${errorData.error || '未知错误'}`);
+                                    alert(
+                                      `操作失败：${
+                                        errorData.error || '未知错误'
+                                      }`
+                                    );
                                   }
                                 }}
-                                className={`px-2 py-1 text-xs rounded-full cursor-pointer ${source.disabled ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800/20' : 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800/20'}`}
+                                className={`px-2 py-1 text-xs rounded-full cursor-pointer ${
+                                  source.disabled
+                                    ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800/20'
+                                    : 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800/20'
+                                }`}
                               >
                                 {source.disabled ? '已禁用' : '已启用'}
                               </button>
@@ -1131,33 +1307,51 @@ const AdminPage = () => {
                               <button
                                 onClick={async () => {
                                   // 编辑视频源
-                                  const newName = prompt('请输入新的视频源名称:', source.name);
-                                  const newApi = prompt('请输入新的API地址:', source.api);
-                                  const newDetail = prompt('请输入新的描述（可选）:', source.detail || '');
-                                  
+                                  const newName = prompt(
+                                    '请输入新的视频源名称:',
+                                    source.name
+                                  );
+                                  const newApi = prompt(
+                                    '请输入新的API地址:',
+                                    source.api
+                                  );
+                                  const newDetail = prompt(
+                                    '请输入新的描述（可选）:',
+                                    source.detail || ''
+                                  );
+
                                   if (newName && newApi) {
                                     // 使用import action来更新视频源
-                                    const response = await fetch('/api/admin/source', {
-                                      method: 'POST',
-                                      headers: {
-                                        'Content-Type': 'application/json',
-                                      },
-                                      body: JSON.stringify({
-                                        action: 'import',
-                                        sources: [{
-                                          key: source.key,
-                                          name: newName,
-                                          api: newApi,
-                                          detail: newDetail,
-                                          disabled: source.disabled,
-                                        }],
-                                      }),
-                                    });
+                                    const response = await fetch(
+                                      '/api/admin/source',
+                                      {
+                                        method: 'POST',
+                                        headers: {
+                                          'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({
+                                          action: 'import',
+                                          sources: [
+                                            {
+                                              key: source.key,
+                                              name: newName,
+                                              api: newApi,
+                                              detail: newDetail,
+                                              disabled: source.disabled,
+                                            },
+                                          ],
+                                        }),
+                                      }
+                                    );
                                     if (response.ok) {
                                       await refreshConfig();
                                     } else {
                                       const errorData = await response.json();
-                                      alert(`操作失败：${errorData.error || '未知错误'}`);
+                                      alert(
+                                        `操作失败：${
+                                          errorData.error || '未知错误'
+                                        }`
+                                      );
                                     }
                                   }
                                 }}
@@ -1168,22 +1362,33 @@ const AdminPage = () => {
                               <button
                                 onClick={async () => {
                                   // 删除视频源
-                                  if (confirm(`确定要删除视频源 "${source.name}" 吗？`)) {
-                                    const response = await fetch('/api/admin/source', {
-                                      method: 'POST',
-                                      headers: {
-                                        'Content-Type': 'application/json',
-                                      },
-                                      body: JSON.stringify({
-                                        action: 'delete',
-                                        key: source.key,
-                                      }),
-                                    });
+                                  if (
+                                    confirm(
+                                      `确定要删除视频源 "${source.name}" 吗？`
+                                    )
+                                  ) {
+                                    const response = await fetch(
+                                      '/api/admin/source',
+                                      {
+                                        method: 'POST',
+                                        headers: {
+                                          'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({
+                                          action: 'delete',
+                                          key: source.key,
+                                        }),
+                                      }
+                                    );
                                     if (response.ok) {
                                       await refreshConfig();
                                     } else {
                                       const errorData = await response.json();
-                                      alert(`操作失败：${errorData.error || '未知错误'}`);
+                                      alert(
+                                        `操作失败：${
+                                          errorData.error || '未知错误'
+                                        }`
+                                      );
                                     }
                                   }
                                 }}
@@ -1241,7 +1446,10 @@ const AdminPage = () => {
                       </thead>
                       <tbody className='bg-white dark:bg-black divide-y divide-gray-200 dark:divide-gray-700'>
                         {(config.LiveConfig || []).map((liveSource) => (
-                          <tr key={liveSource.key} className='hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'>
+                          <tr
+                            key={liveSource.key}
+                            className='hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'
+                          >
                             <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100'>
                               {liveSource.name}
                             </td>
@@ -1249,12 +1457,23 @@ const AdminPage = () => {
                               {liveSource.url}
                             </td>
                             <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400'>
-                              {liveSource.from === 'config' ? '系统配置' : '自定义'}
+                              {liveSource.from === 'config'
+                                ? '系统配置'
+                                : '自定义'}
                             </td>
                             <td className='px-6 py-4 whitespace-nowrap'>
                               <button
-                                onClick={() => handleToggleLiveSourceStatus(liveSource.key, !liveSource.disabled)}
-                                className={`px-2 py-1 text-xs rounded-full ${liveSource.disabled ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800/20' : 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800/20'}`}
+                                onClick={() =>
+                                  handleToggleLiveSourceStatus(
+                                    liveSource.key,
+                                    !liveSource.disabled
+                                  )
+                                }
+                                className={`px-2 py-1 text-xs rounded-full ${
+                                  liveSource.disabled
+                                    ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800/20'
+                                    : 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800/20'
+                                }`}
                               >
                                 {liveSource.disabled ? '已禁用' : '已启用'}
                               </button>
@@ -1263,13 +1482,17 @@ const AdminPage = () => {
                               {liveSource.from !== 'config' && (
                                 <>
                                   <button
-                                    onClick={() => handleEditLiveSource(liveSource)}
+                                    onClick={() =>
+                                      handleEditLiveSource(liveSource)
+                                    }
                                     className='text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300'
                                   >
                                     编辑
                                   </button>
                                   <button
-                                    onClick={() => handleDeleteLiveSource(liveSource.key)}
+                                    onClick={() =>
+                                      handleDeleteLiveSource(liveSource.key)
+                                    }
                                     className='text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300'
                                   >
                                     删除
@@ -1329,7 +1552,10 @@ const AdminPage = () => {
                       </thead>
                       <tbody className='bg-white dark:bg-black divide-y divide-gray-200 dark:divide-gray-700'>
                         {config.CustomCategories.map((category, index) => (
-                          <tr key={index} className='hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'>
+                          <tr
+                            key={index}
+                            className='hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'
+                          >
                             <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100'>
                               {category.name || `分类${index + 1}`}
                             </td>
@@ -1340,12 +1566,24 @@ const AdminPage = () => {
                               {category.query}
                             </td>
                             <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400'>
-                              {category.from === 'config' ? '系统配置' : '自定义'}
+                              {category.from === 'config'
+                                ? '系统配置'
+                                : '自定义'}
                             </td>
                             <td className='px-6 py-4 whitespace-nowrap'>
                               <button
-                                onClick={() => handleToggleCustomCategoryStatus(category.query, category.type, !category.disabled)}
-                                className={`px-2 py-1 text-xs rounded-full ${category.disabled ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800/20' : 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800/20'}`}
+                                onClick={() =>
+                                  handleToggleCustomCategoryStatus(
+                                    category.query,
+                                    category.type,
+                                    !category.disabled
+                                  )
+                                }
+                                className={`px-2 py-1 text-xs rounded-full ${
+                                  category.disabled
+                                    ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800/20'
+                                    : 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800/20'
+                                }`}
                               >
                                 {category.disabled ? '已禁用' : '已启用'}
                               </button>
@@ -1354,13 +1592,20 @@ const AdminPage = () => {
                               {category.from !== 'config' && (
                                 <>
                                   <button
-                                    onClick={() => handleEditCustomCategory(category)}
+                                    onClick={() =>
+                                      handleEditCustomCategory(category)
+                                    }
                                     className='text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300'
                                   >
                                     编辑
                                   </button>
                                   <button
-                                    onClick={() => handleDeleteCustomCategory(category.query, category.type)}
+                                    onClick={() =>
+                                      handleDeleteCustomCategory(
+                                        category.query,
+                                        category.type
+                                      )
+                                    }
                                     className='text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300'
                                   >
                                     删除
@@ -1408,7 +1653,12 @@ const AdminPage = () => {
                       <input
                         type='text'
                         value={currentLiveSource.key}
-                        onChange={(e) => setCurrentLiveSource({...currentLiveSource, key: e.target.value})}
+                        onChange={(e) =>
+                          setCurrentLiveSource({
+                            ...currentLiveSource,
+                            key: e.target.value,
+                          })
+                        }
                         disabled={isEditLiveSourceModalOpen}
                         className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                         required
@@ -1421,7 +1671,12 @@ const AdminPage = () => {
                       <input
                         type='text'
                         value={currentLiveSource.name}
-                        onChange={(e) => setCurrentLiveSource({...currentLiveSource, name: e.target.value})}
+                        onChange={(e) =>
+                          setCurrentLiveSource({
+                            ...currentLiveSource,
+                            name: e.target.value,
+                          })
+                        }
                         className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                         required
                       />
@@ -1433,7 +1688,12 @@ const AdminPage = () => {
                       <input
                         type='url'
                         value={currentLiveSource.url}
-                        onChange={(e) => setCurrentLiveSource({...currentLiveSource, url: e.target.value})}
+                        onChange={(e) =>
+                          setCurrentLiveSource({
+                            ...currentLiveSource,
+                            url: e.target.value,
+                          })
+                        }
                         className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                         required
                       />
@@ -1445,7 +1705,12 @@ const AdminPage = () => {
                       <input
                         type='text'
                         value={currentLiveSource.ua}
-                        onChange={(e) => setCurrentLiveSource({...currentLiveSource, ua: e.target.value})}
+                        onChange={(e) =>
+                          setCurrentLiveSource({
+                            ...currentLiveSource,
+                            ua: e.target.value,
+                          })
+                        }
                         className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                       />
                     </div>
@@ -1456,7 +1721,12 @@ const AdminPage = () => {
                       <input
                         type='url'
                         value={currentLiveSource.epg}
-                        onChange={(e) => setCurrentLiveSource({...currentLiveSource, epg: e.target.value})}
+                        onChange={(e) =>
+                          setCurrentLiveSource({
+                            ...currentLiveSource,
+                            epg: e.target.value,
+                          })
+                        }
                         className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                       />
                     </div>
@@ -1490,7 +1760,9 @@ const AdminPage = () => {
               <div className='bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md'>
                 <div className='p-4 border-b border-gray-200 dark:border-gray-700'>
                   <h3 className='text-lg font-medium text-gray-900 dark:text-gray-100'>
-                    {isEditCustomCategoryModalOpen ? '编辑自定义分类' : '添加自定义分类'}
+                    {isEditCustomCategoryModalOpen
+                      ? '编辑自定义分类'
+                      : '添加自定义分类'}
                   </h3>
                 </div>
                 <form onSubmit={handleCustomCategorySubmit} className='p-4'>
@@ -1502,7 +1774,12 @@ const AdminPage = () => {
                       <input
                         type='text'
                         value={currentCustomCategory.name}
-                        onChange={(e) => setCurrentCustomCategory({...currentCustomCategory, name: e.target.value})}
+                        onChange={(e) =>
+                          setCurrentCustomCategory({
+                            ...currentCustomCategory,
+                            name: e.target.value,
+                          })
+                        }
                         className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                         required
                       />
@@ -1513,7 +1790,12 @@ const AdminPage = () => {
                       </label>
                       <select
                         value={currentCustomCategory.type}
-                        onChange={(e) => setCurrentCustomCategory({...currentCustomCategory, type: e.target.value})}
+                        onChange={(e) =>
+                          setCurrentCustomCategory({
+                            ...currentCustomCategory,
+                            type: e.target.value,
+                          })
+                        }
                         className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                         required
                       >
@@ -1528,7 +1810,12 @@ const AdminPage = () => {
                       <input
                         type='text'
                         value={currentCustomCategory.query}
-                        onChange={(e) => setCurrentCustomCategory({...currentCustomCategory, query: e.target.value})}
+                        onChange={(e) =>
+                          setCurrentCustomCategory({
+                            ...currentCustomCategory,
+                            query: e.target.value,
+                          })
+                        }
                         className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                         required
                       />
@@ -1601,13 +1888,19 @@ const AdminPage = () => {
                         </div>
                       </div>
                       <button
-                        type="button"
-                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${autoUpdate ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}
+                        type='button'
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
+                          autoUpdate
+                            ? 'bg-blue-600'
+                            : 'bg-gray-200 dark:bg-gray-700'
+                        }`}
                         onClick={() => setAutoUpdate(!autoUpdate)}
                       >
                         <span
-                          aria-hidden="true"
-                          className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${autoUpdate ? 'translate-x-5' : 'translate-x-1'}`}
+                          aria-hidden='true'
+                          className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${
+                            autoUpdate ? 'translate-x-5' : 'translate-x-1'
+                          }`}
                         />
                       </button>
                     </div>
