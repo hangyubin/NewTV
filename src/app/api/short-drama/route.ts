@@ -65,27 +65,29 @@ export async function GET(request: NextRequest) {
               }
             }
 
-            // 3. 类型筛选
-            if (type !== 'all') {
-              const resultType = getShortDramaType(result.type_name, result.title);
-              if (resultType !== type) {
-                return false;
-              }
-            }
-
-            // 4. 地区筛选
-            if (region !== 'all') {
-              const resultRegion = getContentRegion(result.title, result.desc);
-              if (resultRegion !== region && region !== 'chinese' && resultRegion !== 'mainland_china') {
-                return false;
-              }
-            }
-
-            // 5. 年份筛选
+            // 3. 年份筛选
             if (year !== 'all' && result.year) {
-              if (!matchYear(result.year, year)) {
+              const resultYear = parseInt(result.year);
+              if (isNaN(resultYear)) {
                 return false;
               }
+              
+              // 直接比较年份
+              if (year === '2025' && resultYear !== 2025) return false;
+              if (year === '2024' && resultYear !== 2024) return false;
+              if (year === '2023' && resultYear !== 2023) return false;
+              if (year === '2022' && resultYear !== 2022) return false;
+              if (year === '2021' && resultYear !== 2021) return false;
+              if (year === '2020' && resultYear !== 2020) return false;
+              if (year === '2019' && resultYear !== 2019) return false;
+              if (year === '2020s' && (resultYear < 2020 || resultYear > 2029)) return false;
+              if (year === '2010s' && (resultYear < 2010 || resultYear > 2019)) return false;
+              if (year === '2000s' && (resultYear < 2000 || resultYear > 2009)) return false;
+              if (year === '1990s' && (resultYear < 1990 || resultYear > 1999)) return false;
+              if (year === '1980s' && (resultYear < 1980 || resultYear > 1989)) return false;
+              if (year === '1970s' && (resultYear < 1970 || resultYear > 1979)) return false;
+              if (year === '1960s' && (resultYear < 1960 || resultYear > 1969)) return false;
+              if (year === 'earlier' && resultYear >= 1960) return false;
             }
 
             return true;
@@ -166,85 +168,4 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/**
- * 获取短剧的具体类型
- */
-function getShortDramaType(typeName?: string, title?: string): string {
-  if (!typeName && !title) return 'all';
 
-  const content = `${typeName || ''} ${title || ''}`.toLowerCase();
-
-  if (content.includes('爱情') || content.includes('romance')) return 'romance';
-  if (content.includes('家庭') || content.includes('family')) return 'family';
-  if (content.includes('现代') || content.includes('modern')) return 'modern';
-  if (content.includes('都市') || content.includes('urban')) return 'urban';
-  if (content.includes('古装') || content.includes('costume')) return 'costume';
-  if (content.includes('穿越') || content.includes('time')) return 'time_travel';
-  if (content.includes('商战') || content.includes('business')) return 'business';
-  if (content.includes('悬疑') || content.includes('suspense')) return 'suspense';
-  if (content.includes('喜剧') || content.includes('comedy')) return 'comedy';
-  if (content.includes('青春') || content.includes('youth')) return 'youth';
-
-  return 'all';
-}
-
-/**
- * 获取内容的地区信息
- */
-function getContentRegion(title?: string, desc?: string): string {
-  if (!title && !desc) return 'all';
-
-  const content = `${title || ''} ${desc || ''}`.toLowerCase();
-
-  if (content.includes('韩国') || content.includes('korean')) return 'korean';
-  if (content.includes('日本') || content.includes('japanese')) return 'japanese';
-  if (content.includes('美国') || content.includes('american')) return 'usa';
-  if (content.includes('英国') || content.includes('british')) return 'uk';
-  if (content.includes('泰国') || content.includes('thai')) return 'thailand';
-  if (content.includes('中国') || content.includes('chinese') || content.includes('国产')) return 'mainland_china';
-
-  return 'all';
-}
-
-/**
- * 匹配年份筛选
- */
-function matchYear(resultYear: string, filterYear: string): boolean {
-  const year = parseInt(resultYear);
-  if (!year) return false;
-
-  switch (filterYear) {
-    case '2025':
-      return year === 2025;
-    case '2024':
-      return year === 2024;
-    case '2023':
-      return year === 2023;
-    case '2022':
-      return year === 2022;
-    case '2021':
-      return year === 2021;
-    case '2020':
-      return year === 2020;
-    case '2019':
-      return year === 2019;
-    case '2020s':
-      return year >= 2020 && year <= 2029;
-    case '2010s':
-      return year >= 2010 && year <= 2019;
-    case '2000s':
-      return year >= 2000 && year <= 2009;
-    case '1990s':
-      return year >= 1990 && year <= 1999;
-    case '1980s':
-      return year >= 1980 && year <= 1989;
-    case '1970s':
-      return year >= 1970 && year <= 1979;
-    case '1960s':
-      return year >= 1960 && year <= 1969;
-    case 'earlier':
-      return year < 1960;
-    default:
-      return true;
-  }
-}
