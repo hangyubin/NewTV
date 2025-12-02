@@ -255,6 +255,101 @@ const AdminPage = () => {
     setIsConfigFileModalOpen(true);
   };
 
+  // 视频源多选功能状态
+  const [selectedSources, setSelectedSources] = useState<string[]>([]);
+  const [selectAll, setSelectAll] = useState(false);
+
+  // 处理单个视频源选择
+  const handleSelectSource = (key: string) => {
+    setSelectedSources(prev => {
+      if (prev.includes(key)) {
+        return prev.filter(k => k !== key);
+      } else {
+        return [...prev, key];
+      }
+    });
+  };
+
+  // 处理全选/取消全选
+  const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectedSources([]);
+    } else {
+      const allKeys = config?.SourceConfig.map(source => source.key) || [];
+      setSelectedSources(allKeys);
+    }
+    setSelectAll(!selectAll);
+  };
+
+  // 处理批量删除
+  const handleBatchDelete = async () => {
+    if (selectedSources.length === 0) {
+      alert('请先选择要删除的视频源');
+      return;
+    }
+
+    if (confirm(`确定要删除选中的 ${selectedSources.length} 个视频源吗？`)) {
+      try {
+        const response = await fetch('/api/admin/source', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'batch_delete',
+            keys: selectedSources,
+          }),
+        });
+        if (response.ok) {
+          await refreshConfig();
+          setSelectedSources([]);
+          setSelectAll(false);
+          alert('批量删除成功！');
+        } else {
+          const errorData = await response.json();
+          alert(`批量删除失败：${errorData.error || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('批量删除失败:', error);
+        alert('批量删除失败：网络错误');
+      }
+    }
+  };
+
+  // 处理批量启用/禁用
+  const handleBatchToggleStatus = async (action: 'enable' | 'disable') => {
+    if (selectedSources.length === 0) {
+      alert('请先选择要操作的视频源');
+      return;
+    }
+
+    try {
+      const batchAction = action === 'enable' ? 'batch_enable' : 'batch_disable';
+      const response = await fetch('/api/admin/source', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: batchAction,
+          keys: selectedSources,
+        }),
+      });
+      if (response.ok) {
+        await refreshConfig();
+        setSelectedSources([]);
+        setSelectAll(false);
+        alert(`批量${action === 'enable' ? '启用' : '禁用'}成功！`);
+      } else {
+        const errorData = await response.json();
+        alert(`批量${action === 'enable' ? '启用' : '禁用'}失败：${errorData.error || '未知错误'}`);
+      }
+    } catch (error) {
+      console.error(`批量${action === 'enable' ? '启用' : '禁用'}失败:`, error);
+      alert(`批量${action === 'enable' ? '启用' : '禁用'}失败：网络错误`);
+    }
+  };
+
   const handleConfigFileSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     try {
@@ -820,10 +915,45 @@ const AdminPage = () => {
                       添加视频源
                     </button>
                   </div>
+                  
+                  {/* 批量操作按钮 */}
+                  {selectedSources.length > 0 && (
+                    <div className='flex space-x-2 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg'>
+                      <span className='text-sm text-gray-700 dark:text-gray-300'>
+                        已选择 {selectedSources.length} 个视频源
+                      </span>
+                      <button
+                        onClick={() => handleBatchToggleStatus('enable')}
+                        className='px-3 py-1.5 text-sm font-medium bg-green-600 dark:bg-green-600 hover:bg-green-700 dark:hover:bg-green-700 text-white rounded-lg transition-colors'
+                      >
+                        批量启用
+                      </button>
+                      <button
+                        onClick={() => handleBatchToggleStatus('disable')}
+                        className='px-3 py-1.5 text-sm font-medium bg-yellow-600 dark:bg-yellow-600 hover:bg-yellow-700 dark:hover:bg-yellow-700 text-white rounded-lg transition-colors'
+                      >
+                        批量禁用
+                      </button>
+                      <button
+                        onClick={handleBatchDelete}
+                        className='px-3 py-1.5 text-sm font-medium bg-red-600 dark:bg-red-600 hover:bg-red-700 dark:hover:bg-red-700 text-white rounded-lg transition-colors'
+                      >
+                        批量删除
+                      </button>
+                    </div>
+                  )}
                   <div className='border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden'>
                     <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
                       <thead className='bg-gray-50 dark:bg-gray-900'>
                         <tr>
+                          <th className='px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            <input
+                              type='checkbox'
+                              checked={selectAll}
+                              onChange={handleSelectAll}
+                              className='h-4 w-4 text-blue-600 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+                            />
+                          </th>
                           <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
                             名称
                           </th>
@@ -844,6 +974,14 @@ const AdminPage = () => {
                       <tbody className='bg-white dark:bg-black divide-y divide-gray-200 dark:divide-gray-700'>
                         {config.SourceConfig.map((source) => (
                           <tr key={source.key} className='hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'>
+                            <td className='px-3 py-4 whitespace-nowrap'>
+                              <input
+                                type='checkbox'
+                                checked={selectedSources.includes(source.key)}
+                                onChange={() => handleSelectSource(source.key)}
+                                className='h-4 w-4 text-blue-600 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+                              />
+                            </td>
                             <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100'>
                               {source.name}
                             </td>
