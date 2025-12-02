@@ -17,6 +17,7 @@ const AdminPage = () => {
   const [config, setConfig] = useState<AdminConfig | null>(null);
   const [role, setRole] = useState<'owner' | 'admin' | null>(null);
   const [activeTab, setActiveTab] = useState('site');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [expandedTabs, setExpandedTabs] = useState<{
     [key: string]: boolean;
   }>({
@@ -374,6 +375,44 @@ const AdminPage = () => {
     }
   };
 
+  // 保存站点配置
+  const handleSiteConfigSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const form = event.target as HTMLFormElement;
+    const formData = new FormData(form);
+    
+    // 构建站点配置对象
+    const siteConfig = {
+      SiteName: formData.get('SiteName') as string,
+      Announcement: formData.get('Announcement') as string,
+      SearchDownstreamMaxPage: parseInt(formData.get('SearchDownstreamMaxPage') as string || '0'),
+      SiteInterfaceCacheTime: parseInt(formData.get('SiteInterfaceCacheTime') as string || '0'),
+      DoubanProxyType: formData.get('DoubanProxyType') as string,
+      DoubanProxy: formData.get('DoubanProxy') as string,
+      DoubanImageProxyType: formData.get('DoubanImageProxyType') as string,
+      DoubanImageProxy: formData.get('DoubanImageProxy') as string,
+      DisableYellowFilter: formData.get('DisableYellowFilter') === 'true',
+      FluidSearch: formData.get('FluidSearch') === 'true',
+    };
+    
+    try {
+      const response = await fetch('/api/admin/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          SiteConfig: siteConfig
+        })
+      });
+      if (response.ok) {
+        await refreshConfig();
+      }
+    } catch (error) {
+      console.error('保存站点配置失败:', error);
+    }
+  };
+
   if (!config || !role) {
     return (
       <div className='flex items-center justify-center min-h-[50vh] text-gray-500 dark:text-gray-400'>
@@ -464,7 +503,8 @@ const AdminPage = () => {
             {/* 站点设置 */}
             {activeTab === 'site' && (
               <div className='space-y-6'>
-                <div>
+                <form onSubmit={handleSiteConfigSubmit} className='space-y-6'>
+                  <div>
                   <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
                     基本设置
                   </h4>
@@ -475,6 +515,7 @@ const AdminPage = () => {
                       </label>
                       <input
                         type='text'
+                        name='SiteName'
                         placeholder='输入站点名称'
                         defaultValue={config.SiteConfig.SiteName}
                         className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
@@ -485,6 +526,7 @@ const AdminPage = () => {
                         公告
                       </label>
                       <textarea
+                        name='Announcement'
                         placeholder='输入站点公告'
                         defaultValue={config.SiteConfig.Announcement}
                         rows={3}
@@ -497,6 +539,7 @@ const AdminPage = () => {
                       </label>
                       <input
                         type='number'
+                        name='SearchDownstreamMaxPage'
                         placeholder='输入搜索下游最大页数'
                         defaultValue={config.SiteConfig.SearchDownstreamMaxPage}
                         className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
@@ -508,6 +551,7 @@ const AdminPage = () => {
                       </label>
                       <input
                         type='number'
+                        name='SiteInterfaceCacheTime'
                         placeholder='输入站点接口缓存时间'
                         defaultValue={config.SiteConfig.SiteInterfaceCacheTime}
                         className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
@@ -527,6 +571,7 @@ const AdminPage = () => {
                       </label>
                       <input
                         type='text'
+                        name='DoubanProxyType'
                         placeholder='输入豆瓣代理类型'
                         defaultValue={config.SiteConfig.DoubanProxyType}
                         className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
@@ -538,6 +583,7 @@ const AdminPage = () => {
                       </label>
                       <input
                         type='text'
+                        name='DoubanProxy'
                         placeholder='输入豆瓣代理地址'
                         defaultValue={config.SiteConfig.DoubanProxy}
                         className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
@@ -549,6 +595,7 @@ const AdminPage = () => {
                       </label>
                       <input
                         type='text'
+                        name='DoubanImageProxyType'
                         placeholder='输入豆瓣图片代理类型'
                         defaultValue={config.SiteConfig.DoubanImageProxyType}
                         className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
@@ -560,6 +607,7 @@ const AdminPage = () => {
                       </label>
                       <input
                         type='text'
+                        name='DoubanImageProxy'
                         placeholder='输入豆瓣图片代理地址'
                         defaultValue={config.SiteConfig.DoubanImageProxy}
                         className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
@@ -583,11 +631,36 @@ const AdminPage = () => {
                         </div>
                       </div>
                       <div className='flex items-center'>
+                        <input
+                          type='hidden'
+                          name='DisableYellowFilter'
+                          value={config.SiteConfig.DisableYellowFilter ? 'true' : 'false'}
+                        />
                         <button
                           type="button"
                           className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${config.SiteConfig.DisableYellowFilter ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}
                           role="switch"
                           aria-checked={config.SiteConfig.DisableYellowFilter}
+                          onClick={(e) => {
+                            const input = document.querySelector('input[name="DisableYellowFilter"]') as HTMLInputElement;
+                            const button = e.currentTarget;
+                            const isChecked = button.ariaChecked === 'true';
+                            input.value = isChecked ? 'false' : 'true';
+                            button.ariaChecked = (!isChecked).toString();
+                            // 更新按钮样式
+                            const newCheckedState = !isChecked;
+                            button.className = `relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${newCheckedState ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`;
+                            // 更新内部span样式
+                            const span = button.querySelector('span');
+                            if (span) {
+                              span.className = `pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${newCheckedState ? 'translate-x-5' : 'translate-x-1'}`;
+                            }
+                            // 更新显示文本
+                            const textSpan = button.nextElementSibling as HTMLSpanElement;
+                            if (textSpan) {
+                              textSpan.textContent = newCheckedState ? '开启' : '关闭';
+                            }
+                          }}
                         >
                           <span
                             aria-hidden="true"
@@ -610,11 +683,36 @@ const AdminPage = () => {
                         </div>
                       </div>
                       <div className='flex items-center'>
+                        <input
+                          type='hidden'
+                          name='FluidSearch'
+                          value={config.SiteConfig.FluidSearch ? 'true' : 'false'}
+                        />
                         <button
                           type="button"
                           className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${config.SiteConfig.FluidSearch ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}
                           role="switch"
                           aria-checked={config.SiteConfig.FluidSearch}
+                          onClick={(e) => {
+                            const input = document.querySelector('input[name="FluidSearch"]') as HTMLInputElement;
+                            const button = e.currentTarget;
+                            const isChecked = button.ariaChecked === 'true';
+                            input.value = isChecked ? 'false' : 'true';
+                            button.ariaChecked = (!isChecked).toString();
+                            // 更新按钮样式
+                            const newCheckedState = !isChecked;
+                            button.className = `relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${newCheckedState ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`;
+                            // 更新内部span样式
+                            const span = button.querySelector('span');
+                            if (span) {
+                              span.className = `pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${newCheckedState ? 'translate-x-5' : 'translate-x-1'}`;
+                            }
+                            // 更新显示文本
+                            const textSpan = button.nextElementSibling as HTMLSpanElement;
+                            if (textSpan) {
+                              textSpan.textContent = newCheckedState ? '开启' : '关闭';
+                            }
+                          }}
                         >
                           <span
                             aria-hidden="true"
@@ -628,8 +726,19 @@ const AdminPage = () => {
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+                
+                {/* 保存按钮 */}
+                <div className='flex justify-end space-x-3 mt-6'>
+                  <button
+                    type='submit'
+                    className='px-4 py-2 bg-blue-600 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700'
+                  >
+                    保存
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
 
             {/* 用户管理 */}
             {activeTab === 'user' && (
