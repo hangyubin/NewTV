@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 
-import AIChatEntry from './AIChatEntry';
 import { BackButton } from './BackButton';
 import { useSite } from './SiteProvider';
 import { ThemeToggle } from './ThemeToggle';
@@ -38,7 +37,6 @@ const MobileHeader = ({ showBackButton = false }: MobileHeaderProps) => {
               />
             </svg>
           </Link>
-          <AIChatEntry />
           {showBackButton && <BackButton />}
         </div>
 

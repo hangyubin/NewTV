@@ -362,15 +362,7 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
     adminConfig.LiveConfig = [];
   }
 
-  if (!adminConfig.AIConfig) {
-    adminConfig.AIConfig = {
-      enabled: false,
-      apiUrl: '',
-      apiKey: '',
-      model: 'gpt-3.5-turbo',
-      customModel: '',
-    };
-  }
+  
 
 
 

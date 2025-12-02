@@ -7,7 +7,6 @@ import { createPortal } from 'react-dom';
 import {
   AlertCircle,
   AlertTriangle,
-  Bot,
   Check,
   CheckCircle,
   ChevronDown,
@@ -30,7 +29,7 @@ import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 
 import DataMigration from '@/components/DataMigration';
 import PageLayout from '@/components/PageLayout';
-import ExternalAIConfigComponent from '@/components/AIConfigComponent';
+
 
 // 主管理页面组件
 const AdminPage = () => {
@@ -45,7 +44,6 @@ const AdminPage = () => {
     dataSource: false,
     liveDataSource: false,
     customCategory: false,
-    ai: false,
     dataMigration: false,
   });
 
@@ -136,15 +134,6 @@ const AdminPage = () => {
                   }`}
               >
                 自定义分类
-              </button>
-              <button
-                onClick={() => toggleTab('ai')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'ai'
-                  ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
-                  : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
-              >
-                AI设置
               </button>
               <button
                 onClick={() => toggleTab('dataMigration')}
@@ -738,20 +727,6 @@ const AdminPage = () => {
                         ))}
                       </tbody>
                     </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* AI设置 */}
-            {activeTab === 'ai' && (
-              <div className='space-y-6'>
-                <div>
-                  <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
-                    AI设置
-                  </h4>
-                  <div className='p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700'>
-                    <ExternalAIConfigComponent />
                   </div>
                 </div>
               </div>

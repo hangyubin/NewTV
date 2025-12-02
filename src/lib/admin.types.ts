@@ -64,14 +64,6 @@ export interface AdminConfig {
     channelNumber?: number;
     disabled?: boolean;
   }[];
-
-  AIConfig?: {
-    enabled: boolean;
-    apiUrl: string;
-    apiKey: string;
-    model: string;
-    customModel?: string;
-  };
 }
 
 export interface AdminConfigResult {
