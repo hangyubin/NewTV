@@ -756,7 +756,10 @@ const AdminPage = () => {
                               const reader = new FileReader();
                               reader.onload = async (event) => {
                                 try {
-                                  const importedSources = JSON.parse(event.target?.result as string);
+                                  let jsonString = event.target?.result as string;
+                                  // 清理JSON字符串中的反引号
+                                  jsonString = jsonString.replace(/`/g, '');
+                                  const importedSources = JSON.parse(jsonString);
                                   if (Array.isArray(importedSources)) {
                                     // 调用API导入视频源
                                     const response = await fetch('/api/admin/source', {
