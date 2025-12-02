@@ -34,8 +34,8 @@ export async function GET(request: NextRequest) {
   const apiSites = await getAvailableApiSites(authInfo.username);
 
   try {
-    // 简化短剧相关的搜索关键词，只使用"短剧"这一个词
-    const shortDramaKeywords = ['短剧'];
+    // 扩展短剧相关的搜索关键词，提高搜索覆盖率
+    const shortDramaKeywords = ['短剧', '微剧', '微电影', '竖屏短剧', '小剧场', '网络微电影'];
 
     let allResults: SearchResult[] = [];
 

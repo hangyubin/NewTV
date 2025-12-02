@@ -496,9 +496,14 @@ export async function getAvailableApiSites(user?: string): Promise<ApiSite[]> {
       }));
     }
   }
-
-  // 如果都没有配置，返回所有可用的 API 站点
-  return allApiSites;
+  
+  // 默认返回所有未禁用的站点
+  return allApiSites.map((s) => ({
+    key: s.key,
+    name: s.name,
+    api: s.api,
+    detail: s.detail,
+  }));
 }
 
 export async function setCachedConfig(config: AdminConfig) {
