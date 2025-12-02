@@ -101,7 +101,23 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
     { label: '剧场版', value: '剧场版' },
   ];
 
+  // 短剧一级选择器选项
+  const shortDramaPrimaryOptions: SelectorOption[] = [
+    { label: '全部', value: '全部' },
+    { label: '热门', value: '热门' },
+    { label: '最新', value: '最新' },
+    { label: '高分', value: '高分' },
+  ];
 
+  // 短剧二级选择器选项
+  const shortDramaSecondaryOptions: SelectorOption[] = [
+    { label: '全部', value: '全部' },
+    { label: '大陆', value: 'mainland_china' },
+    { label: '台湾', value: 'taiwan' },
+    { label: '香港', value: 'hong_kong' },
+    { label: '韩国', value: 'korean' },
+    { label: '日本', value: 'japanese' },
+  ];
 
   // 处理多级选择器变化
   const handleMultiLevelChange = (values: Record<string, string>) => {
@@ -186,6 +202,17 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
         primaryButtonRefs,
         setPrimaryIndicatorStyle
       );
+    } else if (type === 'short-drama') {
+      const activeIndex = shortDramaPrimaryOptions.findIndex(
+        (opt) =>
+          opt.value === (primarySelection || shortDramaPrimaryOptions[1].value)
+      );
+      updateIndicatorPosition(
+        activeIndex,
+        primaryContainerRef,
+        primaryButtonRefs,
+        setPrimaryIndicatorStyle
+      );
     }
 
     // 副选择器初始位置
@@ -204,6 +231,12 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
       secondaryActiveIndex = showSecondaryOptions.findIndex(
         (opt) =>
           opt.value === (secondarySelection || showSecondaryOptions[0].value)
+      );
+    } else if (type === 'short-drama') {
+      secondaryActiveIndex = shortDramaSecondaryOptions.findIndex(
+        (opt) =>
+          opt.value ===
+          (secondarySelection || shortDramaSecondaryOptions[0].value)
       );
     }
 
@@ -263,6 +296,17 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
         setPrimaryIndicatorStyle
       );
       return cleanup;
+    } else if (type === 'short-drama') {
+      const activeIndex = shortDramaPrimaryOptions.findIndex(
+        (opt) => opt.value === primarySelection
+      );
+      const cleanup = updateIndicatorPosition(
+        activeIndex,
+        primaryContainerRef,
+        primaryButtonRefs,
+        setPrimaryIndicatorStyle
+      );
+      return cleanup;
     }
   }, [primarySelection]);
 
@@ -286,6 +330,11 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
         (opt) => opt.value === secondarySelection
       );
       options = showSecondaryOptions;
+    } else if (type === 'short-drama') {
+      activeIndex = shortDramaSecondaryOptions.findIndex(
+        (opt) => opt.value === secondarySelection
+      );
+      options = shortDramaSecondaryOptions;
     }
 
     if (options.length > 0) {
@@ -297,7 +346,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
       );
       return cleanup;
     }
-  }, [secondarySelection]);
+  }, [secondarySelection, type]);
 
   // 渲染胶囊式选择器
   const renderCapsuleSelector = (
@@ -339,10 +388,11 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
                 buttonRefs.current[index] = el;
               }}
               onClick={() => onChange(option.value)}
-              className={`relative z-10 px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium rounded-full transition-all duration-200 whitespace-nowrap ${isActive
+              className={`relative z-10 px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium rounded-full transition-all duration-200 whitespace-nowrap ${
+                isActive
                   ? 'text-gray-900 dark:text-gray-100 cursor-default'
                   : 'text-gray-700 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 cursor-pointer'
-                }`}
+              }`}
             >
               {option.label}
             </button>
@@ -492,7 +542,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
               </span>
               <div className='overflow-x-auto'>
                 {(primarySelection || animePrimaryOptions[1].value) ===
-                  '番剧' ? (
+                '番剧' ? (
                   <MultiLevelSelector
                     key={`anime-tv-${primarySelection}`}
                     onChange={handleMultiLevelChange}
@@ -562,7 +612,54 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
         </div>
       )}
 
+      {/* 短剧类型 - 显示两级选择器 */}
+      {type === 'short-drama' && (
+        <div className='space-y-3 sm:space-y-4'>
+          {/* 一级选择器 */}
+          <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+            <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+              分类
+            </span>
+            <div className='overflow-x-auto'>
+              {renderCapsuleSelector(
+                shortDramaPrimaryOptions,
+                primarySelection || shortDramaPrimaryOptions[1].value,
+                onPrimaryChange,
+                true
+              )}
+            </div>
+          </div>
 
+          {/* 二级选择器 */}
+          <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+            <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+              地区
+            </span>
+            <div className='overflow-x-auto'>
+              {renderCapsuleSelector(
+                shortDramaSecondaryOptions,
+                secondarySelection || shortDramaSecondaryOptions[0].value,
+                onSecondaryChange,
+                false
+              )}
+            </div>
+          </div>
+
+          {/* 多级选择器 - 始终显示 */}
+          <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+            <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+              筛选
+            </span>
+            <div className='overflow-x-auto'>
+              <MultiLevelSelector
+                key={`short-drama-${primarySelection}`}
+                onChange={handleMultiLevelChange}
+                contentType='short-drama'
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
