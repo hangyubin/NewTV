@@ -11,6 +11,18 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    "version": "7.2.3",
+    "date": "2025-12-02",
+    "added": [
+      "无新增内容"
+    ],
+    "changed": [
+      "📦 升级到版本7.2.3"
+    ],
+    "fixed": [
+      "✅ 修复了短剧API路由，解决数据无法加载的问题"
+    ]
+  }, {
     "version": "7.2.2",
     "date": "2025-12-02",
     "added": [
