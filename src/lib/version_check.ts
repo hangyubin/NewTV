@@ -13,8 +13,9 @@ export enum UpdateStatus {
 
 // 远程版本检查URL配置
 const VERSION_CHECK_URLS = [
-  'https://raw.githubusercontent.com/joyce677/LunaTV/refs/heads/main/VERSION.txt',
+  'https://raw.githubusercontent.com/hangyubin/NewTV/refs/heads/main/VERSION.txt',
 ];
+
 
 /**
  * 检查是否有新版本可用

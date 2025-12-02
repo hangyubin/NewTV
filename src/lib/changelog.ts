@@ -11,6 +11,20 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    "version": "7.2.2",
+    "date": "2025-12-02",
+    "added": [
+      "无新增内容"
+    ],
+    "changed": [
+      "🔄 更新了版本检查URL，使用新的GitHub仓库地址",
+      "📦 升级到版本7.2.2"
+    ],
+    "fixed": [
+      "✅ 修复了视频源导入功能，确保短剧数据正常",
+      "✅ 修复了管理后台的视频源管理、自定义分类功能"
+    ]
+  }, {
     "version": "7.2.1",
     "date": "2025-09-22",
     "added": [
