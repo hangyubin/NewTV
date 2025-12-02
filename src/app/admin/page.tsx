@@ -2,30 +2,11 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { createPortal } from 'react-dom';
-import {
-  AlertCircle,
-  AlertTriangle,
-  Check,
-  CheckCircle,
-  ChevronDown,
-  ChevronUp,
-  Cloud,
-  Database,
-  ExternalLink,
-  FileText,
-  FolderOpen,
-  Settings,
-  Trash2,
-  Tv,
-  Users,
-  Video,
-} from 'lucide-react';
-import { GripVertical } from 'lucide-react';
+
+
+import { useCallback, useEffect,useState } from 'react';
 
 import { AdminConfig } from '@/lib/admin.types';
-import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 
 import DataMigration from '@/components/DataMigration';
 import PageLayout from '@/components/PageLayout';
@@ -577,13 +558,13 @@ const AdminPage = () => {
                         <div className='flex items-center'>
                           <button
                             type="button"
-                            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 bg-gray-200 dark:bg-gray-700`}
+                            className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 bg-gray-200 dark:bg-gray-700"
                             role="switch"
                             aria-checked={false}
                           >
                             <span
                               aria-hidden="true"
-                              className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out translate-x-1`}
+                              className="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out translate-x-1"
                             />
                           </button>
                           <span className='ml-3 text-sm font-medium text-gray-900 dark:text-gray-100'>

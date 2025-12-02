@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { ArrowLeft, Clock, Play, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Clock, Trash2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
-import { getAllPlayRecords, clearAllPlayRecords, PlayRecord, getUserStats, clearUserStats, UserStats, subscribeToDataUpdates, recalculateUserStatsFromHistory, generateStorageKey } from '@/lib/db.client';
+import { clearAllPlayRecords, clearUserStats,getAllPlayRecords, getUserStats, PlayRecord, subscribeToDataUpdates, UserStats } from '@/lib/db.client';
 import { setupAutoSync } from '@/lib/force-sync-stats';
+
 import VideoCard from '@/components/VideoCard';
-import ScrollableRow from '@/components/ScrollableRow';
 
 interface ExtendedPlayRecord extends PlayRecord {
   id: string; // 添加id属性，用于存储generateStorageKey生成的唯一标识符

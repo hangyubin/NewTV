@@ -3,13 +3,13 @@
 
 import { useEffect, useState } from 'react';
 
+import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import type { PlayRecord } from '@/lib/db.client';
 import {
   clearAllPlayRecords,
   getAllPlayRecords,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
-import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 
 import ScrollableRow from '@/components/ScrollableRow';
 import VideoCard from '@/components/VideoCard';

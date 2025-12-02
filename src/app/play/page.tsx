@@ -2,14 +2,13 @@
 
 'use client';
 
-import { Suspense, useEffect, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import Hls from 'hls.js';
 import { Heart } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useRef, useState } from 'react';
 
+import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 // import artplayerPluginChromecast from '@/lib/artplayer-plugin-chromecast';
-
-
 import {
   deleteFavorite,
   deletePlayRecord,
@@ -23,9 +22,8 @@ import {
   saveSkipConfig,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
-import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import { getDoubanDetails } from '@/lib/douban.client';
-import { SearchResult, DanmakuConfig } from '@/lib/types';
+import { DanmakuConfig,SearchResult } from '@/lib/types';
 import { checkVideoUpdate } from '@/lib/watching-updates';
 
 // 弹幕配置相关函数
