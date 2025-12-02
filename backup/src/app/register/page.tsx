@@ -42,12 +42,13 @@ function VersionDisplay() {
       <span className='font-mono'>v{CURRENT_VERSION}</span>
       {!isChecking && updateStatus !== UpdateStatus.FETCH_FAILED && (
         <div
-          className={`flex items-center gap-1.5 ${updateStatus === UpdateStatus.HAS_UPDATE
-            ? 'text-yellow-600 dark:text-yellow-400'
-            : updateStatus === UpdateStatus.NO_UPDATE
+          className={`flex items-center gap-1.5 ${
+            updateStatus === UpdateStatus.HAS_UPDATE
+              ? 'text-yellow-600 dark:text-yellow-400'
+              : updateStatus === UpdateStatus.NO_UPDATE
               ? 'text-green-600 dark:text-green-400'
               : ''
-            }`}
+          }`}
         >
           {updateStatus === UpdateStatus.HAS_UPDATE && (
             <>
@@ -92,7 +93,11 @@ function RegisterPageClient() {
         const res = await fetch('/api/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: '', password: '', confirmPassword: '' }),
+          body: JSON.stringify({
+            username: '',
+            password: '',
+            confirmPassword: '',
+          }),
         });
 
         const data = await res.json();
@@ -291,21 +296,25 @@ function RegisterPageClient() {
           )}
 
           {success && (
-            <p className='text-sm text-green-600 dark:text-green-400'>{success}</p>
+            <p className='text-sm text-green-600 dark:text-green-400'>
+              {success}
+            </p>
           )}
 
           <button
             type='submit'
-            disabled={!username || !password || !confirmPassword || loading || !!success}
+            disabled={
+              !username || !password || !confirmPassword || loading || !!success
+            }
             className='inline-flex w-full justify-center rounded-lg bg-green-600 py-3 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:from-green-600 hover:to-blue-600 disabled:cursor-not-allowed disabled:opacity-50'
           >
             {loading
               ? '注册中...'
               : pending
-                ? '已提交审核'
-                : success
-                  ? '注册成功，正在跳转...'
-                  : '注册'}
+              ? '已提交审核'
+              : success
+              ? '注册成功，正在跳转...'
+              : '注册'}
           </button>
 
           <div className='text-center'>

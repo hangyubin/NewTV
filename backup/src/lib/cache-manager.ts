@@ -59,12 +59,16 @@ export class CacheManager {
             this.primaryStorage = storage;
             console.log('使用 Upstash 作为主缓存存储');
           } else {
-            console.warn('UPSTASH_URL 或 UPSTASH_TOKEN 未配置，无法使用 Upstash 存储');
+            console.warn(
+              'UPSTASH_URL 或 UPSTASH_TOKEN 未配置，无法使用 Upstash 存储'
+            );
           }
           break;
 
         default:
-          console.warn(`不支持的存储类型: ${storageType}，支持的类型: redis, kvrocks, upstash`);
+          console.warn(
+            `不支持的存储类型: ${storageType}，支持的类型: redis, kvrocks, upstash`
+          );
       }
     } catch (error) {
       console.error(`初始化 ${storageType} 存储失败:`, error);
@@ -108,25 +112,32 @@ export class CacheManager {
     }
   }
 
-  async set(key: string, value: any, expirationSeconds?: number): Promise<void> {
+  async set(
+    key: string,
+    value: any,
+    expirationSeconds?: number
+  ): Promise<void> {
     if (!this.primaryStorage) {
       return;
     }
 
     try {
-      const serializedValue = typeof value === 'string' ? value : JSON.stringify(value);
+      const serializedValue =
+        typeof value === 'string' ? value : JSON.stringify(value);
       const options = expirationSeconds ? { EX: expirationSeconds } : undefined;
 
       await this.primaryStorage.set(key, serializedValue, options);
 
       // 如果有多个存储，尝试同步到其他存储（可选）
       if (this.storages.length > 1) {
-        const otherStorages = this.storages.filter(s => s !== this.primaryStorage);
+        const otherStorages = this.storages.filter(
+          (s) => s !== this.primaryStorage
+        );
         await Promise.allSettled(
-          otherStorages.map(storage =>
-            storage.set(key, serializedValue, options).catch(err =>
-              console.warn('同步到备用缓存失败:', err)
-            )
+          otherStorages.map((storage) =>
+            storage
+              .set(key, serializedValue, options)
+              .catch((err) => console.warn('同步到备用缓存失败:', err))
           )
         );
       }

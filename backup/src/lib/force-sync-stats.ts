@@ -3,7 +3,12 @@
  * 用于确保多设备间的数据同步
  */
 
-import { getUserStats, clearUserStats, recalculateUserStatsFromHistory, UserStats } from './db.client';
+import {
+  getUserStats,
+  clearUserStats,
+  recalculateUserStatsFromHistory,
+  UserStats,
+} from './db.client';
 
 /**
  * 强制同步用户统计数据
@@ -23,9 +28,11 @@ export async function forceSyncUserStats(): Promise<UserStats | null> {
 
       // 触发全局更新事件
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('userStatsUpdated', {
-          detail: recalculatedStats
-        }));
+        window.dispatchEvent(
+          new CustomEvent('userStatsUpdated', {
+            detail: recalculatedStats,
+          })
+        );
       }
 
       return recalculatedStats;
@@ -43,7 +50,12 @@ export async function forceSyncUserStats(): Promise<UserStats | null> {
     const latestStats = await getUserStats(true);
     console.log('从服务器获取到的统计数据:', latestStats);
 
-    if (!latestStats || (latestStats.totalWatchTime === 0 && latestStats.totalMovies === 0 && latestStats.firstWatchDate === 0)) {
+    if (
+      !latestStats ||
+      (latestStats.totalWatchTime === 0 &&
+        latestStats.totalMovies === 0 &&
+        latestStats.firstWatchDate === 0)
+    ) {
       console.warn('服务器返回的统计数据为空或无效');
       return null;
     }
@@ -52,9 +64,11 @@ export async function forceSyncUserStats(): Promise<UserStats | null> {
 
     // 触发全局更新事件
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('userStatsUpdated', {
-        detail: latestStats
-      }));
+      window.dispatchEvent(
+        new CustomEvent('userStatsUpdated', {
+          detail: latestStats,
+        })
+      );
     }
 
     return latestStats;
@@ -68,9 +82,11 @@ export async function forceSyncUserStats(): Promise<UserStats | null> {
       console.log('重新计算的统计数据:', recalculatedStats);
 
       if (recalculatedStats && typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('userStatsUpdated', {
-          detail: recalculatedStats
-        }));
+        window.dispatchEvent(
+          new CustomEvent('userStatsUpdated', {
+            detail: recalculatedStats,
+          })
+        );
       }
 
       return recalculatedStats;

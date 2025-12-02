@@ -16,13 +16,16 @@ console.log(`Server.js exists: ${fs.existsSync(serverJsPath)}`);
 
 // 检查其他重要文件
 const filesToCheck = ['package.json', 'node_modules', '.next/static', 'public'];
-filesToCheck.forEach(file => {
+filesToCheck.forEach((file) => {
   const filePath = path.join(standaloneDir, file);
   console.log(`${file} exists: ${fs.existsSync(filePath)}`);
 });
 
 // 检查 start.js 中的 server.js 路径
 console.log('\nChecking start.js server.js path...');
-const startJsContent = fs.readFileSync(path.join(__dirname, 'start.js'), 'utf8');
+const startJsContent = fs.readFileSync(
+  path.join(__dirname, 'start.js'),
+  'utf8'
+);
 console.log('start.js content:');
 console.log(startJsContent);

@@ -4,12 +4,12 @@ import { getConfig } from '@/lib/config';
 export async function GET(request: NextRequest) {
   try {
     const config = await getConfig();
-    
+
     // 返回AI配置的公开信息
     const aiConfig = {
       enabled: config.AIConfig?.enabled || false,
       apiUrl: config.AIConfig?.apiUrl || '',
-      hasApiKey: !!(config.AIConfig?.apiKey)
+      hasApiKey: !!config.AIConfig?.apiKey,
     };
 
     return NextResponse.json(aiConfig);

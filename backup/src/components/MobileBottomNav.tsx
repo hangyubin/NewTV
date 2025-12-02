@@ -2,7 +2,17 @@
 
 'use client';
 
-import { Cat, Clapperboard, Clover, Ellipsis, Film, Home, Radio, Star, Tv } from 'lucide-react';
+import {
+  Cat,
+  Clapperboard,
+  Clover,
+  Ellipsis,
+  Film,
+  Home,
+  Radio,
+  Star,
+  Tv,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -72,8 +82,6 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
       return decodedActive === '/live' || decodedActive.startsWith('/live/');
     }
 
-
-
     // 处理豆瓣类型页面的匹配
     if (href.startsWith('/douban?type=')) {
       // 提取导航项的type参数
@@ -97,12 +105,13 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
     return false;
   };
 
-  const moreActive = isInitialized && currentActive ? (
-    currentActive.includes('type=anime') ||
-    currentActive.includes('type=show') ||
-    currentActive.includes('type=short-drama') ||
-    currentActive.includes('type=custom')
-  ) : false;
+  const moreActive =
+    isInitialized && currentActive
+      ? currentActive.includes('type=anime') ||
+        currentActive.includes('type=show') ||
+        currentActive.includes('type=short-drama') ||
+        currentActive.includes('type=custom')
+      : false;
 
   return (
     <nav
@@ -118,26 +127,25 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
         {navItems.map((item) => {
           const active = isActive(item.href);
           return (
-            <li
-              key={item.href}
-              className='flex justify-center items-center'
-            >
+            <li key={item.href} className='flex justify-center items-center'>
               {item.label !== '更多' ? (
                 <Link
                   href={item.href}
                   className='flex flex-col items-center justify-center w-full h-14 gap-1 text-xs transition-all duration-200 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg'
                 >
                   <item.icon
-                    className={`h-6 w-6 transition-colors duration-200 ${active
-                      ? 'text-blue-600 dark:text-blue-400'
-                      : 'text-gray-500 dark:text-gray-400'
-                      }`}
+                    className={`h-6 w-6 transition-colors duration-200 ${
+                      active
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-500 dark:text-gray-400'
+                    }`}
                   />
                   <span
-                    className={`transition-colors duration-200 ${active
-                      ? 'text-blue-600 dark:text-blue-400'
-                      : 'text-gray-600 dark:text-gray-300'
-                      } ${item.label === 'YouTube' ? 'text-[10px]' : 'text-xs'}`}
+                    className={`transition-colors duration-200 ${
+                      active
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-600 dark:text-gray-300'
+                    } ${item.label === 'YouTube' ? 'text-[10px]' : 'text-xs'}`}
                   >
                     {item.label}
                   </span>
@@ -149,12 +157,19 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
                   className='flex flex-col items-center justify-center w-full h-14 gap-1 text-xs transition-all duration-200 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg'
                 >
                   <item.icon
-                    className={`h-6 w-6 transition-colors duration-200 ${moreActive
-                      ? 'text-blue-600 dark:text-blue-400'
-                      : 'text-gray-500 dark:text-gray-400'
-                      }`}
+                    className={`h-6 w-6 transition-colors duration-200 ${
+                      moreActive
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-500 dark:text-gray-400'
+                    }`}
                   />
-                  <span className={`transition-colors duration-200 ${moreActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300'} text-xs`}>
+                  <span
+                    className={`transition-colors duration-200 ${
+                      moreActive
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-600 dark:text-gray-300'
+                    } text-xs`}
+                  >
                     更多
                   </span>
                 </button>
@@ -198,7 +213,6 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
                   <Star className='h-4 w-4' /> 纪录
                 </Link>
               )}
-
             </div>
           </div>
         </div>

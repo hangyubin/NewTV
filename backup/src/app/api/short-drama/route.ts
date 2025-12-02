@@ -43,12 +43,12 @@ export async function GET(request: NextRequest) {
     const searchPromises = shortDramaKeywords.map(async (keyword) => {
       const sitePromises = apiSites.map(async (site) => {
         try {
-          const results = await Promise.race([
+          const results = (await Promise.race([
             searchFromApi(site, keyword),
             new Promise((_, reject) =>
               setTimeout(() => reject(new Error(`${site.name} timeout`)), 15000)
             ),
-          ]) as SearchResult[];
+          ])) as SearchResult[];
 
           // 过滤出真正的短剧内容
           return results.filter((result) => {
@@ -67,7 +67,10 @@ export async function GET(request: NextRequest) {
 
             // 3. 类型筛选
             if (type !== 'all') {
-              const resultType = getShortDramaType(result.type_name, result.title);
+              const resultType = getShortDramaType(
+                result.type_name,
+                result.title
+              );
               if (resultType !== type) {
                 return false;
               }
@@ -76,7 +79,11 @@ export async function GET(request: NextRequest) {
             // 4. 地区筛选
             if (region !== 'all') {
               const resultRegion = getContentRegion(result.title, result.desc);
-              if (resultRegion !== region && region !== 'chinese' && resultRegion !== 'mainland_china') {
+              if (
+                resultRegion !== region &&
+                region !== 'chinese' &&
+                resultRegion !== 'mainland_china'
+              ) {
                 return false;
               }
             }
@@ -99,7 +106,9 @@ export async function GET(request: NextRequest) {
       const siteResults = await Promise.allSettled(sitePromises);
       return siteResults
         .filter((result) => result.status === 'fulfilled')
-        .map((result) => (result as PromiseFulfilledResult<SearchResult[]>).value)
+        .map(
+          (result) => (result as PromiseFulfilledResult<SearchResult[]>).value
+        )
         .flat();
     });
 
@@ -112,7 +121,7 @@ export async function GET(request: NextRequest) {
     // 改进去重机制，使用更高效的Set方式去重
     const seenTitles = new Set<string>();
     const uniqueResults: SearchResult[] = [];
-    
+
     for (const result of allResults) {
       // 使用标题作为唯一标识进行去重
       if (!seenTitles.has(result.title)) {
@@ -159,10 +168,7 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error('获取短剧数据失败:', error);
-    return NextResponse.json(
-      { error: '获取短剧数据失败' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: '获取短剧数据失败' }, { status: 500 });
   }
 }
 
@@ -179,9 +185,12 @@ function getShortDramaType(typeName?: string, title?: string): string {
   if (content.includes('现代') || content.includes('modern')) return 'modern';
   if (content.includes('都市') || content.includes('urban')) return 'urban';
   if (content.includes('古装') || content.includes('costume')) return 'costume';
-  if (content.includes('穿越') || content.includes('time')) return 'time_travel';
-  if (content.includes('商战') || content.includes('business')) return 'business';
-  if (content.includes('悬疑') || content.includes('suspense')) return 'suspense';
+  if (content.includes('穿越') || content.includes('time'))
+    return 'time_travel';
+  if (content.includes('商战') || content.includes('business'))
+    return 'business';
+  if (content.includes('悬疑') || content.includes('suspense'))
+    return 'suspense';
   if (content.includes('喜剧') || content.includes('comedy')) return 'comedy';
   if (content.includes('青春') || content.includes('youth')) return 'youth';
 
@@ -197,11 +206,17 @@ function getContentRegion(title?: string, desc?: string): string {
   const content = `${title || ''} ${desc || ''}`.toLowerCase();
 
   if (content.includes('韩国') || content.includes('korean')) return 'korean';
-  if (content.includes('日本') || content.includes('japanese')) return 'japanese';
+  if (content.includes('日本') || content.includes('japanese'))
+    return 'japanese';
   if (content.includes('美国') || content.includes('american')) return 'usa';
   if (content.includes('英国') || content.includes('british')) return 'uk';
   if (content.includes('泰国') || content.includes('thai')) return 'thailand';
-  if (content.includes('中国') || content.includes('chinese') || content.includes('国产')) return 'mainland_china';
+  if (
+    content.includes('中国') ||
+    content.includes('chinese') ||
+    content.includes('国产')
+  )
+    return 'mainland_china';
 
   return 'all';
 }

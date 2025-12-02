@@ -118,7 +118,9 @@ async function searchWithCache(
     });
 
     // 过滤掉集数为 0 的结果
-    let results = allResults.filter((result: SearchResult) => result.episodes.length > 0);
+    let results = allResults.filter(
+      (result: SearchResult) => result.episodes.length > 0
+    );
 
     // 在每个API站点返回的数据中也进行去重处理
     const seenTitles = new Set<string>();
@@ -141,7 +143,10 @@ async function searchWithCache(
   } catch (error: any) {
     clearTimeout(timeoutId);
     // 识别被 AbortController 中止（超时）
-    const aborted = error?.name === 'AbortError' || error?.code === 20 || error?.message?.includes('aborted');
+    const aborted =
+      error?.name === 'AbortError' ||
+      error?.code === 20 ||
+      error?.message?.includes('aborted');
     if (aborted) {
       setCachedSearchPage(apiSite.key, query, page, 'timeout', []);
     }
@@ -156,7 +161,6 @@ export async function searchFromApi(
   try {
     const apiBaseUrl = apiSite.api;
 
-
     // 智能搜索：生成多种查询变体
     const searchVariants = generateSearchVariants(query);
     let results: SearchResult[] = [];
@@ -169,7 +173,13 @@ export async function searchFromApi(
         apiBaseUrl + API_CONFIG.search.path + encodeURIComponent(variant);
 
       // 使用新的缓存搜索函数处理第一页
-      const firstPageResult = await searchWithCache(apiSite, variant, 1, apiUrl, 8000);
+      const firstPageResult = await searchWithCache(
+        apiSite,
+        variant,
+        1,
+        apiUrl,
+        8000
+      );
 
       if (firstPageResult.results.length > 0) {
         results = firstPageResult.results;
@@ -206,7 +216,13 @@ export async function searchFromApi(
 
         const pagePromise = (async () => {
           // 使用新的缓存搜索函数处理分页
-          const pageResult = await searchWithCache(apiSite, query, page, pageUrl, 8000);
+          const pageResult = await searchWithCache(
+            apiSite,
+            query,
+            page,
+            pageUrl,
+            8000
+          );
           return pageResult.results;
         })();
 

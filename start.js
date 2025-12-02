@@ -35,8 +35,9 @@ try {
 }
 
 // 每 1 秒轮询一次，直到请求成功
-const TARGET_URL = `http://${process.env.HOSTNAME || '0.0.0.0'}:${process.env.PORT || 3000
-  }/`;
+const TARGET_URL = `http://${process.env.HOSTNAME || '0.0.0.0'}:${
+  process.env.PORT || 3000
+}/`;
 
 const intervalId = setInterval(() => {
   console.log(`Fetching ${TARGET_URL} ...`);
@@ -66,8 +67,9 @@ const intervalId = setInterval(() => {
 
 // 执行 cron 任务的函数
 function executeCronJob() {
-  const cronUrl = `http://${process.env.HOSTNAME || '0.0.0.0'}:${process.env.PORT || 3000
-    }/api/cron`;
+  const cronUrl = `http://${process.env.HOSTNAME || '0.0.0.0'}:${
+    process.env.PORT || 3000
+  }/api/cron`;
 
   console.log(`Executing cron job: ${cronUrl}`);
 

@@ -3,7 +3,14 @@
 import { createClient, RedisClientType } from 'redis';
 
 import { AdminConfig } from './admin.types';
-import { DanmakuConfig, Favorite, IStorage, PlayRecord, SkipConfig, UserStats } from './types';
+import {
+  DanmakuConfig,
+  Favorite,
+  IStorage,
+  PlayRecord,
+  SkipConfig,
+  UserStats,
+} from './types';
 
 // 搜索历史最大条数
 const SEARCH_HISTORY_LIMIT = 20;
@@ -24,7 +31,10 @@ export interface RedisConnectionConfig {
 }
 
 // 添加Redis操作重试包装器
-function createRetryWrapper(clientName: string, getClient: () => RedisClientType) {
+function createRetryWrapper(
+  clientName: string,
+  getClient: () => RedisClientType
+) {
   return async function withRetry<T>(
     operation: () => Promise<T>,
     maxRetries = 3
@@ -43,7 +53,9 @@ function createRetryWrapper(clientName: string, getClient: () => RedisClientType
 
         if (isConnectionError && !isLastAttempt) {
           console.log(
-            `${clientName} operation failed, retrying... (${i + 1}/${maxRetries})`
+            `${clientName} operation failed, retrying... (${
+              i + 1
+            }/${maxRetries})`
           );
           console.error('Error:', err.message);
 
@@ -72,7 +84,10 @@ function createRetryWrapper(clientName: string, getClient: () => RedisClientType
 }
 
 // 创建客户端的工厂函数
-export function createRedisClient(config: RedisConnectionConfig, globalSymbol: symbol): RedisClientType {
+export function createRedisClient(
+  config: RedisConnectionConfig,
+  globalSymbol: symbol
+): RedisClientType {
   let client: RedisClientType | undefined = (global as any)[globalSymbol];
 
   if (!client) {
@@ -86,9 +101,13 @@ export function createRedisClient(config: RedisConnectionConfig, globalSymbol: s
       socket: {
         // 重连策略：指数退避，最大30秒
         reconnectStrategy: (retries: number) => {
-          console.log(`${config.clientName} reconnection attempt ${retries + 1}`);
+          console.log(
+            `${config.clientName} reconnection attempt ${retries + 1}`
+          );
           if (retries > 10) {
-            console.error(`${config.clientName} max reconnection attempts exceeded`);
+            console.error(
+              `${config.clientName} max reconnection attempts exceeded`
+            );
             return false; // 停止重连
           }
           return Math.min(1000 * Math.pow(2, retries), 30000); // 指数退避，最大30秒
@@ -143,7 +162,10 @@ export function createRedisClient(config: RedisConnectionConfig, globalSymbol: s
 // 抽象基类，包含所有通用的Redis操作逻辑
 export abstract class BaseRedisStorage implements IStorage {
   protected client: RedisClientType;
-  protected withRetry: <T>(operation: () => Promise<T>, maxRetries?: number) => Promise<T>;
+  protected withRetry: <T>(
+    operation: () => Promise<T>,
+    maxRetries?: number
+  ) => Promise<T>;
 
   constructor(config: RedisConnectionConfig, globalSymbol: symbol) {
     this.client = createRedisClient(config, globalSymbol);
@@ -161,7 +183,11 @@ export abstract class BaseRedisStorage implements IStorage {
     return await this.withRetry(() => this.client.get(key));
   }
 
-  async set(key: string, value: string, options?: { EX?: number }): Promise<void> {
+  async set(
+    key: string,
+    value: string,
+    options?: { EX?: number }
+  ): Promise<void> {
     if (options?.EX) {
       await this.withRetry(() => this.client.setEx(key, options.EX!, value));
     } else {
@@ -198,7 +224,9 @@ export abstract class BaseRedisStorage implements IStorage {
     userName: string
   ): Promise<Record<string, PlayRecord>> {
     const pattern = `u:${userName}:pr:*`;
-    const keys: string[] = await this.withRetry(() => this.client.keys(pattern));
+    const keys: string[] = await this.withRetry(() =>
+      this.client.keys(pattern)
+    );
     if (keys.length === 0) return {};
     const values = await this.withRetry(() => this.client.mGet(keys));
     const result: Record<string, PlayRecord> = {};
@@ -242,7 +270,9 @@ export abstract class BaseRedisStorage implements IStorage {
 
   async getAllFavorites(userName: string): Promise<Record<string, Favorite>> {
     const pattern = `u:${userName}:fav:*`;
-    const keys: string[] = await this.withRetry(() => this.client.keys(pattern));
+    const keys: string[] = await this.withRetry(() =>
+      this.client.keys(pattern)
+    );
     if (keys.length === 0) return {};
     const values = await this.withRetry(() => this.client.mGet(keys));
     const result: Record<string, Favorite> = {};
@@ -268,7 +298,9 @@ export abstract class BaseRedisStorage implements IStorage {
 
   async registerUser(userName: string, password: string): Promise<void> {
     // 简单存储明文密码，生产环境应加密
-    await this.withRetry(() => this.client.set(this.userPwdKey(userName), password));
+    await this.withRetry(() =>
+      this.client.set(this.userPwdKey(userName), password)
+    );
   }
 
   async verifyUser(userName: string, password: string): Promise<boolean> {
@@ -333,7 +365,9 @@ export abstract class BaseRedisStorage implements IStorage {
     }
 
     // 删除弹幕配置
-    await this.withRetry(() => this.client.del(this.danmakuConfigKey(userName)));
+    await this.withRetry(() =>
+      this.client.del(this.danmakuConfigKey(userName))
+    );
   }
 
   // ---------- 搜索历史 ----------
@@ -356,13 +390,17 @@ export abstract class BaseRedisStorage implements IStorage {
     // 插入到最前
     await this.withRetry(() => this.client.lPush(key, ensureString(keyword)));
     // 限制最大长度
-    await this.withRetry(() => this.client.lTrim(key, 0, SEARCH_HISTORY_LIMIT - 1));
+    await this.withRetry(() =>
+      this.client.lTrim(key, 0, SEARCH_HISTORY_LIMIT - 1)
+    );
   }
 
   async deleteSearchHistory(userName: string, keyword?: string): Promise<void> {
     const key = this.shKey(userName);
     if (keyword) {
-      await this.withRetry(() => this.client.lRem(key, 0, ensureString(keyword)));
+      await this.withRetry(() =>
+        this.client.lRem(key, 0, ensureString(keyword))
+      );
     } else {
       await this.withRetry(() => this.client.del(key));
     }
@@ -385,7 +423,9 @@ export abstract class BaseRedisStorage implements IStorage {
   }
 
   async getAdminConfig(): Promise<AdminConfig | null> {
-    const val = await this.withRetry(() => this.client.get(this.adminConfigKey()));
+    const val = await this.withRetry(() =>
+      this.client.get(this.adminConfigKey())
+    );
     return val ? (JSON.parse(val) as AdminConfig) : null;
   }
 
@@ -479,18 +519,25 @@ export abstract class BaseRedisStorage implements IStorage {
   }
 
   async getDanmakuConfig(userName: string): Promise<DanmakuConfig | null> {
-    const val = await this.withRetry(() => this.client.get(this.danmakuConfigKey(userName)));
+    const val = await this.withRetry(() =>
+      this.client.get(this.danmakuConfigKey(userName))
+    );
     return val ? (JSON.parse(val) as DanmakuConfig) : null;
   }
 
-  async setDanmakuConfig(userName: string, config: DanmakuConfig): Promise<void> {
+  async setDanmakuConfig(
+    userName: string,
+    config: DanmakuConfig
+  ): Promise<void> {
     await this.withRetry(() =>
       this.client.set(this.danmakuConfigKey(userName), JSON.stringify(config))
     );
   }
 
   async deleteDanmakuConfig(userName: string): Promise<void> {
-    await this.withRetry(() => this.client.del(this.danmakuConfigKey(userName)));
+    await this.withRetry(() =>
+      this.client.del(this.danmakuConfigKey(userName))
+    );
   }
 
   // ---------- 用户统计数据相关 ----------
@@ -503,21 +550,29 @@ export abstract class BaseRedisStorage implements IStorage {
     console.log(`getUserStats: 查询用户 ${userName} 的统计数据，键: ${key}`);
 
     const data = await this.withRetry(() => this.client.get(key));
-    console.log(`getUserStats: 从数据库获取的原始结果:`, data, `类型: ${typeof data}`);
+    console.log(
+      `getUserStats: 从数据库获取的原始结果:`,
+      data,
+      `类型: ${typeof data}`
+    );
 
     if (!data) {
-      console.log('getUserStats: 数据库中没有找到统计数据，为新用户初始化默认统计数据');
+      console.log(
+        'getUserStats: 数据库中没有找到统计数据，为新用户初始化默认统计数据'
+      );
 
       // 为新用户创建初始化统计数据
       const defaultStats: UserStats = {
         totalWatchTime: 0,
         totalMovies: 0,
         firstWatchDate: 0, // 初始化为0，将在第一次观看时设置为实际时间
-        lastUpdateTime: Date.now()
+        lastUpdateTime: Date.now(),
       };
 
       // 将默认统计数据保存到数据库
-      await this.withRetry(() => this.client.set(key, JSON.stringify(defaultStats)));
+      await this.withRetry(() =>
+        this.client.set(key, JSON.stringify(defaultStats))
+      );
       console.log(`为新用户 ${userName} 初始化统计数据:`, defaultStats);
 
       return defaultStats;
@@ -536,22 +591,30 @@ export abstract class BaseRedisStorage implements IStorage {
         totalWatchTime: 0,
         totalMovies: 0,
         firstWatchDate: 0, // 初始化为0，将在第一次观看时设置为实际时间
-        lastUpdateTime: Date.now()
+        lastUpdateTime: Date.now(),
       };
 
-      await this.withRetry(() => this.client.set(key, JSON.stringify(defaultStats)));
-      console.log(`数据解析失败，为用户 ${userName} 重新初始化统计数据:`, defaultStats);
+      await this.withRetry(() =>
+        this.client.set(key, JSON.stringify(defaultStats))
+      );
+      console.log(
+        `数据解析失败，为用户 ${userName} 重新初始化统计数据:`,
+        defaultStats
+      );
 
       return defaultStats;
     }
   }
 
-  async updateUserStats(userName: string, updateData: {
-    watchTime: number;
-    movieKey: string;
-    timestamp: number;
-    isFullReset?: boolean;
-  }): Promise<void> {
+  async updateUserStats(
+    userName: string,
+    updateData: {
+      watchTime: number;
+      movieKey: string;
+      timestamp: number;
+      isFullReset?: boolean;
+    }
+  ): Promise<void> {
     const key = this.userStatsKey(userName);
 
     if (updateData.isFullReset) {
@@ -559,18 +622,20 @@ export abstract class BaseRedisStorage implements IStorage {
       console.log('执行完整重置统计数据...');
 
       // 解析movieKey中的所有影片
-      const movieKeys = updateData.movieKey.split(',').filter(k => k.trim());
+      const movieKeys = updateData.movieKey.split(',').filter((k) => k.trim());
 
       const stats: UserStats = {
         totalWatchTime: updateData.watchTime,
         totalMovies: movieKeys.length,
         firstWatchDate: updateData.timestamp,
-        lastUpdateTime: Date.now()
+        lastUpdateTime: Date.now(),
       };
 
       // 重置已观看影片集合
       const watchedMoviesKey = `u:${userName}:watched_movies`;
-      await this.withRetry(() => this.client.set(watchedMoviesKey, JSON.stringify(movieKeys)));
+      await this.withRetry(() =>
+        this.client.set(watchedMoviesKey, JSON.stringify(movieKeys))
+      );
 
       // 设置统计数据
       await this.withRetry(() => this.client.set(key, JSON.stringify(stats)));
@@ -584,26 +649,41 @@ export abstract class BaseRedisStorage implements IStorage {
     if (existingStats && existingStats.firstWatchDate > 0) {
       // 用户已有观看记录，进行增量更新
       const watchedMoviesKey = `u:${userName}:watched_movies`;
-      const watchedMovies = await this.withRetry(() => this.client.get(watchedMoviesKey));
-      const movieSet = watchedMovies ? new Set(JSON.parse(watchedMovies)) : new Set();
+      const watchedMovies = await this.withRetry(() =>
+        this.client.get(watchedMoviesKey)
+      );
+      const movieSet = watchedMovies
+        ? new Set(JSON.parse(watchedMovies))
+        : new Set();
 
       const isNewMovie = !movieSet.has(updateData.movieKey);
 
       // 更新现有统计数据
       stats = {
         totalWatchTime: existingStats.totalWatchTime + updateData.watchTime,
-        totalMovies: isNewMovie ? existingStats.totalMovies + 1 : existingStats.totalMovies,
+        totalMovies: isNewMovie
+          ? existingStats.totalMovies + 1
+          : existingStats.totalMovies,
         firstWatchDate: existingStats.firstWatchDate,
-        lastUpdateTime: updateData.timestamp
+        lastUpdateTime: updateData.timestamp,
       };
 
       // 如果是新影片，添加到已观看影片集合中
       if (isNewMovie) {
         movieSet.add(updateData.movieKey);
-        await this.withRetry(() => this.client.set(watchedMoviesKey, JSON.stringify(Array.from(movieSet))));
-        console.log(`新影片记录: ${updateData.movieKey}, 总影片数: ${stats.totalMovies}`);
+        await this.withRetry(() =>
+          this.client.set(
+            watchedMoviesKey,
+            JSON.stringify(Array.from(movieSet))
+          )
+        );
+        console.log(
+          `新影片记录: ${updateData.movieKey}, 总影片数: ${stats.totalMovies}`
+        );
       } else {
-        console.log(`已观看影片: ${updateData.movieKey}, 总影片数保持: ${stats.totalMovies}`);
+        console.log(
+          `已观看影片: ${updateData.movieKey}, 总影片数保持: ${stats.totalMovies}`
+        );
       }
     } else {
       // 新用户第一次观看，创建新的统计数据
@@ -611,12 +691,14 @@ export abstract class BaseRedisStorage implements IStorage {
         totalWatchTime: updateData.watchTime,
         totalMovies: 1,
         firstWatchDate: updateData.timestamp,
-        lastUpdateTime: updateData.timestamp
+        lastUpdateTime: updateData.timestamp,
       };
 
       // 初始化已观看影片集合
       const watchedMoviesKey = `u:${userName}:watched_movies`;
-      await this.withRetry(() => this.client.set(watchedMoviesKey, JSON.stringify([updateData.movieKey])));
+      await this.withRetry(() =>
+        this.client.set(watchedMoviesKey, JSON.stringify([updateData.movieKey]))
+      );
       console.log(`初始化用户统计: ${updateData.movieKey}, 总影片数: 1`);
     }
 

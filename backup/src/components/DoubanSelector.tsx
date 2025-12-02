@@ -101,8 +101,6 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
     { label: '剧场版', value: '剧场版' },
   ];
 
-
-
   // 处理多级选择器变化
   const handleMultiLevelChange = (values: Record<string, string>) => {
     onMultiLevelChange?.(values);
@@ -339,10 +337,11 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
                 buttonRefs.current[index] = el;
               }}
               onClick={() => onChange(option.value)}
-              className={`relative z-10 px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium rounded-full transition-all duration-200 whitespace-nowrap ${isActive
+              className={`relative z-10 px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium rounded-full transition-all duration-200 whitespace-nowrap ${
+                isActive
                   ? 'text-gray-900 dark:text-gray-100 cursor-default'
                   : 'text-gray-700 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 cursor-pointer'
-                }`}
+              }`}
             >
               {option.label}
             </button>
@@ -492,7 +491,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
               </span>
               <div className='overflow-x-auto'>
                 {(primarySelection || animePrimaryOptions[1].value) ===
-                  '番剧' ? (
+                '番剧' ? (
                   <MultiLevelSelector
                     key={`anime-tv-${primarySelection}`}
                     onChange={handleMultiLevelChange}
@@ -561,8 +560,6 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
           ) : null}
         </div>
       )}
-
-
     </div>
   );
 };

@@ -20,17 +20,11 @@ export async function POST(request: NextRequest) {
 
     // 检查AI配置
     if (!config.AIConfig?.enabled) {
-      return NextResponse.json(
-        { error: 'AI推荐功能未启用' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'AI推荐功能未启用' }, { status: 400 });
     }
 
     if (!config.AIConfig?.apiUrl || !config.AIConfig?.apiKey) {
-      return NextResponse.json(
-        { error: 'AI配置不完整' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'AI配置不完整' }, { status: 500 });
     }
 
     // 获取当前系统时间
@@ -42,7 +36,7 @@ export async function POST(request: NextRequest) {
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
-      weekday: 'long'
+      weekday: 'long',
     });
 
     // 构建AI推荐的系统提示
@@ -102,30 +96,34 @@ KEYWORD:水煮牛肉教程`;
     const apiMessages = [
       {
         role: 'system',
-        content: systemPrompt
+        content: systemPrompt,
       },
-      ...messages.map((msg: { role: string, content: string }) => ({
+      ...messages.map((msg: { role: string; content: string }) => ({
         role: msg.role === 'ai' ? 'assistant' : msg.role,
-        content: msg.content
-      }))
+        content: msg.content,
+      })),
     ];
 
     const aiResponse = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.AIConfig.apiKey}`
+        Authorization: `Bearer ${config.AIConfig.apiKey}`,
       },
       body: JSON.stringify({
         model: config.AIConfig.model,
         messages: apiMessages,
         temperature: 0.7,
-        max_tokens: 1000
-      })
+        max_tokens: 1000,
+      }),
     });
 
     if (!aiResponse.ok) {
-      console.error('AI API调用失败:', aiResponse.status, aiResponse.statusText);
+      console.error(
+        'AI API调用失败:',
+        aiResponse.status,
+        aiResponse.statusText
+      );
       return NextResponse.json(
         { error: 'AI服务暂时不可用，请稍后再试' },
         { status: 502 }
@@ -133,7 +131,8 @@ KEYWORD:水煮牛肉教程`;
     }
 
     const aiData = await aiResponse.json();
-    const aiContent = aiData.choices?.[0]?.message?.content || '抱歉，我现在无法为你推荐内容。';
+    const aiContent =
+      aiData.choices?.[0]?.message?.content || '抱歉，我现在无法为你推荐内容。';
 
     // 检测是否为YouTube视频推荐
     const isYouTubeRecommendation = aiContent.includes('KEYWORD:');
@@ -149,7 +148,7 @@ KEYWORD:水煮牛肉教程`;
 
         return NextResponse.json({
           content: cleanContent,
-          youtubeVideos
+          youtubeVideos,
         });
       } catch (error) {
         console.error('搜索YouTube视频失败:', error);
@@ -157,7 +156,7 @@ KEYWORD:水煮牛肉教程`;
         const cleanContent = aiContent.replace(/KEYWORD:[^\n]*/g, '').trim();
         return NextResponse.json({
           content: cleanContent + '\n\n抱歉，YouTube视频搜索服务暂时不可用。',
-          youtubeVideos: []
+          youtubeVideos: [],
         });
       }
     }
@@ -167,9 +166,8 @@ KEYWORD:水煮牛肉教程`;
 
     return NextResponse.json({
       content: aiContent,
-      recommendations
+      recommendations,
     });
-
   } catch (error) {
     console.error('AI推荐处理失败:', error);
     return NextResponse.json(
@@ -260,9 +258,11 @@ async function searchYouTubeVideos(keywords: string[]) {
             id: video.id.videoId,
             title: video.snippet.title,
             description: video.snippet.description,
-            thumbnail: video.snippet.thumbnails?.medium?.url || video.snippet.thumbnails?.default?.url,
+            thumbnail:
+              video.snippet.thumbnails?.medium?.url ||
+              video.snippet.thumbnails?.default?.url,
             channelTitle: video.snippet.channelTitle,
-            publishedAt: video.snippet.publishedAt
+            publishedAt: video.snippet.publishedAt,
           });
         }
       }

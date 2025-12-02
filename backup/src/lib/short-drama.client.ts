@@ -25,7 +25,7 @@ export async function getShortDramaData(
   params: ShortDramaSearchParams = {}
 ): Promise<ShortDramaResponse> {
   const searchParams = new URLSearchParams();
-  
+
   if (params.type && params.type !== 'all') {
     searchParams.append('type', params.type);
   }
@@ -42,8 +42,10 @@ export async function getShortDramaData(
     searchParams.append('limit', params.limit.toString());
   }
 
-  const url = `/api/short-drama${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
-  
+  const url = `/api/short-drama${
+    searchParams.toString() ? `?${searchParams.toString()}` : ''
+  }`;
+
   const response = await fetch(url, {
     credentials: 'include',
   });

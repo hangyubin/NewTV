@@ -782,7 +782,41 @@ const AdminPage = () => {
                           }}
                         />
                     </div>
-                    <button className='px-3 py-1.5 text-sm font-medium bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-700 text-white rounded-lg transition-colors'>
+                    <button
+                      onClick={async () => {
+                        // 添加视频源
+                        const key = prompt('请输入视频源标识（key）:');
+                        const name = prompt('请输入视频源名称:');
+                        const api = prompt('请输入API地址:');
+                        const detail = prompt('请输入描述（可选）:');
+                        
+                        if (key && name && api) {
+                          const response = await fetch('/api/admin/source', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                              action: 'add',
+                              key,
+                              name,
+                              api,
+                              detail,
+                            }),
+                          });
+                          if (response.ok) {
+                            await refreshConfig();
+                            alert('添加成功！');
+                          } else {
+                            const errorData = await response.json();
+                            alert(`添加失败：${errorData.error || '未知错误'}`);
+                          }
+                        } else {
+                          alert('请填写必要的信息！');
+                        }
+                      }}
+                      className='px-3 py-1.5 text-sm font-medium bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-700 text-white rounded-lg transition-colors'
+                    >
                       添加视频源
                     </button>
                   </div>
@@ -820,15 +854,94 @@ const AdminPage = () => {
                               {source.from === 'config' ? '系统配置' : '自定义'}
                             </td>
                             <td className='px-6 py-4 whitespace-nowrap'>
-                              <span className={`px-2 py-1 text-xs rounded-full ${source.disabled ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300' : 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300'}`}>
+                              <button
+                                onClick={async () => {
+                                  // 切换视频源状态
+                                  const action = source.disabled ? 'enable' : 'disable';
+                                  const response = await fetch('/api/admin/source', {
+                                    method: 'POST',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                      action,
+                                      key: source.key,
+                                    }),
+                                  });
+                                  if (response.ok) {
+                                    await refreshConfig();
+                                  } else {
+                                    const errorData = await response.json();
+                                    alert(`操作失败：${errorData.error || '未知错误'}`);
+                                  }
+                                }}
+                                className={`px-2 py-1 text-xs rounded-full cursor-pointer ${source.disabled ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800/20' : 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800/20'}`}
+                              >
                                 {source.disabled ? '已禁用' : '已启用'}
-                              </span>
+                              </button>
                             </td>
                             <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2'>
-                              <button className='text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300'>
+                              <button
+                                onClick={async () => {
+                                  // 编辑视频源
+                                  const newName = prompt('请输入新的视频源名称:', source.name);
+                                  const newApi = prompt('请输入新的API地址:', source.api);
+                                  const newDetail = prompt('请输入新的描述（可选）:', source.detail || '');
+                                  
+                                  if (newName && newApi) {
+                                    // 使用import action来更新视频源
+                                    const response = await fetch('/api/admin/source', {
+                                      method: 'POST',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                      },
+                                      body: JSON.stringify({
+                                        action: 'import',
+                                        sources: [{
+                                          key: source.key,
+                                          name: newName,
+                                          api: newApi,
+                                          detail: newDetail,
+                                          disabled: source.disabled,
+                                        }],
+                                      }),
+                                    });
+                                    if (response.ok) {
+                                      await refreshConfig();
+                                    } else {
+                                      const errorData = await response.json();
+                                      alert(`操作失败：${errorData.error || '未知错误'}`);
+                                    }
+                                  }
+                                }}
+                                className='text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300'
+                              >
                                 编辑
                               </button>
-                              <button className='text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300'>
+                              <button
+                                onClick={async () => {
+                                  // 删除视频源
+                                  if (confirm(`确定要删除视频源 "${source.name}" 吗？`)) {
+                                    const response = await fetch('/api/admin/source', {
+                                      method: 'POST',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                      },
+                                      body: JSON.stringify({
+                                        action: 'delete',
+                                        key: source.key,
+                                      }),
+                                    });
+                                    if (response.ok) {
+                                      await refreshConfig();
+                                    } else {
+                                      const errorData = await response.json();
+                                      alert(`操作失败：${errorData.error || '未知错误'}`);
+                                    }
+                                  }
+                                }}
+                                className='text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300'
+                              >
                                 删除
                               </button>
                             </td>

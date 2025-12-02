@@ -138,10 +138,14 @@ export async function POST(req: NextRequest) {
     // 先检查是否在待审核队列中
     const config = await getConfig();
     const pending = (config.UserConfig as any).PendingUsers?.find(
-      (u: any) => (u.username || '').trim().toLowerCase() === username.toLowerCase()
+      (u: any) =>
+        (u.username || '').trim().toLowerCase() === username.toLowerCase()
     );
     if (pending) {
-      return NextResponse.json({ error: '您的注册申请正在审核中，请耐心等待管理员审批' }, { status: 401 });
+      return NextResponse.json(
+        { error: '您的注册申请正在审核中，请耐心等待管理员审批' },
+        { status: 401 }
+      );
     }
 
     // 可能是站长，直接读环境变量
@@ -173,18 +177,19 @@ export async function POST(req: NextRequest) {
         const existingStats = await db.getUserStats(username);
 
         // 如果用户统计数据不存在或是默认值，则初始化
-        if (!existingStats || (
-          existingStats.totalWatchTime === 0 &&
-          existingStats.totalMovies === 0 &&
-          existingStats.firstWatchDate === 0
-        )) {
+        if (
+          !existingStats ||
+          (existingStats.totalWatchTime === 0 &&
+            existingStats.totalMovies === 0 &&
+            existingStats.firstWatchDate === 0)
+        ) {
           console.log(`为用户 ${username} 初始化统计数据`);
           // 使用正确的参数格式调用updateUserStats
           await db.updateUserStats(username, {
             watchTime: 0,
             movieKey: 'init',
             timestamp: Date.now(), // 设置为当前时间作为首次观看时间
-            isFullReset: true
+            isFullReset: true,
           });
         }
       } catch (error) {
@@ -236,18 +241,19 @@ export async function POST(req: NextRequest) {
         const existingStats = await db.getUserStats(username);
 
         // 如果用户统计数据不存在或是默认值，则初始化
-        if (!existingStats || (
-          existingStats.totalWatchTime === 0 &&
-          existingStats.totalMovies === 0 &&
-          existingStats.firstWatchDate === 0
-        )) {
+        if (
+          !existingStats ||
+          (existingStats.totalWatchTime === 0 &&
+            existingStats.totalMovies === 0 &&
+            existingStats.firstWatchDate === 0)
+        ) {
           console.log(`为用户 ${username} 初始化统计数据`);
           // 使用正确的参数格式调用updateUserStats
           await db.updateUserStats(username, {
             watchTime: 0,
             movieKey: 'init',
             timestamp: Date.now(), // 设置为当前时间作为首次观看时间
-            isFullReset: true
+            isFullReset: true,
           });
         }
       } catch (error) {

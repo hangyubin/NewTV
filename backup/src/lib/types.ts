@@ -96,11 +96,14 @@ export interface IStorage {
 
   // 用户统计数据相关
   getUserStats(userName: string): Promise<UserStats | null>;
-  updateUserStats(userName: string, updateData: {
-    watchTime: number;
-    movieKey: string;
-    timestamp: number;
-  }): Promise<void>;
+  updateUserStats(
+    userName: string,
+    updateData: {
+      watchTime: number;
+      movieKey: string;
+      timestamp: number;
+    }
+  ): Promise<void>;
   clearUserStats(userName: string): Promise<void>;
 
   // 数据清理相关
