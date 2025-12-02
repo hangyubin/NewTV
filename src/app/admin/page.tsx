@@ -746,32 +746,48 @@ const AdminPage = () => {
                         导入配置
                       </label>
                       <input
-                        id='import-sources'
-                        type='file'
-                        accept='.json'
-                        className='hidden'
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onload = (event) => {
-                              try {
-                                const importedSources = JSON.parse(event.target?.result as string);
-                                if (Array.isArray(importedSources)) {
-                                  // 这里可以添加保存逻辑，目前仅演示
-                                  console.log('导入的视频源:', importedSources);
-                                  alert('视频源配置导入成功！');
-                                } else {
-                                  alert('导入的文件格式不正确！');
+                          id='import-sources'
+                          type='file'
+                          accept='.json'
+                          className='hidden'
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = async (event) => {
+                                try {
+                                  const importedSources = JSON.parse(event.target?.result as string);
+                                  if (Array.isArray(importedSources)) {
+                                    // 调用API导入视频源
+                                    const response = await fetch('/api/admin/source', {
+                                      method: 'POST',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                      },
+                                      body: JSON.stringify({
+                                        action: 'import',
+                                        sources: importedSources,
+                                      }),
+                                    });
+                                    
+                                    if (response.ok) {
+                                      await refreshConfig();
+                                      alert('视频源配置导入成功！');
+                                    } else {
+                                      const errorData = await response.json();
+                                      alert(`导入失败：${errorData.error || '未知错误'}`);
+                                    }
+                                  } else {
+                                    alert('导入的文件格式不正确！请确保文件是JSON数组格式。');
+                                  }
+                                } catch (error) {
+                                  alert(`导入失败：${(error as Error).message}`);
                                 }
-                              } catch (error) {
-                                alert('导入失败：文件格式错误！');
-                              }
-                            };
-                            reader.readAsText(file);
-                          }
-                        }}
-                      />
+                              };
+                              reader.readAsText(file);
+                            }
+                          }}
+                        />
                     </div>
                     <button className='px-3 py-1.5 text-sm font-medium bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-700 text-white rounded-lg transition-colors'>
                       添加视频源

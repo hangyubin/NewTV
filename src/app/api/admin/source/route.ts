@@ -9,7 +9,7 @@ import { db } from '@/lib/db';
 export const runtime = 'nodejs';
 
 // 支持的操作类型
-type Action = 'add' | 'disable' | 'enable' | 'delete' | 'sort' | 'batch_disable' | 'batch_enable' | 'batch_delete';
+type Action = 'add' | 'disable' | 'enable' | 'delete' | 'sort' | 'batch_disable' | 'batch_enable' | 'batch_delete' | 'import';
 
 interface BaseBody {
   action?: Action;
@@ -193,6 +193,53 @@ export async function POST(request: NextRequest) {
             }
           });
         }
+        break;
+      }
+      case 'import': {
+        const { sources } = body as { sources?: any[] };
+        if (!Array.isArray(sources) || sources.length === 0) {
+          return NextResponse.json({ error: '缺少 sources 参数或为空' }, { status: 400 });
+        }
+
+        // 验证并导入视频源
+        const importedCount = sources.reduce((count, source) => {
+          const { key, name, api, detail, disabled } = source;
+          if (!key || !name || !api) {
+            return count;
+          }
+
+          // 查找是否已存在
+          const existingIndex = adminConfig.SourceConfig.findIndex(s => s.key === key);
+          const existingSource = adminConfig.SourceConfig[existingIndex];
+
+          if (existingSource) {
+            // 如果已存在且不是系统配置的源，可以更新
+            if (existingSource.from !== 'config') {
+              adminConfig.SourceConfig[existingIndex] = {
+                ...existingSource,
+                name: name || existingSource.name,
+                api: api || existingSource.api,
+                detail: detail || existingSource.detail,
+                disabled: typeof disabled === 'boolean' ? disabled : existingSource.disabled,
+              };
+              return count + 1;
+            }
+          } else {
+            // 新源，添加
+            adminConfig.SourceConfig.push({
+              key,
+              name,
+              api,
+              detail,
+              disabled: disabled || false,
+              from: 'custom',
+            });
+            return count + 1;
+          }
+
+          return count;
+        }, 0);
+
         break;
       }
       case 'sort': {
