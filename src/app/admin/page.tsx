@@ -366,6 +366,15 @@ const AdminPage = () => {
                 自定义分类
               </button>
               <button
+                onClick={handleOpenConfigFileModal}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'config'
+                  ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
+                  : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
+              >
+                配置文件
+              </button>
+              <button
                 onClick={() => toggleTab('dataMigration')}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'dataMigration'
                   ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
