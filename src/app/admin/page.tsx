@@ -47,6 +47,32 @@ const AdminPage = () => {
     dataMigration: false,
   });
 
+  // 直播源管理状态
+  const [isAddLiveSourceModalOpen, setIsAddLiveSourceModalOpen] = useState(false);
+  const [isEditLiveSourceModalOpen, setIsEditLiveSourceModalOpen] = useState(false);
+  const [currentLiveSource, setCurrentLiveSource] = useState<any>({
+    key: '',
+    name: '',
+    url: '',
+    ua: '',
+    epg: ''
+  });
+
+  // 自定义分类管理状态
+  const [isAddCustomCategoryModalOpen, setIsAddCustomCategoryModalOpen] = useState(false);
+  const [isEditCustomCategoryModalOpen, setIsEditCustomCategoryModalOpen] = useState(false);
+  const [currentCustomCategory, setCurrentCustomCategory] = useState<any>({
+    name: '',
+    type: 'movie',
+    query: ''
+  });
+
+  // 配置文件设置状态
+  const [isConfigFileModalOpen, setIsConfigFileModalOpen] = useState(false);
+  const [configFileContent, setConfigFileContent] = useState('');
+  const [subscriptionUrl, setSubscriptionUrl] = useState('');
+  const [autoUpdate, setAutoUpdate] = useState(false);
+
   const refreshConfig = useCallback(async () => {
     const res = await fetch('/api/admin/config');
     if (res.ok) {
@@ -66,6 +92,210 @@ const AdminPage = () => {
       ...prev,
       [tab]: !prev[tab],
     }));
+  };
+
+  // 直播源管理事件处理函数
+  const handleAddLiveSource = () => {
+    setCurrentLiveSource({
+      key: '',
+      name: '',
+      url: '',
+      ua: '',
+      epg: ''
+    });
+    setIsAddLiveSourceModalOpen(true);
+  };
+
+  const handleEditLiveSource = (liveSource: any) => {
+    setCurrentLiveSource(liveSource);
+    setIsEditLiveSourceModalOpen(true);
+  };
+
+  const handleLiveSourceSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      const action = isEditLiveSourceModalOpen ? 'edit' : 'add';
+      const response = await fetch('/api/admin/live', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action,
+          ...currentLiveSource
+        })
+      });
+      if (response.ok) {
+        await refreshConfig();
+        if (isEditLiveSourceModalOpen) {
+          setIsEditLiveSourceModalOpen(false);
+        } else {
+          setIsAddLiveSourceModalOpen(false);
+        }
+      }
+    } catch (error) {
+      console.error('操作失败:', error);
+    }
+  };
+
+  const handleDeleteLiveSource = async (key: string) => {
+    try {
+      const response = await fetch('/api/admin/live', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'delete',
+          key
+        })
+      });
+      if (response.ok) {
+        await refreshConfig();
+      }
+    } catch (error) {
+      console.error('删除失败:', error);
+    }
+  };
+
+  const handleToggleLiveSourceStatus = async (key: string, currentStatus: boolean) => {
+    try {
+      const action = currentStatus ? 'disable' : 'enable';
+      const response = await fetch('/api/admin/live', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action,
+          key
+        })
+      });
+      if (response.ok) {
+        await refreshConfig();
+      }
+    } catch (error) {
+      console.error('操作失败:', error);
+    }
+  };
+
+  // 自定义分类管理事件处理函数
+  const handleAddCustomCategory = () => {
+    setCurrentCustomCategory({
+      name: '',
+      type: 'movie',
+      query: ''
+    });
+    setIsAddCustomCategoryModalOpen(true);
+  };
+
+  const handleEditCustomCategory = (category: any) => {
+    setCurrentCustomCategory(category);
+    setIsEditCustomCategoryModalOpen(true);
+  };
+
+  const handleCustomCategorySubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      const action = isEditCustomCategoryModalOpen ? 'edit' : 'add';
+      const response = await fetch('/api/admin/category', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action,
+          ...currentCustomCategory
+        })
+      });
+      if (response.ok) {
+        await refreshConfig();
+        if (isEditCustomCategoryModalOpen) {
+          setIsEditCustomCategoryModalOpen(false);
+        } else {
+          setIsAddCustomCategoryModalOpen(false);
+        }
+      }
+    } catch (error) {
+      console.error('操作失败:', error);
+    }
+  };
+
+  const handleDeleteCustomCategory = async (query: string, type: string) => {
+    try {
+      const response = await fetch('/api/admin/category', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'delete',
+          query,
+          type
+        })
+      });
+      if (response.ok) {
+        await refreshConfig();
+      }
+    } catch (error) {
+      console.error('删除失败:', error);
+    }
+  };
+
+  const handleToggleCustomCategoryStatus = async (query: string, type: string, currentStatus: boolean) => {
+    try {
+      const action = currentStatus ? 'disable' : 'enable';
+      const response = await fetch('/api/admin/category', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action,
+          query,
+          type
+        })
+      });
+      if (response.ok) {
+        await refreshConfig();
+      }
+    } catch (error) {
+      console.error('操作失败:', error);
+    }
+  };
+
+  // 配置文件设置事件处理函数
+  const handleOpenConfigFileModal = () => {
+    if (config) {
+      setConfigFileContent(config.ConfigFile || '');
+      setSubscriptionUrl(config.ConfigSubscribtion.URL || '');
+      setAutoUpdate(config.ConfigSubscribtion.AutoUpdate || false);
+    }
+    setIsConfigFileModalOpen(true);
+  };
+
+  const handleConfigFileSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      const response = await fetch('/api/admin/config_file', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          configFile: configFileContent,
+          subscriptionUrl,
+          autoUpdate,
+          lastCheckTime: new Date().toISOString()
+        })
+      });
+      if (response.ok) {
+        await refreshConfig();
+        setIsConfigFileModalOpen(false);
+      }
+    } catch (error) {
+      console.error('操作失败:', error);
+    }
   };
 
   if (!config || !role) {
@@ -609,6 +839,16 @@ const AdminPage = () => {
                   <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
                     直播源管理
                   </h4>
+                  <div className='flex items-center justify-between mb-3'>
+                    <div className='flex space-x-2'>
+                      <button
+                        onClick={handleAddLiveSource}
+                        className='px-3 py-1.5 text-sm font-medium bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-700 text-white rounded-lg transition-colors'
+                      >
+                        添加直播源
+                      </button>
+                    </div>
+                  </div>
                   <div className='border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden'>
                     <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
                       <thead className='bg-gray-50 dark:bg-gray-900'>
@@ -643,17 +883,30 @@ const AdminPage = () => {
                               {liveSource.from === 'config' ? '系统配置' : '自定义'}
                             </td>
                             <td className='px-6 py-4 whitespace-nowrap'>
-                              <span className={`px-2 py-1 text-xs rounded-full ${liveSource.disabled ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300' : 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300'}`}>
+                              <button
+                                onClick={() => handleToggleLiveSourceStatus(liveSource.key, !liveSource.disabled)}
+                                className={`px-2 py-1 text-xs rounded-full ${liveSource.disabled ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800/20' : 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800/20'}`}
+                              >
                                 {liveSource.disabled ? '已禁用' : '已启用'}
-                              </span>
+                              </button>
                             </td>
                             <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2'>
-                              <button className='text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300'>
-                                编辑
-                              </button>
-                              <button className='text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300'>
-                                删除
-                              </button>
+                              {liveSource.from !== 'config' && (
+                                <>
+                                  <button
+                                    onClick={() => handleEditLiveSource(liveSource)}
+                                    className='text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300'
+                                  >
+                                    编辑
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteLiveSource(liveSource.key)}
+                                    className='text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300'
+                                  >
+                                    删除
+                                  </button>
+                                </>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -671,6 +924,16 @@ const AdminPage = () => {
                   <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
                     自定义分类
                   </h4>
+                  <div className='flex items-center justify-between mb-3'>
+                    <div className='flex space-x-2'>
+                      <button
+                        onClick={handleAddCustomCategory}
+                        className='px-3 py-1.5 text-sm font-medium bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-700 text-white rounded-lg transition-colors'
+                      >
+                        添加自定义分类
+                      </button>
+                    </div>
+                  </div>
                   <div className='border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden'>
                     <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
                       <thead className='bg-gray-50 dark:bg-gray-900'>
@@ -711,17 +974,30 @@ const AdminPage = () => {
                               {category.from === 'config' ? '系统配置' : '自定义'}
                             </td>
                             <td className='px-6 py-4 whitespace-nowrap'>
-                              <span className={`px-2 py-1 text-xs rounded-full ${category.disabled ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300' : 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300'}`}>
+                              <button
+                                onClick={() => handleToggleCustomCategoryStatus(category.query, category.type, !category.disabled)}
+                                className={`px-2 py-1 text-xs rounded-full ${category.disabled ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800/20' : 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800/20'}`}
+                              >
                                 {category.disabled ? '已禁用' : '已启用'}
-                              </span>
+                              </button>
                             </td>
                             <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2'>
-                              <button className='text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300'>
-                                编辑
-                              </button>
-                              <button className='text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300'>
-                                删除
-                              </button>
+                              {category.from !== 'config' && (
+                                <>
+                                  <button
+                                    onClick={() => handleEditCustomCategory(category)}
+                                    className='text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300'
+                                  >
+                                    编辑
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteCustomCategory(category.query, category.type)}
+                                    className='text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300'
+                                  >
+                                    删除
+                                  </button>
+                                </>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -744,6 +1020,248 @@ const AdminPage = () => {
               </div>
             )}
           </div>
+
+          {/* 添加直播源模态框 */}
+          {(isAddLiveSourceModalOpen || isEditLiveSourceModalOpen) && (
+            <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'>
+              <div className='bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md'>
+                <div className='p-4 border-b border-gray-200 dark:border-gray-700'>
+                  <h3 className='text-lg font-medium text-gray-900 dark:text-gray-100'>
+                    {isEditLiveSourceModalOpen ? '编辑直播源' : '添加直播源'}
+                  </h3>
+                </div>
+                <form onSubmit={handleLiveSourceSubmit} className='p-4'>
+                  <div className='space-y-4'>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        Key
+                      </label>
+                      <input
+                        type='text'
+                        value={currentLiveSource.key}
+                        onChange={(e) => setCurrentLiveSource({...currentLiveSource, key: e.target.value})}
+                        disabled={isEditLiveSourceModalOpen}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        名称
+                      </label>
+                      <input
+                        type='text'
+                        value={currentLiveSource.name}
+                        onChange={(e) => setCurrentLiveSource({...currentLiveSource, name: e.target.value})}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        URL
+                      </label>
+                      <input
+                        type='url'
+                        value={currentLiveSource.url}
+                        onChange={(e) => setCurrentLiveSource({...currentLiveSource, url: e.target.value})}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        User Agent
+                      </label>
+                      <input
+                        type='text'
+                        value={currentLiveSource.ua}
+                        onChange={(e) => setCurrentLiveSource({...currentLiveSource, ua: e.target.value})}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                      />
+                    </div>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        EPG URL
+                      </label>
+                      <input
+                        type='url'
+                        value={currentLiveSource.epg}
+                        onChange={(e) => setCurrentLiveSource({...currentLiveSource, epg: e.target.value})}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                      />
+                    </div>
+                  </div>
+                  <div className='flex justify-end space-x-3 mt-6'>
+                    <button
+                      type='button'
+                      onClick={() => {
+                        setIsAddLiveSourceModalOpen(false);
+                        setIsEditLiveSourceModalOpen(false);
+                      }}
+                      className='px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    >
+                      取消
+                    </button>
+                    <button
+                      type='submit'
+                      className='px-4 py-2 bg-blue-600 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700'
+                    >
+                      保存
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* 添加自定义分类模态框 */}
+          {(isAddCustomCategoryModalOpen || isEditCustomCategoryModalOpen) && (
+            <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'>
+              <div className='bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md'>
+                <div className='p-4 border-b border-gray-200 dark:border-gray-700'>
+                  <h3 className='text-lg font-medium text-gray-900 dark:text-gray-100'>
+                    {isEditCustomCategoryModalOpen ? '编辑自定义分类' : '添加自定义分类'}
+                  </h3>
+                </div>
+                <form onSubmit={handleCustomCategorySubmit} className='p-4'>
+                  <div className='space-y-4'>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        名称
+                      </label>
+                      <input
+                        type='text'
+                        value={currentCustomCategory.name}
+                        onChange={(e) => setCurrentCustomCategory({...currentCustomCategory, name: e.target.value})}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        类型
+                      </label>
+                      <select
+                        value={currentCustomCategory.type}
+                        onChange={(e) => setCurrentCustomCategory({...currentCustomCategory, type: e.target.value})}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                        required
+                      >
+                        <option value='movie'>电影</option>
+                        <option value='tv'>电视剧</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        查询
+                      </label>
+                      <input
+                        type='text'
+                        value={currentCustomCategory.query}
+                        onChange={(e) => setCurrentCustomCategory({...currentCustomCategory, query: e.target.value})}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className='flex justify-end space-x-3 mt-6'>
+                    <button
+                      type='button'
+                      onClick={() => {
+                        setIsAddCustomCategoryModalOpen(false);
+                        setIsEditCustomCategoryModalOpen(false);
+                      }}
+                      className='px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    >
+                      取消
+                    </button>
+                    <button
+                      type='submit'
+                      className='px-4 py-2 bg-blue-600 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700'
+                    >
+                      保存
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* 配置文件设置模态框 */}
+          {isConfigFileModalOpen && (
+            <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'>
+              <div className='bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-3xl'>
+                <div className='p-4 border-b border-gray-200 dark:border-gray-700'>
+                  <h3 className='text-lg font-medium text-gray-900 dark:text-gray-100'>
+                    配置文件设置
+                  </h3>
+                </div>
+                <form onSubmit={handleConfigFileSubmit} className='p-4'>
+                  <div className='space-y-4'>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        配置文件内容
+                      </label>
+                      <textarea
+                        value={configFileContent}
+                        onChange={(e) => setConfigFileContent(e.target.value)}
+                        rows={10}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm'
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
+                        订阅URL
+                      </label>
+                      <input
+                        type='url'
+                        value={subscriptionUrl}
+                        onChange={(e) => setSubscriptionUrl(e.target.value)}
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                      />
+                    </div>
+                    <div className='flex items-center justify-between'>
+                      <div>
+                        <div className='font-medium text-gray-900 dark:text-gray-100'>
+                          自动更新
+                        </div>
+                        <div className='text-sm text-gray-600 dark:text-gray-400'>
+                          控制是否自动更新配置文件
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${autoUpdate ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}
+                        onClick={() => setAutoUpdate(!autoUpdate)}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${autoUpdate ? 'translate-x-5' : 'translate-x-1'}`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                  <div className='flex justify-end space-x-3 mt-6'>
+                    <button
+                      type='button'
+                      onClick={() => setIsConfigFileModalOpen(false)}
+                      className='px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    >
+                      取消
+                    </button>
+                    <button
+                      type='submit'
+                      className='px-4 py-2 bg-blue-600 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700'
+                    >
+                      保存
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </PageLayout>
