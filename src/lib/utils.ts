@@ -158,27 +158,8 @@ export function processImageUrl(originalUrl: string): string {
     }
   }
 
-  // 添加WebP支持（如果浏览器支持且URL符合条件）
-  if (typeof window !== 'undefined' && 
-      processedUrl && 
-      (processedUrl.includes('.jpg') || processedUrl.includes('.jpeg') || processedUrl.includes('.png'))) {
-    // 检查浏览器是否支持WebP
-    const isWebPSupported = (() => {
-      try {
-        return document.createElement('canvas').toDataURL('image/webp').indexOf('data:image/webp') === 0;
-      } catch {
-        return false;
-      }
-    })();
-
-    if (isWebPSupported) {
-      // 将图片URL转换为WebP格式
-      processedUrl = processedUrl
-        .replace(/\.jpg(\?.*)?$/, '.webp$1')
-        .replace(/\.jpeg(\?.*)?$/, '.webp$1')
-        .replace(/\.png(\?.*)?$/, '.webp$1');
-    }
-  }
+  // 暂时移除WebP转换功能，避免图片加载失败
+  // WebP支持将在后续版本中通过更可靠的方式实现
 
   return processedUrl;
 }
