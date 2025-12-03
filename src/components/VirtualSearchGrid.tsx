@@ -104,40 +104,47 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
     }, 100);
   }, [isLoadingMore, hasNextPage, totalItemCount]);
 
-  // 滚动监听器，用于触发加载更多
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
+  // 使用Intersection Observer检测最后一个项目的可见性，触发加载更多
+  const lastItemRef = useCallback(
+    (node: HTMLDivElement) => {
+      // 移除旧的Observer
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
 
-    const handleScroll = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        // 监听整个页面的滚动，而不是特定元素
-        const scrollTop =
-          window.scrollY ||
-          document.documentElement.scrollTop ||
-          document.body.scrollTop;
-        const scrollHeight =
-          document.documentElement.scrollHeight || document.body.scrollHeight;
-        const clientHeight =
-          document.documentElement.clientHeight || window.innerHeight;
-
-        // 当滚动到距离底部200px时触发加载更多
-        const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
-
-        if (isNearBottom) {
-          loadMoreItems();
+      // 创建新的Observer
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          // 当最后一个项目进入视口，并且有更多项目可加载时，触发加载
+          if (entries[0].isIntersecting && hasNextPage && !isLoadingMore) {
+            loadMoreItems();
+          }
+        },
+        {
+          threshold: 0.1, // 当项目10%可见时触发
+          rootMargin: '0px 0px 200px 0px', // 提前200px触发加载
         }
-      }, 100); // 100ms节流时间
-    };
+      );
 
-    // 监听window的scroll事件
-    window.addEventListener('scroll', handleScroll, { passive: true });
+      // 观察最后一个项目
+      if (node) {
+        observerRef.current.observe(node);
+      }
+    },
+    [hasNextPage, isLoadingMore, loadMoreItems]
+  );
 
+  // 存储Observer实例
+  const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // 组件卸载时清理Observer
+  useEffect(() => {
     return () => {
-      window.removeEventListener('scroll', handleScroll);
-      clearTimeout(timeoutId);
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
     };
-  }, [loadMoreItems]);
+  }, []);
 
   return (
     <div className='w-full'>
@@ -202,9 +209,13 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
                       });
                     }
 
+                    // 检查是否是最后一个元素
+                    const isLastItem = index === displayItemCount - 1;
+
                     return (
                       <div
                         key={`agg-${mapKey}`}
+                        ref={isLastItem ? lastItemRef : null}
                         className='w-full animate-fade-in transition-all duration-500 ease-out transform hover:scale-105 hover:shadow-xl opacity-0'
                         style={{
                           animationDelay: `${index * 20}ms`,
@@ -233,34 +244,40 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
                   })
               : filteredResults
                   .slice(0, displayItemCount)
-                  .map((item, index) => (
-                    <div
-                      key={`all-${item.source}-${item.id}`}
-                      className='w-full animate-fade-in transition-all duration-500 ease-out transform hover:scale-105 hover:shadow-xl opacity-0'
-                      style={{
-                        animationDelay: `${index * 20}ms`,
-                        animationFillMode: 'forwards',
-                      }}
-                    >
-                      <VideoCard
-                        id={item.id}
-                        title={item.title}
-                        poster={item.poster}
-                        episodes={item.episodes.length}
-                        source={item.source}
-                        source_name={item.source_name}
-                        douban_id={item.douban_id}
-                        query={
-                          searchQuery.trim() !== item.title
-                            ? searchQuery.trim()
-                            : ''
-                        }
-                        year={item.year}
-                        from='search'
-                        type={item.episodes.length > 1 ? 'tv' : 'movie'}
-                      />
-                    </div>
-                  ))}
+                  .map((item, index) => {
+                    // 检查是否是最后一个元素
+                    const isLastItem = index === displayItemCount - 1;
+
+                    return (
+                      <div
+                        key={`all-${item.source}-${item.id}`}
+                        ref={isLastItem ? lastItemRef : null}
+                        className='w-full animate-fade-in transition-all duration-500 ease-out transform hover:scale-105 hover:shadow-xl opacity-0'
+                        style={{
+                          animationDelay: `${index * 20}ms`,
+                          animationFillMode: 'forwards',
+                        }}
+                      >
+                        <VideoCard
+                          id={item.id}
+                          title={item.title}
+                          poster={item.poster}
+                          episodes={item.episodes.length}
+                          source={item.source}
+                          source_name={item.source_name}
+                          douban_id={item.douban_id}
+                          query={
+                            searchQuery.trim() !== item.title
+                              ? searchQuery.trim()
+                              : ''
+                          }
+                          year={item.year}
+                          from='search'
+                          type={item.episodes.length > 1 ? 'tv' : 'movie'}
+                        />
+                      </div>
+                    );
+                  })}
           </div>
         </div>
       )}
