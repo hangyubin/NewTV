@@ -91,7 +91,8 @@ const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
 const isIOS = /iPad|iPhone|iPod/i.test(userAgent) && !(window as any).MSStream;
 const isIOS13 = isIOS || (userAgent.includes('Macintosh') && navigator.maxTouchPoints >= 1);
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent) || isIOS13;
-const isSafari = /^(?:(?!chrome|android).)*safari/i.test(userAgent);
+// eslint-disable-next-line unused-imports/no-unused-vars
+const _isSafari = /^(?:(?!chrome|android).)*safari/i.test(userAgent);
 
 function getDoubanImageProxyConfig(): {
   proxyType:
@@ -159,7 +160,6 @@ export function processImageUrl(originalUrl: string): string {
 
   // 添加WebP支持（如果浏览器支持且URL符合条件）
   if (typeof window !== 'undefined' && 
-      window?.chrome?.loadTimes && 
       processedUrl && 
       (processedUrl.includes('.jpg') || processedUrl.includes('.jpeg') || processedUrl.includes('.png'))) {
     // 检查浏览器是否支持WebP
@@ -199,6 +199,7 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
     
     if (isIPad) {
       // iPad使用最简单的ping测试，不创建任何video或HLS实例
+      // eslint-disable-next-line no-console
       console.log('iPad检测，使用简化测速避免崩溃');
       
       const startTime = performance.now();
@@ -349,6 +350,7 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
 
       // 监听HLS错误
       hls.on(Hls.Events.ERROR, (event: any, data: any) => {
+        // eslint-disable-next-line no-console
         console.warn('HLS测速错误:', data);
         if (data.fatal) {
           cleanup();
