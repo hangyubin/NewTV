@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import { SearchResult } from '@/lib/types';
 
@@ -81,18 +81,23 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
   }, [isLoadingMore, hasNextPage, totalItemCount]);
 
   // 滚动监听器，用于触发加载更多
-  const gridRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
 
     const handleScroll = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        const element = gridRef.current;
-        if (!element) return;
+        // 监听整个页面的滚动，而不是特定元素
+        const scrollTop =
+          window.scrollY ||
+          document.documentElement.scrollTop ||
+          document.body.scrollTop;
+        const scrollHeight =
+          document.documentElement.scrollHeight || document.body.scrollHeight;
+        const clientHeight =
+          document.documentElement.clientHeight || window.innerHeight;
 
-        const { scrollTop, scrollHeight, clientHeight } = element;
+        // 当滚动到距离底部200px时触发加载更多
         const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
 
         if (isNearBottom) {
@@ -101,15 +106,11 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
       }, 100); // 100ms节流时间
     };
 
-    const gridElement = gridRef.current;
-    if (gridElement) {
-      gridElement.addEventListener('scroll', handleScroll, { passive: true });
-    }
+    // 监听window的scroll事件
+    window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
-      if (gridElement) {
-        gridElement.removeEventListener('scroll', handleScroll);
-      }
+      window.removeEventListener('scroll', handleScroll);
       clearTimeout(timeoutId);
     };
   }, [loadMoreItems]);
@@ -150,12 +151,11 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
         /* 使用渐进式加载的网格布局，避免固定高度限制 */
         <div className='relative'>
           <div
-            ref={gridRef}
             className='grid grid-cols-2 gap-x-4 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8 transition-all duration-300 scrollbar-hide'
             style={{
               overflowY: 'visible',
               scrollBehavior: 'smooth',
-              isolation: 'auto'
+              isolation: 'auto',
             }}
           >
             {viewMode === 'agg'
@@ -165,7 +165,8 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
                     const title = group[0]?.title || '';
                     const poster = group[0]?.poster || '';
                     const year = group[0]?.year || 'unknown';
-                    const { episodes, source_names, douban_id } = computeGroupStats(group);
+                    const { episodes, source_names, douban_id } =
+                      computeGroupStats(group);
                     const type = episodes === 1 ? 'movie' : 'tv';
 
                     // 如果该聚合第一次出现，写入初始统计
@@ -181,7 +182,10 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
                       <div
                         key={`agg-${mapKey}`}
                         className='w-full animate-fade-in transition-all duration-500 ease-out transform hover:scale-105 hover:shadow-xl opacity-0'
-                        style={{ animationDelay: `${index * 20}ms`, animationFillMode: 'forwards' }}
+                        style={{
+                          animationDelay: `${index * 20}ms`,
+                          animationFillMode: 'forwards',
+                        }}
                       >
                         <VideoCard
                           ref={getGroupRef(mapKey)}
@@ -193,33 +197,46 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
                           episodes={episodes}
                           source_names={source_names}
                           douban_id={douban_id}
-                          query={searchQuery.trim() !== title ? searchQuery.trim() : ''}
+                          query={
+                            searchQuery.trim() !== title
+                              ? searchQuery.trim()
+                              : ''
+                          }
                           type={type}
                         />
                       </div>
                     );
                   })
-              : filteredResults.slice(0, displayItemCount).map((item, index) => (
-                  <div
-                    key={`all-${item.source}-${item.id}`}
-                    className='w-full animate-fade-in transition-all duration-500 ease-out transform hover:scale-105 hover:shadow-xl opacity-0'
-                    style={{ animationDelay: `${index * 20}ms`, animationFillMode: 'forwards' }}
-                  >
-                    <VideoCard
-                      id={item.id}
-                      title={item.title}
-                      poster={item.poster}
-                      episodes={item.episodes.length}
-                      source={item.source}
-                      source_name={item.source_name}
-                      douban_id={item.douban_id}
-                      query={searchQuery.trim() !== item.title ? searchQuery.trim() : ''}
-                      year={item.year}
-                      from='search'
-                      type={item.episodes.length > 1 ? 'tv' : 'movie'}
-                    />
-                  </div>
-                ))}
+              : filteredResults
+                  .slice(0, displayItemCount)
+                  .map((item, index) => (
+                    <div
+                      key={`all-${item.source}-${item.id}`}
+                      className='w-full animate-fade-in transition-all duration-500 ease-out transform hover:scale-105 hover:shadow-xl opacity-0'
+                      style={{
+                        animationDelay: `${index * 20}ms`,
+                        animationFillMode: 'forwards',
+                      }}
+                    >
+                      <VideoCard
+                        id={item.id}
+                        title={item.title}
+                        poster={item.poster}
+                        episodes={item.episodes.length}
+                        source={item.source}
+                        source_name={item.source_name}
+                        douban_id={item.douban_id}
+                        query={
+                          searchQuery.trim() !== item.title
+                            ? searchQuery.trim()
+                            : ''
+                        }
+                        year={item.year}
+                        from='search'
+                        type={item.episodes.length > 1 ? 'tv' : 'movie'}
+                      />
+                    </div>
+                  ))}
           </div>
         </div>
       )}
