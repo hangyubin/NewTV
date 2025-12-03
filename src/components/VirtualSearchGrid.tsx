@@ -123,14 +123,14 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
   return (
     <div className='w-full'>
       {totalItemCount === 0 ? (
-        <div className='flex flex-col justify-center items-center h-40'>
+        <div className='flex flex-col justify-center items-center py-12'>
           {isLoading ? (
             <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-green-500'></div>
           ) : (
             <div className='text-center py-16 dark:text-gray-400'>
               <div className='flex justify-center mb-4'>
                 <svg
-                  className='h-12 w-12 text-gray-300 dark:text-gray-600'
+                  className='h-12 w-12 text-gray-300 dark:text-gray-600 animate-pulse'
                   fill='none'
                   viewBox='0 0 24 24'
                   stroke='currentColor'
@@ -143,10 +143,10 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
                   />
                 </svg>
               </div>
-              <h3 className='text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2'>
+              <h3 className='text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2 animate-fade-in'>
                 未找到相关结果
               </h3>
-              <p className='text-gray-500 dark:text-gray-400'>
+              <p className='text-gray-500 dark:text-gray-400 animate-fade-in'>
                 尝试调整搜索条件或使用其他关键词
               </p>
             </div>
@@ -154,83 +154,102 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
         </div>
       ) : (
         /* 使用虚拟列表渲染搜索结果 */
-        <div
-          ref={gridRef}
-          className='grid grid-cols-2 gap-x-4 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8 overflow-y-auto max-h-[calc(100vh-200px)] scroll-smooth scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800 transition-all duration-300'
-        >
-          {viewMode === 'agg'
-            ? filteredAggResults
-                .slice(0, displayItemCount)
-                .map(([mapKey, group]) => {
-                  const title = group[0]?.title || '';
-                  const poster = group[0]?.poster || '';
-                  const year = group[0]?.year || 'unknown';
-                  const { episodes, source_names, douban_id } =
-                    computeGroupStats(group);
-                  const type = episodes === 1 ? 'movie' : 'tv';
+        <div className='relative'>
+          <div
+            ref={gridRef}
+            className='grid grid-cols-2 gap-x-4 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8 transition-all duration-300 scrollbar-hide'
+            style={{
+              overflowY: 'auto',
+              scrollBehavior: 'smooth',
+              isolation: 'auto',
+            }}
+          >
+            {viewMode === 'agg'
+              ? filteredAggResults
+                  .slice(0, displayItemCount)
+                  .map(([mapKey, group], index) => {
+                    const title = group[0]?.title || '';
+                    const poster = group[0]?.poster || '';
+                    const year = group[0]?.year || 'unknown';
+                    const { episodes, source_names, douban_id } =
+                      computeGroupStats(group);
+                    const type = episodes === 1 ? 'movie' : 'tv';
 
-                  // 如果该聚合第一次出现，写入初始统计
-                  if (!groupStatsRef.current.has(mapKey)) {
-                    groupStatsRef.current.set(mapKey, {
-                      episodes,
-                      source_names,
-                      douban_id,
-                    });
-                  }
+                    // 如果该聚合第一次出现，写入初始统计
+                    if (!groupStatsRef.current.has(mapKey)) {
+                      groupStatsRef.current.set(mapKey, {
+                        episodes,
+                        source_names,
+                        douban_id,
+                      });
+                    }
 
-                  return (
+                    return (
+                      <div
+                        key={`agg-${mapKey}`}
+                        className='w-full animate-fade-in transition-all duration-500 ease-out transform hover:scale-105 hover:shadow-xl opacity-0'
+                        style={{
+                          animationDelay: `${index * 20}ms`,
+                          animationFillMode: 'forwards',
+                        }}
+                      >
+                        <VideoCard
+                          ref={getGroupRef(mapKey)}
+                          from='search'
+                          isAggregate={true}
+                          title={title}
+                          poster={poster}
+                          year={year}
+                          episodes={episodes}
+                          source_names={source_names}
+                          douban_id={douban_id}
+                          query={
+                            searchQuery.trim() !== title
+                              ? searchQuery.trim()
+                              : ''
+                          }
+                          type={type}
+                        />
+                      </div>
+                    );
+                  })
+              : filteredResults
+                  .slice(0, displayItemCount)
+                  .map((item, index) => (
                     <div
-                      key={`agg-${mapKey}`}
-                      className='w-full animate-fade-in transition-all duration-500 ease-out transform hover:scale-105'
+                      key={`all-${item.source}-${item.id}`}
+                      className='w-full animate-fade-in transition-all duration-500 ease-out transform hover:scale-105 hover:shadow-xl opacity-0'
+                      style={{
+                        animationDelay: `${index * 20}ms`,
+                        animationFillMode: 'forwards',
+                      }}
                     >
                       <VideoCard
-                        ref={getGroupRef(mapKey)}
-                        from='search'
-                        isAggregate={true}
-                        title={title}
-                        poster={poster}
-                        year={year}
-                        episodes={episodes}
-                        source_names={source_names}
-                        douban_id={douban_id}
+                        id={item.id}
+                        title={item.title}
+                        poster={item.poster}
+                        episodes={item.episodes.length}
+                        source={item.source}
+                        source_name={item.source_name}
+                        douban_id={item.douban_id}
                         query={
-                          searchQuery.trim() !== title ? searchQuery.trim() : ''
+                          searchQuery.trim() !== item.title
+                            ? searchQuery.trim()
+                            : ''
                         }
-                        type={type}
+                        year={item.year}
+                        from='search'
+                        type={item.episodes.length > 1 ? 'tv' : 'movie'}
                       />
                     </div>
-                  );
-                })
-            : filteredResults.slice(0, displayItemCount).map((item) => (
-                <div
-                  key={`all-${item.source}-${item.id}`}
-                  className='w-full animate-fade-in transition-all duration-500 ease-out transform hover:scale-105'
-                >
-                  <VideoCard
-                    id={item.id}
-                    title={item.title}
-                    poster={item.poster}
-                    episodes={item.episodes.length}
-                    source={item.source}
-                    source_name={item.source_name}
-                    douban_id={item.douban_id}
-                    query={
-                      searchQuery.trim() !== item.title
-                        ? searchQuery.trim()
-                        : ''
-                    }
-                    year={item.year}
-                    from='search'
-                    type={item.episodes.length > 1 ? 'tv' : 'movie'}
-                  />
-                </div>
-              ))}
+                  ))}
+          </div>
         </div>
       )}
 
       {/* 加载更多指示器 */}
       {isLoadingMore && (
-        <div className='flex justify-center items-center py-8'>
+        <div className='flex justify-center items-center py-8 animate-fade-in'>
           <div className='animate-spin rounded-full h-8 w-8 border-4 border-green-200 border-t-green-600 dark:border-green-800 dark:border-t-green-400 shadow-lg'></div>
           <span className='ml-3 text-sm font-medium text-gray-600 dark:text-gray-300'>
             加载更多...
@@ -240,7 +259,7 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
 
       {/* 已加载完所有内容的提示 */}
       {!hasNextPage && displayItemCount > INITIAL_BATCH_SIZE && (
-        <div className='text-center py-6 px-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-sm'>
+        <div className='text-center py-6 px-4 animate-fade-in'>
           <div className='text-sm font-medium text-gray-600 dark:text-gray-300'>
             已显示全部 {displayItemCount} 个结果
           </div>
