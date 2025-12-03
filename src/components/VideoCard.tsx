@@ -30,6 +30,7 @@ import { useLongPress } from '@/hooks/useLongPress';
 import { ImagePlaceholder } from '@/components/ImagePlaceholder';
 import MobileActionSheet from '@/components/MobileActionSheet';
 import VideoDetailPreview from '@/components/VideoDetailPreview';
+import { useToast } from '@/components/Toast';
 
 import CombinedDetailModal from './CombinedDetailModal';
 
@@ -92,6 +93,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
   const [searchFavorited, setSearchFavorited] = useState<boolean | null>(null); // 搜索结果的收藏状态
   const [showDetailPreview, setShowDetailPreview] = useState(false);
   const [previewDetail, setPreviewDetail] = useState<SearchResult | null>(null);
+  const { showToast } = useToast();
 
   const [showCombinedModal, setShowCombinedModal] = useState(false);
   const [doubanDetail, setDoubanDetail] = useState<DoubanDetail | null>(null);
@@ -210,6 +212,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
           } else {
             setFavorited(false);
           }
+          showToast('已取消收藏', 'success');
         } else {
           // 如果未收藏，添加收藏
           await saveFavorite(actualSource, actualId, {
@@ -225,8 +228,10 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
           } else {
             setFavorited(true);
           }
+          showToast('已添加收藏', 'success');
         }
       } catch (err) {
+        showToast('操作失败，请重试', 'error');
         throw new Error('切换收藏状态失败');
       }
     },
@@ -241,6 +246,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
       actualEpisodes,
       favorited,
       searchFavorited,
+      showToast
     ]
   );
 
@@ -260,12 +266,14 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
           // 对于其他页面，使用原有逻辑
           await deletePlayRecord(actualSource, actualId);
         }
+        showToast('已删除播放记录', 'success');
         onDelete?.();
       } catch (err) {
+        showToast('删除失败，请重试', 'error');
         throw new Error('删除播放记录失败');
       }
     },
-    [from, actualSource, actualId, id, onDelete]
+    [from, actualSource, actualId, id, onDelete, showToast]
   );
 
 
@@ -689,7 +697,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
   return (
     <>
       <div
-        className='group relative w-full glass-card cursor-pointer transition-transform duration-200 ease-out hover:scale-105 hover:shadow-elevated hover:z-10 flex flex-col h-full'
+        className='group relative w-full glass-card cursor-pointer transition-all duration-300 ease-out hover:scale-105 hover:shadow-floating hover:z-10 flex flex-col h-full'
         onClick={handleClick}
         {...longPressProps}
         style={{
@@ -726,7 +734,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
       >
         {/* 海报容器 */}
         <div
-          className={`relative aspect-[3/4] overflow-hidden rounded-t-lg bg-gray-100 dark:bg-gray-800 transition-all duration-300 ease-in-out group-hover:shadow-lg group-hover:shadow-black/20 dark:group-hover:shadow-black/20 ${origin === 'live' ? 'ring-1 ring-gray-300/80 dark:ring-gray-600/80' : ''}`}
+          className={`relative aspect-[3/4] overflow-hidden rounded-t-lg bg-gray-100 dark:bg-gray-800 transition-all duration-300 ease-in-out group-hover:shadow-apple-lg group-hover:shadow-black/20 dark:group-hover:shadow-black/20 ${origin === 'live' ? 'ring-1 ring-gray-300/80 dark:ring-gray-600/80' : ''}`}
           style={{
             WebkitUserSelect: 'none',
             userSelect: 'none',
@@ -744,7 +752,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
             src={processImageUrl(actualPoster)}
             alt={actualTitle}
             fill
-            className={origin === 'live' ? 'object-contain' : 'object-cover'}
+            className={`transition-transform duration-500 ease-out group-hover:scale-110 ${origin === 'live' ? 'object-contain' : 'object-cover'}`}
             referrerPolicy='no-referrer'
             loading='lazy'
             onLoadingComplete={() => setIsLoading(true)}

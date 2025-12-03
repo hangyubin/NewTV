@@ -787,33 +787,37 @@ function SearchPageClient() {
                 </div>
               </div>
               {/* 条件渲染：虚拟化 vs 传统网格 */}
-              {useVirtualization ? (
-                <VirtualSearchGrid
-                  allResults={searchResults}
-                  filteredResults={filteredAllResults}
-                  aggregatedResults={aggregatedResults}
-                  filteredAggResults={filteredAggResults}
-                  viewMode={viewMode}
-                  searchQuery={searchQuery}
-                  isLoading={isLoading}
-                  groupRefs={groupRefs}
-                  groupStatsRef={groupStatsRef}
-                  getGroupRef={getGroupRef}
-                  computeGroupStats={computeGroupStats}
-                />
-              ) : (
-                // 传统网格渲染（保持原有逻辑）
-                searchResults.length === 0 ? (
-                  isLoading ? (
-                    <div className='flex justify-center items-center h-40'>
-                      <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-green-500'></div>
-                    </div>
-                  ) : (
-                    <div className='text-center text-gray-500 py-8 dark:text-gray-400'>
-                      未找到相关结果
-                    </div>
-                  )
-                ) : (
+      {useVirtualization ? (
+        <VirtualSearchGrid
+          allResults={searchResults}
+          filteredResults={filteredAllResults}
+          aggregatedResults={aggregatedResults}
+          filteredAggResults={filteredAggResults}
+          viewMode={viewMode}
+          searchQuery={searchQuery}
+          isLoading={isLoading}
+          groupRefs={groupRefs}
+          groupStatsRef={groupStatsRef}
+          getGroupRef={getGroupRef}
+          computeGroupStats={computeGroupStats}
+        />
+      ) : (
+        // 传统网格渲染（保持原有逻辑）
+        searchResults.length === 0 ? (
+          isLoading ? (
+            <div className='flex justify-center items-center h-40'>
+              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-green-500'></div>
+            </div>
+          ) : (
+            <div className='text-center py-16 dark:text-gray-400'>
+              <div className='flex justify-center mb-4'>
+                <Search className='h-12 w-12 text-gray-300 dark:text-gray-600' />
+              </div>
+              <h3 className='text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2'>未找到相关结果</h3>
+              <p className='text-gray-500 dark:text-gray-400'>尝试调整搜索条件或使用其他关键词</p>
+            </div>
+          )
+        ) : (
                   <div
                     key={`search-results-${viewMode}`}
                     className='justify-start grid grid-cols-2 gap-x-4 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8'

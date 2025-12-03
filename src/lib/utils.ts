@@ -118,38 +118,69 @@ function getDoubanImageProxyConfig(): {
 }
 
 /**
- * 处理图片 URL，如果设置了图片代理则使用代理
+ * 处理图片 URL，如果设置了图片代理则使用代理，并添加WebP支持
  */
 export function processImageUrl(originalUrl: string): string {
   if (!originalUrl) return originalUrl;
 
+  let processedUrl = originalUrl;
+
   // 仅处理豆瓣图片代理
-  if (!originalUrl.includes('doubanio.com')) {
-    return originalUrl;
+  if (processedUrl.includes('doubanio.com')) {
+    const { proxyType, proxyUrl } = getDoubanImageProxyConfig();
+    switch (proxyType) {
+      case 'server':
+        processedUrl = `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
+        break;
+      case 'img3':
+        processedUrl = originalUrl.replace(/img\d+\.doubanio\.com/g, 'img3.doubanio.com');
+        break;
+      case 'cmliussss-cdn-tencent':
+        processedUrl = originalUrl.replace(
+          /img\d+\.doubanio\.com/g,
+          'img.doubanio.cmliussss.net'
+        );
+        break;
+      case 'cmliussss-cdn-ali':
+        processedUrl = originalUrl.replace(
+          /img\d+\.doubanio\.com/g,
+          'img.doubanio.cmliussss.com'
+        );
+        break;
+      case 'custom':
+        processedUrl = `${proxyUrl}${encodeURIComponent(originalUrl)}`;
+        break;
+      case 'direct':
+      default:
+        processedUrl = originalUrl;
+        break;
+    }
   }
 
-  const { proxyType, proxyUrl } = getDoubanImageProxyConfig();
-  switch (proxyType) {
-    case 'server':
-      return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
-    case 'img3':
-      return originalUrl.replace(/img\d+\.doubanio\.com/g, 'img3.doubanio.com');
-    case 'cmliussss-cdn-tencent':
-      return originalUrl.replace(
-        /img\d+\.doubanio\.com/g,
-        'img.doubanio.cmliussss.net'
-      );
-    case 'cmliussss-cdn-ali':
-      return originalUrl.replace(
-        /img\d+\.doubanio\.com/g,
-        'img.doubanio.cmliussss.com'
-      );
-    case 'custom':
-      return `${proxyUrl}${encodeURIComponent(originalUrl)}`;
-    case 'direct':
-    default:
-      return originalUrl;
+  // 添加WebP支持（如果浏览器支持且URL符合条件）
+  if (typeof window !== 'undefined' && 
+      window?.chrome?.loadTimes && 
+      processedUrl && 
+      (processedUrl.includes('.jpg') || processedUrl.includes('.jpeg') || processedUrl.includes('.png'))) {
+    // 检查浏览器是否支持WebP
+    const isWebPSupported = (() => {
+      try {
+        return document.createElement('canvas').toDataURL('image/webp').indexOf('data:image/webp') === 0;
+      } catch {
+        return false;
+      }
+    })();
+
+    if (isWebPSupported) {
+      // 将图片URL转换为WebP格式
+      processedUrl = processedUrl
+        .replace(/\.jpg(\?.*)?$/, '.webp$1')
+        .replace(/\.jpeg(\?.*)?$/, '.webp$1')
+        .replace(/\.png(\?.*)?$/, '.webp$1');
+    }
   }
+
+  return processedUrl;
 }
 
 /**

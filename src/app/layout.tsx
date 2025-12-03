@@ -9,6 +9,7 @@ import { getConfig } from '@/lib/config';
 import { GlobalErrorIndicator } from '../components/GlobalErrorIndicator';
 import { SiteProvider } from '../components/SiteProvider';
 import { ThemeProvider } from '../components/ThemeProvider';
+import { ToastProvider } from '../components/Toast';
 
 export const dynamic = 'force-dynamic';
 
@@ -114,10 +115,12 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <SiteProvider siteName={siteName} announcement={announcement}>
-            {children}
-            <GlobalErrorIndicator />
-          </SiteProvider>
+          <ToastProvider>
+            <SiteProvider siteName={siteName} announcement={announcement}>
+              {children}
+              <GlobalErrorIndicator />
+            </SiteProvider>
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>
