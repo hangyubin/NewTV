@@ -14,17 +14,6 @@ const AdminPage = () => {
   const [config, setConfig] = useState<AdminConfig | null>(null);
   const [role, setRole] = useState<'owner' | 'admin' | null>(null);
   const [activeTab, setActiveTab] = useState('site');
-  // 仅用于初始化，不影响功能
-  const [, setExpandedTabs] = useState<{
-    [key: string]: boolean;
-  }>({
-    site: true,
-    user: false,
-    dataSource: false,
-    liveDataSource: false,
-    customCategory: false,
-    dataMigration: false,
-  });
 
   // 保存反馈状态
   const [saveMessage, setSaveMessage] = useState<string>('');
@@ -80,10 +69,6 @@ const AdminPage = () => {
 
   const toggleTab = (tab: string) => {
     setActiveTab(tab);
-    setExpandedTabs((prev) => ({
-      ...prev,
-      [tab]: !prev[tab],
-    }));
   };
 
   // 直播源管理事件处理函数
@@ -306,31 +291,61 @@ const AdminPage = () => {
       return;
     }
 
-    if (confirm(`确定要删除选中的 ${selectedSources.length} 个视频源吗？`)) {
-      try {
-        const response = await fetch('/api/admin/source', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            action: 'batch_delete',
-            keys: selectedSources,
-          }),
-        });
-        if (response.ok) {
-          await refreshConfig();
-          setSelectedSources([]);
-          setSelectAll(false);
-          alert('批量删除成功！');
-        } else {
-          const errorData = await response.json();
-          alert(`批量删除失败：${errorData.error || '未知错误'}`);
-        }
-      } catch (error) {
-        console.error('批量删除失败:', error);
-        alert('批量删除失败：网络错误');
+    // 过滤掉系统配置的源
+    const customSourcesToDelete = selectedSources.filter((key) => {
+      const source = config?.SourceConfig.find((s) => s.key === key);
+      return source && source.from !== 'config';
+    });
+
+    if (customSourcesToDelete.length === 0) {
+      alert('所选视频源均为系统配置，不可删除！');
+      return;
+    }
+
+    // 如果有部分源不可删除，提示用户
+    if (customSourcesToDelete.length < selectedSources.length) {
+      const systemSourcesCount =
+        selectedSources.length - customSourcesToDelete.length;
+      if (
+        !confirm(
+          `所选 ${selectedSources.length} 个视频源中有 ${systemSourcesCount} 个为系统配置不可删除，确定要删除其余 ${customSourcesToDelete.length} 个视频源吗？`
+        )
+      ) {
+        return;
       }
+    } else {
+      if (
+        !confirm(
+          `确定要删除选中的 ${customSourcesToDelete.length} 个视频源吗？`
+        )
+      ) {
+        return;
+      }
+    }
+
+    try {
+      const response = await fetch('/api/admin/source', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'batch_delete',
+          keys: customSourcesToDelete,
+        }),
+      });
+      if (response.ok) {
+        await refreshConfig();
+        setSelectedSources([]);
+        setSelectAll(false);
+        alert('批量删除成功！');
+      } else {
+        const errorData = await response.json();
+        alert(`批量删除失败：${errorData.error || '未知错误'}`);
+      }
+    } catch (error) {
+      console.error('批量删除失败:', error);
+      alert('批量删除失败：网络错误');
     }
   };
 
@@ -490,87 +505,94 @@ const AdminPage = () => {
   return (
     <PageLayout>
       <div className='max-w-7xl mx-auto py-6 sm:px-6 lg:px-8'>
-        <div className='bg-white dark:bg-gray-900 rounded-lg shadow-lg overflow-hidden'>
-          <div className='px-6 py-4 border-b border-gray-200 dark:border-gray-700'>
-            <h1 className='text-2xl font-bold text-gray-900 dark:text-gray-100'>
+        <div className='bg-white dark:bg-gray-900 rounded-xl shadow-xl overflow-hidden transition-all duration-300 hover:shadow-2xl'>
+          <div className='px-6 py-5 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20'>
+            <h1 className='text-2xl font-bold text-gray-900 dark:text-white'>
               管理后台
             </h1>
-            <p className='text-sm text-gray-500 dark:text-gray-400 mt-1'>
+            <p className='text-sm text-gray-600 dark:text-gray-300 mt-1'>
               欢迎回来，{role === 'owner' ? '站长' : '管理员'}！
             </p>
           </div>
 
           <div className='p-6'>
             {/* 主标签页 */}
-            <div className='mb-6 flex flex-wrap gap-2'>
+            <div className='mb-6 flex flex-wrap gap-2 bg-gray-50 dark:bg-gray-800/50 p-2 rounded-xl'>
               <button
                 onClick={() => toggleTab('site')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-300 hover:shadow-md ${
                   activeTab === 'site'
-                    ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
-                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transform scale-105'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
-                站点设置
+                <span className='text-lg'>⚙️</span>
+                站点配置
               </button>
               <button
                 onClick={() => toggleTab('user')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-300 hover:shadow-md ${
                   activeTab === 'user'
-                    ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
-                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transform scale-105'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
+                <span className='text-lg'>👥</span>
                 用户管理
               </button>
               <button
                 onClick={() => toggleTab('dataSource')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-300 hover:shadow-md ${
                   activeTab === 'dataSource'
-                    ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
-                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transform scale-105'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
+                <span className='text-lg'>🎬</span>
                 视频源管理
               </button>
               <button
                 onClick={() => toggleTab('liveDataSource')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-300 hover:shadow-md ${
                   activeTab === 'liveDataSource'
-                    ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
-                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transform scale-105'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
+                <span className='text-lg'>📺</span>
                 直播源管理
               </button>
               <button
                 onClick={() => toggleTab('customCategory')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-300 hover:shadow-md ${
                   activeTab === 'customCategory'
-                    ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
-                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transform scale-105'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
+                <span className='text-lg'>🏷️</span>
                 自定义分类
               </button>
               <button
                 onClick={handleOpenConfigFileModal}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-300 hover:shadow-md ${
                   activeTab === 'config'
-                    ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
-                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transform scale-105'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
+                <span className='text-lg'>📝</span>
                 配置文件
               </button>
               <button
                 onClick={() => toggleTab('dataMigration')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-300 hover:shadow-md ${
                   activeTab === 'dataMigration'
-                    ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white'
-                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transform scale-105'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
+                <span className='text-lg'>🔄</span>
                 数据迁移
               </button>
             </div>
@@ -873,7 +895,7 @@ const AdminPage = () => {
                   <div className='flex justify-end space-x-3 mt-6'>
                     <button
                       type='submit'
-                      className='px-4 py-2 bg-blue-600 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700'
+                      className='px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 dark:bg-gradient-to-r from-blue-600 to-indigo-600 dark:hover:from-blue-700 dark:hover:to-indigo-700 text-white rounded-lg transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105'
                     >
                       保存
                     </button>
@@ -928,24 +950,24 @@ const AdminPage = () => {
                     用户统计
                   </h4>
                   <div className='grid grid-cols-3 gap-4'>
-                    <div className='p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800'>
-                      <div className='text-2xl font-bold text-green-800 dark:text-green-300'>
+                    <div className='p-5 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-900/50 rounded-xl border-2 border-green-200 dark:border-green-800 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1'>
+                      <div className='text-2xl font-bold text-green-800 dark:text-green-300 mb-1'>
                         {config.UserConfig.Users.length}
                       </div>
                       <div className='text-sm text-green-600 dark:text-green-400'>
                         总用户数
                       </div>
                     </div>
-                    <div className='p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800'>
-                      <div className='text-2xl font-bold text-blue-800 dark:text-blue-300'>
+                    <div className='p-5 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-900/50 rounded-xl border-2 border-blue-200 dark:border-blue-800 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1'>
+                      <div className='text-2xl font-bold text-blue-800 dark:text-blue-300 mb-1'>
                         0
                       </div>
                       <div className='text-sm text-blue-600 dark:text-blue-400'>
                         待审核用户
                       </div>
                     </div>
-                    <div className='p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800'>
-                      <div className='text-2xl font-bold text-purple-800 dark:text-purple-300'>
+                    <div className='p-5 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-900/50 rounded-xl border-2 border-purple-200 dark:border-purple-800 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1'>
+                      <div className='text-2xl font-bold text-purple-800 dark:text-purple-300 mb-1'>
                         0
                       </div>
                       <div className='text-sm text-purple-600 dark:text-purple-400'>
@@ -961,25 +983,25 @@ const AdminPage = () => {
                     <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
                       用户列表
                     </h4>
-                    <button className='px-3 py-1.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg transition-colors'>
+                    <button className='px-3 py-1.5 text-sm font-medium bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 dark:bg-gradient-to-r from-blue-600 to-indigo-600 dark:hover:from-blue-700 dark:hover:to-indigo-700 text-white rounded-lg transition-all duration-300 shadow-md hover:shadow-lg'>
                       添加用户
                     </button>
                   </div>
 
-                  <div className='border border-gray-200 dark:border-gray-700 rounded-lg max-h-[28rem] overflow-y-auto overflow-x-auto relative'>
+                  <div className='border border-gray-200 dark:border-gray-700 rounded-xl max-h-[28rem] overflow-y-auto overflow-x-auto relative shadow-sm'>
                     <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
-                      <thead className='bg-gray-50 dark:bg-gray-900 sticky top-0 z-10'>
+                      <thead className='bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 sticky top-0 z-10'>
                         <tr>
-                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider'>
                             用户名
                           </th>
-                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider'>
                             角色
                           </th>
-                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider'>
                             状态
                           </th>
-                          <th className='px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                          <th className='px-6 py-3 text-right text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider'>
                             操作
                           </th>
                         </tr>
@@ -988,19 +1010,19 @@ const AdminPage = () => {
                         {config.UserConfig.Users.map((user) => (
                           <tr
                             key={user.username}
-                            className='hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'
+                            className='hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 transform hover:scale-[1.002]'
                           >
-                            <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100'>
+                            <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white'>
                               {user.username}
                             </td>
                             <td className='px-6 py-4 whitespace-nowrap'>
                               <span
-                                className={`px-2 py-1 text-xs rounded-full ${
+                                className={`px-2.5 py-1 text-xs rounded-full font-medium transition-all duration-200 ${
                                   user.role === 'owner'
-                                    ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300'
+                                    ? 'bg-gradient-to-r from-yellow-100 to-yellow-200 dark:from-yellow-900/30 dark:to-yellow-900/50 text-yellow-800 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700'
                                     : user.role === 'admin'
-                                    ? 'bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-300'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                                    ? 'bg-gradient-to-r from-purple-100 to-purple-200 dark:from-purple-900/30 dark:to-purple-900/50 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-700'
+                                    : 'bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600'
                                 }`}
                               >
                                 {user.role === 'owner'
@@ -1012,34 +1034,34 @@ const AdminPage = () => {
                             </td>
                             <td className='px-6 py-4 whitespace-nowrap'>
                               <span
-                                className={`px-2 py-1 text-xs rounded-full ${
+                                className={`px-2.5 py-1 text-xs rounded-full font-medium transition-all duration-200 ${
                                   !user.banned
-                                    ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
-                                    : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300'
+                                    ? 'bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-900/50 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
+                                    : 'bg-gradient-to-r from-red-100 to-red-200 dark:from-red-900/30 dark:to-red-900/50 text-red-800 dark:text-red-300 border border-red-300 dark:border-red-700'
                                 }`}
                               >
                                 {!user.banned ? '正常' : '已封禁'}
                               </span>
                             </td>
                             <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2'>
-                              <button className='px-2 py-1 text-xs font-medium bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-md transition-colors'>
+                              <button className='px-2 py-1 text-xs font-medium bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 dark:bg-gradient-to-r from-blue-600 to-blue-700 dark:hover:from-blue-700 dark:hover:to-blue-800 text-white rounded-md transition-all duration-300 shadow-sm'>
                                 修改密码
                               </button>
                               {user.role === 'admin' ? (
-                                <button className='px-2 py-1 text-xs font-medium bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded-md transition-colors'>
+                                <button className='px-2 py-1 text-xs font-medium bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 dark:bg-gradient-to-r from-red-600 to-red-700 dark:hover:from-red-700 dark:hover:to-red-800 text-white rounded-md transition-all duration-300 shadow-sm'>
                                   取消管理员
                                 </button>
                               ) : (
-                                <button className='px-2 py-1 text-xs font-medium bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white rounded-md transition-colors'>
+                                <button className='px-2 py-1 text-xs font-medium bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 dark:bg-gradient-to-r from-green-600 to-green-700 dark:hover:from-green-700 dark:hover:to-green-800 text-white rounded-md transition-all duration-300 shadow-sm'>
                                   设置管理员
                                 </button>
                               )}
                               {!user.banned ? (
-                                <button className='px-2 py-1 text-xs font-medium bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded-md transition-colors'>
+                                <button className='px-2 py-1 text-xs font-medium bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 dark:bg-gradient-to-r from-red-600 to-red-700 dark:hover:from-red-700 dark:hover:to-red-800 text-white rounded-md transition-all duration-300 shadow-sm'>
                                   封禁
                                 </button>
                               ) : (
-                                <button className='px-2 py-1 text-xs font-medium bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white rounded-md transition-colors'>
+                                <button className='px-2 py-1 text-xs font-medium bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 dark:bg-gradient-to-r from-green-600 to-green-700 dark:hover:from-green-700 dark:hover:to-green-800 text-white rounded-md transition-all duration-300 shadow-sm'>
                                   解封
                                 </button>
                               )}
@@ -1080,13 +1102,13 @@ const AdminPage = () => {
                           link.click();
                           URL.revokeObjectURL(url);
                         }}
-                        className='px-3 py-1.5 text-sm font-medium bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-700 text-white rounded-lg transition-colors'
+                        className='px-3 py-1.5 text-sm font-medium bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 dark:bg-gradient-to-r from-blue-600 to-indigo-600 dark:hover:from-blue-700 dark:hover:to-indigo-700 text-white rounded-lg transition-all duration-300 shadow-md hover:shadow-lg'
                       >
                         导出配置
                       </button>
                       <label
                         htmlFor='import-sources'
-                        className='px-3 py-1.5 text-sm font-medium bg-green-600 dark:bg-green-600 hover:bg-green-700 dark:hover:bg-green-700 text-white rounded-lg transition-colors cursor-pointer'
+                        className='px-3 py-1.5 text-sm font-medium bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 dark:bg-gradient-to-r from-green-600 to-emerald-600 dark:hover:from-green-700 dark:hover:to-emerald-700 text-white rounded-lg transition-all duration-300 shadow-md hover:shadow-lg cursor-pointer'
                       >
                         导入配置
                       </label>
@@ -1179,7 +1201,7 @@ const AdminPage = () => {
                           alert('请填写必要的信息！');
                         }
                       }}
-                      className='px-3 py-1.5 text-sm font-medium bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-700 text-white rounded-lg transition-colors'
+                      className='px-3 py-1.5 text-sm font-medium bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 dark:bg-gradient-to-r from-blue-600 to-indigo-600 dark:hover:from-blue-700 dark:hover:to-indigo-700 text-white rounded-lg transition-all duration-300 shadow-md hover:shadow-lg'
                     >
                       添加视频源
                     </button>
@@ -1187,25 +1209,25 @@ const AdminPage = () => {
 
                   {/* 批量操作按钮 */}
                   {selectedSources.length > 0 && (
-                    <div className='flex space-x-2 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg'>
+                    <div className='flex flex-wrap items-center gap-2 bg-gray-50 dark:bg-gray-800 p-3 rounded-xl shadow-sm'>
                       <span className='text-sm text-gray-700 dark:text-gray-300'>
                         已选择 {selectedSources.length} 个视频源
                       </span>
                       <button
                         onClick={() => handleBatchToggleStatus('enable')}
-                        className='px-3 py-1.5 text-sm font-medium bg-green-600 dark:bg-green-600 hover:bg-green-700 dark:hover:bg-green-700 text-white rounded-lg transition-colors'
+                        className='px-3 py-1.5 text-sm font-medium bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 dark:bg-gradient-to-r from-green-600 to-emerald-600 dark:hover:from-green-700 dark:hover:to-emerald-700 text-white rounded-lg transition-all duration-300 shadow-md hover:shadow-lg'
                       >
                         批量启用
                       </button>
                       <button
                         onClick={() => handleBatchToggleStatus('disable')}
-                        className='px-3 py-1.5 text-sm font-medium bg-yellow-600 dark:bg-yellow-600 hover:bg-yellow-700 dark:hover:bg-yellow-700 text-white rounded-lg transition-colors'
+                        className='px-3 py-1.5 text-sm font-medium bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-700 hover:to-amber-700 dark:bg-gradient-to-r from-yellow-600 to-amber-600 dark:hover:from-yellow-700 dark:hover:to-amber-700 text-white rounded-lg transition-all duration-300 shadow-md hover:shadow-lg'
                       >
                         批量禁用
                       </button>
                       <button
                         onClick={handleBatchDelete}
-                        className='px-3 py-1.5 text-sm font-medium bg-red-600 dark:bg-red-600 hover:bg-red-700 dark:hover:bg-red-700 text-white rounded-lg transition-colors'
+                        className='px-3 py-1.5 text-sm font-medium bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 dark:bg-gradient-to-r from-red-600 to-rose-600 dark:hover:from-red-700 dark:hover:to-rose-700 text-white rounded-lg transition-all duration-300 shadow-md hover:shadow-lg'
                       >
                         批量删除
                       </button>
@@ -1362,6 +1384,11 @@ const AdminPage = () => {
                               <button
                                 onClick={async () => {
                                   // 删除视频源
+                                  if (source.from === 'config') {
+                                    alert('系统配置的视频源不可删除！');
+                                    return;
+                                  }
+
                                   if (
                                     confirm(
                                       `确定要删除视频源 "${source.name}" 吗？`
@@ -1392,7 +1419,12 @@ const AdminPage = () => {
                                     }
                                   }
                                 }}
-                                className='text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300'
+                                disabled={source.from === 'config'}
+                                className={`${
+                                  source.from === 'config'
+                                    ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                                    : 'text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300'
+                                }`}
                               >
                                 删除
                               </button>
@@ -1637,14 +1669,14 @@ const AdminPage = () => {
 
           {/* 添加直播源模态框 */}
           {(isAddLiveSourceModalOpen || isEditLiveSourceModalOpen) && (
-            <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'>
-              <div className='bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md'>
-                <div className='p-4 border-b border-gray-200 dark:border-gray-700'>
-                  <h3 className='text-lg font-medium text-gray-900 dark:text-gray-100'>
+            <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm'>
+              <div className='bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md transform transition-all duration-300 scale-100 hover:scale-[1.02]'>
+                <div className='p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-t-2xl'>
+                  <h3 className='text-lg font-medium text-gray-900 dark:text-white'>
                     {isEditLiveSourceModalOpen ? '编辑直播源' : '添加直播源'}
                   </h3>
                 </div>
-                <form onSubmit={handleLiveSourceSubmit} className='p-4'>
+                <form onSubmit={handleLiveSourceSubmit} className='p-5'>
                   <div className='space-y-4'>
                     <div>
                       <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
@@ -1660,7 +1692,7 @@ const AdminPage = () => {
                           })
                         }
                         disabled={isEditLiveSourceModalOpen}
-                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300'
                         required
                       />
                     </div>
@@ -1738,13 +1770,13 @@ const AdminPage = () => {
                         setIsAddLiveSourceModalOpen(false);
                         setIsEditLiveSourceModalOpen(false);
                       }}
-                      className='px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      className='px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300 shadow-sm hover:shadow-md'
                     >
                       取消
                     </button>
                     <button
                       type='submit'
-                      className='px-4 py-2 bg-blue-600 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700'
+                      className='px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 dark:bg-gradient-to-r from-blue-600 to-indigo-600 dark:hover:from-blue-700 dark:hover:to-indigo-700 text-white rounded-lg transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105'
                     >
                       保存
                     </button>
@@ -1756,16 +1788,16 @@ const AdminPage = () => {
 
           {/* 添加自定义分类模态框 */}
           {(isAddCustomCategoryModalOpen || isEditCustomCategoryModalOpen) && (
-            <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'>
-              <div className='bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md'>
-                <div className='p-4 border-b border-gray-200 dark:border-gray-700'>
-                  <h3 className='text-lg font-medium text-gray-900 dark:text-gray-100'>
+            <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm'>
+              <div className='bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md transform transition-all duration-300 scale-100 hover:scale-[1.02]'>
+                <div className='p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-t-2xl'>
+                  <h3 className='text-lg font-medium text-gray-900 dark:text-white'>
                     {isEditCustomCategoryModalOpen
                       ? '编辑自定义分类'
                       : '添加自定义分类'}
                   </h3>
                 </div>
-                <form onSubmit={handleCustomCategorySubmit} className='p-4'>
+                <form onSubmit={handleCustomCategorySubmit} className='p-5'>
                   <div className='space-y-4'>
                     <div>
                       <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
@@ -1828,13 +1860,13 @@ const AdminPage = () => {
                         setIsAddCustomCategoryModalOpen(false);
                         setIsEditCustomCategoryModalOpen(false);
                       }}
-                      className='px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      className='px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300 shadow-sm hover:shadow-md'
                     >
                       取消
                     </button>
                     <button
                       type='submit'
-                      className='px-4 py-2 bg-blue-600 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700'
+                      className='px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 dark:bg-gradient-to-r from-blue-600 to-indigo-600 dark:hover:from-blue-700 dark:hover:to-indigo-700 text-white rounded-lg transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105'
                     >
                       保存
                     </button>
@@ -1846,14 +1878,14 @@ const AdminPage = () => {
 
           {/* 配置文件设置模态框 */}
           {isConfigFileModalOpen && (
-            <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'>
-              <div className='bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-3xl'>
-                <div className='p-4 border-b border-gray-200 dark:border-gray-700'>
-                  <h3 className='text-lg font-medium text-gray-900 dark:text-gray-100'>
+            <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm'>
+              <div className='bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-3xl transform transition-all duration-300 scale-100 hover:scale-[1.01]'>
+                <div className='p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-t-2xl'>
+                  <h3 className='text-lg font-medium text-gray-900 dark:text-white'>
                     配置文件设置
                   </h3>
                 </div>
-                <form onSubmit={handleConfigFileSubmit} className='p-4'>
+                <form onSubmit={handleConfigFileSubmit} className='p-5'>
                   <div className='space-y-4'>
                     <div>
                       <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>
@@ -1863,7 +1895,7 @@ const AdminPage = () => {
                         value={configFileContent}
                         onChange={(e) => setConfigFileContent(e.target.value)}
                         rows={10}
-                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm'
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm transition-all duration-300 shadow-inner'
                         required
                       />
                     </div>
@@ -1875,12 +1907,12 @@ const AdminPage = () => {
                         type='url'
                         value={subscriptionUrl}
                         onChange={(e) => setSubscriptionUrl(e.target.value)}
-                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                        className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300'
                       />
                     </div>
-                    <div className='flex items-center justify-between'>
+                    <div className='flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700'>
                       <div>
-                        <div className='font-medium text-gray-900 dark:text-gray-100'>
+                        <div className='font-medium text-gray-900 dark:text-white'>
                           自动更新
                         </div>
                         <div className='text-sm text-gray-600 dark:text-gray-400'>
@@ -1889,17 +1921,19 @@ const AdminPage = () => {
                       </div>
                       <button
                         type='button'
-                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
                           autoUpdate
-                            ? 'bg-blue-600'
+                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-md'
                             : 'bg-gray-200 dark:bg-gray-700'
                         }`}
                         onClick={() => setAutoUpdate(!autoUpdate)}
                       >
                         <span
                           aria-hidden='true'
-                          className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${
-                            autoUpdate ? 'translate-x-5' : 'translate-x-1'
+                          className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-lg transform ring-0 transition-all duration-300 ease-in-out ${
+                            autoUpdate
+                              ? 'translate-x-5 scale-110'
+                              : 'translate-x-1 scale-100'
                           }`}
                         />
                       </button>
@@ -1909,13 +1943,13 @@ const AdminPage = () => {
                     <button
                       type='button'
                       onClick={() => setIsConfigFileModalOpen(false)}
-                      className='px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      className='px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300 shadow-sm hover:shadow-md'
                     >
                       取消
                     </button>
                     <button
                       type='submit'
-                      className='px-4 py-2 bg-blue-600 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700'
+                      className='px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 dark:bg-gradient-to-r from-blue-600 to-indigo-600 dark:hover:from-blue-700 dark:hover:to-indigo-700 text-white rounded-lg transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105'
                     >
                       保存
                     </button>

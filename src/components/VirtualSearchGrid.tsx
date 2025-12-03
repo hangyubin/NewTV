@@ -13,14 +13,14 @@ interface VirtualSearchGridProps {
   filteredResults: SearchResult[];
   aggregatedResults: [string, SearchResult[]][];
   filteredAggResults: [string, SearchResult[]][];
-  
+
   // 视图模式
   viewMode: 'agg' | 'all';
-  
+
   // 搜索相关
   searchQuery: string;
   isLoading: boolean;
-  
+
   // VideoCard相关props
   groupRefs: React.MutableRefObject<Map<string, React.RefObject<any>>>;
   groupStatsRef: React.MutableRefObject<Map<string, any>>;
@@ -31,16 +31,21 @@ interface VirtualSearchGridProps {
 // 渐进式加载配置
 const INITIAL_BATCH_SIZE = 12;
 const LOAD_MORE_BATCH_SIZE = 8;
-const LOAD_MORE_THRESHOLD = 5; // 距离底部还有5行时开始加载
+
+// eslint-disable-next-line unused-imports/no-unused-vars
+const _LOAD_MORE_THRESHOLD = 5; // 距离底部还有5行时开始加载
 
 export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
+  // eslint-disable-next-line unused-imports/no-unused-vars
   allResults,
   filteredResults,
+  // eslint-disable-next-line unused-imports/no-unused-vars
   aggregatedResults,
   filteredAggResults,
   viewMode,
   searchQuery,
   isLoading,
+  // eslint-disable-next-line unused-imports/no-unused-vars
   groupRefs,
   groupStatsRef,
   getGroupRef,
@@ -69,42 +74,44 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
   // 加载更多项目
   const loadMoreItems = useCallback(() => {
     if (isLoadingMore || !hasNextPage) return;
-    
+
     setIsLoadingMore(true);
-    
+
     // 模拟异步加载
     setTimeout(() => {
-      setVisibleItemCount(prev => Math.min(prev + LOAD_MORE_BATCH_SIZE, totalItemCount));
+      setVisibleItemCount((prev) =>
+        Math.min(prev + LOAD_MORE_BATCH_SIZE, totalItemCount)
+      );
       setIsLoadingMore(false);
     }, 100);
   }, [isLoadingMore, hasNextPage, totalItemCount]);
 
   // 滚动监听器，用于触发加载更多
   const gridRef = useRef<HTMLDivElement>(null);
-  
+
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-    
+
     const handleScroll = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         const element = gridRef.current;
         if (!element) return;
-        
+
         const { scrollTop, scrollHeight, clientHeight } = element;
         const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
-        
+
         if (isNearBottom) {
           loadMoreItems();
         }
       }, 100); // 100ms节流时间
     };
-    
+
     const gridElement = gridRef.current;
     if (gridElement) {
       gridElement.addEventListener('scroll', handleScroll, { passive: true });
     }
-    
+
     return () => {
       if (gridElement) {
         gridElement.removeEventListener('scroll', handleScroll);
@@ -114,93 +121,132 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
   }, [loadMoreItems]);
 
   return (
-      <div className='w-full'>
-        {totalItemCount === 0 ? (
-          <div className='flex flex-col justify-center items-center h-40'>
-            {isLoading ? (
-              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-green-500'></div>
-            ) : (
-              <div className='text-center py-16 dark:text-gray-400'>
-                <div className='flex justify-center mb-4'>
-                  <svg className='h-12 w-12 text-gray-300 dark:text-gray-600' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={1} d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' />
-                  </svg>
-                </div>
-                <h3 className='text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2'>未找到相关结果</h3>
-                <p className='text-gray-500 dark:text-gray-400'>尝试调整搜索条件或使用其他关键词</p>
-              </div>
-            )}
-          </div>
-        ) : (
-        /* 使用虚拟列表渲染搜索结果 */
-        <div ref={gridRef} className='grid grid-cols-2 gap-x-4 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8 overflow-y-auto max-h-[calc(100vh-200px)]'>
-          {viewMode === 'agg' ? (
-            filteredAggResults.slice(0, displayItemCount).map(([mapKey, group]) => {
-              const title = group[0]?.title || '';
-              const poster = group[0]?.poster || '';
-              const year = group[0]?.year || 'unknown';
-              const { episodes, source_names, douban_id } = computeGroupStats(group);
-              const type = episodes === 1 ? 'movie' : 'tv';
-
-              // 如果该聚合第一次出现，写入初始统计
-              if (!groupStatsRef.current.has(mapKey)) {
-                groupStatsRef.current.set(mapKey, { episodes, source_names, douban_id });
-              }
-
-              return (
-                <div key={`agg-${mapKey}`} className='w-full'>
-                  <VideoCard
-                    ref={getGroupRef(mapKey)}
-                    from='search'
-                    isAggregate={true}
-                    title={title}
-                    poster={poster}
-                    year={year}
-                    episodes={episodes}
-                    source_names={source_names}
-                    douban_id={douban_id}
-                    query={searchQuery.trim() !== title ? searchQuery.trim() : ''}
-                    type={type}
-                  />
-                </div>
-              );
-            })
+    <div className='w-full'>
+      {totalItemCount === 0 ? (
+        <div className='flex flex-col justify-center items-center h-40'>
+          {isLoading ? (
+            <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-green-500'></div>
           ) : (
-            filteredResults.slice(0, displayItemCount).map((item) => (
-              <div key={`all-${item.source}-${item.id}`} className='w-full'>
-                <VideoCard
-                  id={item.id}
-                  title={item.title}
-                  poster={item.poster}
-                  episodes={item.episodes.length}
-                  source={item.source}
-                  source_name={item.source_name}
-                  douban_id={item.douban_id}
-                  query={searchQuery.trim() !== item.title ? searchQuery.trim() : ''}
-                  year={item.year}
-                  from='search'
-                  type={item.episodes.length > 1 ? 'tv' : 'movie'}
-                />
+            <div className='text-center py-16 dark:text-gray-400'>
+              <div className='flex justify-center mb-4'>
+                <svg
+                  className='h-12 w-12 text-gray-300 dark:text-gray-600'
+                  fill='none'
+                  viewBox='0 0 24 24'
+                  stroke='currentColor'
+                >
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth={1}
+                    d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'
+                  />
+                </svg>
               </div>
-            ))
+              <h3 className='text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2'>
+                未找到相关结果
+              </h3>
+              <p className='text-gray-500 dark:text-gray-400'>
+                尝试调整搜索条件或使用其他关键词
+              </p>
+            </div>
           )}
         </div>
+      ) : (
+        /* 使用虚拟列表渲染搜索结果 */
+        <div
+          ref={gridRef}
+          className='grid grid-cols-2 gap-x-4 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8 overflow-y-auto max-h-[calc(100vh-200px)] scroll-smooth scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800 transition-all duration-300'
+        >
+          {viewMode === 'agg'
+            ? filteredAggResults
+                .slice(0, displayItemCount)
+                .map(([mapKey, group]) => {
+                  const title = group[0]?.title || '';
+                  const poster = group[0]?.poster || '';
+                  const year = group[0]?.year || 'unknown';
+                  const { episodes, source_names, douban_id } =
+                    computeGroupStats(group);
+                  const type = episodes === 1 ? 'movie' : 'tv';
+
+                  // 如果该聚合第一次出现，写入初始统计
+                  if (!groupStatsRef.current.has(mapKey)) {
+                    groupStatsRef.current.set(mapKey, {
+                      episodes,
+                      source_names,
+                      douban_id,
+                    });
+                  }
+
+                  return (
+                    <div
+                      key={`agg-${mapKey}`}
+                      className='w-full animate-fade-in transition-all duration-500 ease-out transform hover:scale-105'
+                    >
+                      <VideoCard
+                        ref={getGroupRef(mapKey)}
+                        from='search'
+                        isAggregate={true}
+                        title={title}
+                        poster={poster}
+                        year={year}
+                        episodes={episodes}
+                        source_names={source_names}
+                        douban_id={douban_id}
+                        query={
+                          searchQuery.trim() !== title ? searchQuery.trim() : ''
+                        }
+                        type={type}
+                      />
+                    </div>
+                  );
+                })
+            : filteredResults.slice(0, displayItemCount).map((item) => (
+                <div
+                  key={`all-${item.source}-${item.id}`}
+                  className='w-full animate-fade-in transition-all duration-500 ease-out transform hover:scale-105'
+                >
+                  <VideoCard
+                    id={item.id}
+                    title={item.title}
+                    poster={item.poster}
+                    episodes={item.episodes.length}
+                    source={item.source}
+                    source_name={item.source_name}
+                    douban_id={item.douban_id}
+                    query={
+                      searchQuery.trim() !== item.title
+                        ? searchQuery.trim()
+                        : ''
+                    }
+                    year={item.year}
+                    from='search'
+                    type={item.episodes.length > 1 ? 'tv' : 'movie'}
+                  />
+                </div>
+              ))}
+        </div>
       )}
-      
+
       {/* 加载更多指示器 */}
       {isLoadingMore && (
-        <div className='flex justify-center items-center py-4'>
-          <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-green-500'></div>
-          <span className='ml-2 text-sm text-gray-500 dark:text-gray-400'>
+        <div className='flex justify-center items-center py-8'>
+          <div className='animate-spin rounded-full h-8 w-8 border-4 border-green-200 border-t-green-600 dark:border-green-800 dark:border-t-green-400 shadow-lg'></div>
+          <span className='ml-3 text-sm font-medium text-gray-600 dark:text-gray-300'>
             加载更多...
           </span>
         </div>
       )}
-      
+
       {/* 已加载完所有内容的提示 */}
       {!hasNextPage && displayItemCount > INITIAL_BATCH_SIZE && (
-        <div className='text-center py-4 text-sm text-gray-500 dark:text-gray-400'>
-          已显示全部 {displayItemCount} 个结果
+        <div className='text-center py-6 px-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-sm'>
+          <div className='text-sm font-medium text-gray-600 dark:text-gray-300'>
+            已显示全部 {displayItemCount} 个结果
+          </div>
+          <div className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
+            没有更多内容了
+          </div>
         </div>
       )}
     </div>
