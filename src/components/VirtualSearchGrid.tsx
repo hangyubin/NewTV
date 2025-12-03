@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { SearchResult } from '@/lib/types';
 
@@ -61,6 +61,30 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
     setVisibleItemCount(INITIAL_BATCH_SIZE);
     setIsLoadingMore(false);
   }, [currentData, viewMode]);
+
+  // 保存上一次的totalItemCount和displayItemCount
+  const prevStateRef = useRef({ totalItemCount, displayItemCount });
+
+  // 当totalItemCount增加时，如果当前已经显示了所有项目，自动增加可见项目数量
+  useEffect(() => {
+    const { totalItemCount: prevTotal, displayItemCount: prevDisplay } =
+      prevStateRef.current;
+
+    // 如果当前已经显示了所有项目，但totalItemCount增加了，自动加载更多
+    if (prevDisplay === prevTotal && totalItemCount > displayItemCount) {
+      // 计算需要增加的项目数量
+      const newVisibleCount = Math.min(
+        displayItemCount + LOAD_MORE_BATCH_SIZE,
+        totalItemCount
+      );
+      if (newVisibleCount > displayItemCount) {
+        setVisibleItemCount(newVisibleCount);
+      }
+    }
+
+    // 更新上一次的状态
+    prevStateRef.current = { totalItemCount, displayItemCount };
+  }, [totalItemCount, displayItemCount]);
 
   // 检查是否还有更多项目可以加载
   const hasNextPage = displayItemCount < totalItemCount;
