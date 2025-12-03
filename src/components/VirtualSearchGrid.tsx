@@ -1,11 +1,26 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
+import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+
+const Grid = dynamic(
+  () => import('react-window').then(mod => ({ default: mod.Grid })),
+  { 
+    ssr: false,
+    loading: () => <div className="animate-pulse h-96 bg-gray-200 dark:bg-gray-800 rounded-lg" />
+  }
+);
 
 import { SearchResult } from '@/lib/types';
+import { useResponsiveGrid } from '@/hooks/useResponsiveGrid';
 
 import VideoCard from '@/components/VideoCard';
+
+// 导出的 ref 接口，供父组件调用
+export interface VirtualSearchGridRef {
+  scrollToTop: () => void;
+}
 
 interface VirtualSearchGridProps {
   // 搜索结果数据
@@ -31,26 +46,25 @@ interface VirtualSearchGridProps {
 // 渐进式加载配置
 const INITIAL_BATCH_SIZE = 12;
 const LOAD_MORE_BATCH_SIZE = 8;
+const LOAD_MORE_THRESHOLD = 5; // 距离底部还有5行时开始加载
 
-// eslint-disable-next-line unused-imports/no-unused-vars
-const _LOAD_MORE_THRESHOLD = 5; // 距离底部还有5行时开始加载
-
-export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
-  // eslint-disable-next-line unused-imports/no-unused-vars
-  allResults,
+export const VirtualSearchGrid = React.forwardRef<VirtualSearchGridRef, VirtualSearchGridProps>(({
+  allResults: _allResults,
   filteredResults,
-  // eslint-disable-next-line unused-imports/no-unused-vars
-  aggregatedResults,
+  aggregatedResults: _aggregatedResults,
   filteredAggResults,
   viewMode,
   searchQuery,
   isLoading,
-  // eslint-disable-next-line unused-imports/no-unused-vars
-  groupRefs,
+  groupRefs: _groupRefs,
   groupStatsRef,
   getGroupRef,
   computeGroupStats,
-}) => {
+}, ref) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<any>(null); // Grid ref for imperative scroll
+  const { columnCount, itemWidth, itemHeight, containerWidth } = useResponsiveGrid(containerRef);
+
   // 渐进式加载状态
   const [visibleItemCount, setVisibleItemCount] = useState(INITIAL_BATCH_SIZE);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -61,12 +75,30 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
 
   // 实际显示的项目数量（考虑渐进式加载）
   const displayItemCount = Math.min(visibleItemCount, totalItemCount);
+  const displayData = currentData.slice(0, displayItemCount);
 
   // 重置可见项目数量（当搜索或过滤变化时）
   useEffect(() => {
     setVisibleItemCount(INITIAL_BATCH_SIZE);
     setIsLoadingMore(false);
   }, [currentData, viewMode]);
+
+  // 当搜索关键词或视图模式改变时，滚动到顶部
+  useEffect(() => {
+    if (gridRef.current?.scrollToCell && totalItemCount > 0) {
+      try {
+        gridRef.current.scrollToCell({
+          columnIndex: 0,
+          rowIndex: 0,
+          align: 'start',
+          behavior: 'smooth'
+        });
+      } catch (error) {
+        // 忽略滚动错误（可能在组件卸载时发生）
+        // console.debug('Grid scroll to top error (safe to ignore):', error);
+      }
+    }
+  }, [searchQuery, viewMode, totalItemCount]);
 
   // 检查是否还有更多项目可以加载
   const hasNextPage = displayItemCount < totalItemCount;
@@ -79,197 +111,203 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
 
     // 模拟异步加载
     setTimeout(() => {
-      setVisibleItemCount((prev) =>
-        Math.min(prev + LOAD_MORE_BATCH_SIZE, totalItemCount)
-      );
+      setVisibleItemCount(prev => Math.min(prev + LOAD_MORE_BATCH_SIZE, totalItemCount));
       setIsLoadingMore(false);
     }, 100);
   }, [isLoadingMore, hasNextPage, totalItemCount]);
 
-  // 滚动监听器，用于触发加载更多
-  const gridRef = useRef<HTMLDivElement>(null);
+  // 暴露 scrollToTop 方法给父组件
+  useImperativeHandle(ref, () => ({
+    scrollToTop: () => {
+      if (gridRef.current?.scrollToCell) {
+        try {
+          gridRef.current.scrollToCell({
+            columnIndex: 0,
+            rowIndex: 0,
+            align: 'start',
+            behavior: 'smooth'
+          });
+        } catch (error) {
+        // console.debug('Grid scroll to top error (safe to ignore):', error);
+      }
+      }
+    }
+  }), []);
 
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
+  // 网格行数计算
+  const rowCount = Math.ceil(displayItemCount / columnCount);
 
-    const handleScroll = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        const element = gridRef.current;
-        if (!element) return;
+  // 单行网格优化：确保单行时布局正确
+  const isSingleRow = rowCount === 1;
 
-        const { scrollTop, scrollHeight, clientHeight } = element;
-        const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
-
-        if (isNearBottom) {
-          loadMoreItems();
-        }
-      }, 100); // 100ms节流时间
-    };
-
-    const gridElement = gridRef.current;
-    if (gridElement) {
-      gridElement.addEventListener('scroll', handleScroll, { passive: true });
+  // 渲染单个网格项
+  const CellComponent = useCallback(({ 
+    columnIndex, 
+    rowIndex, 
+    style,
+    displayData: cellDisplayData,
+    viewMode: cellViewMode,
+    searchQuery: cellSearchQuery,
+    columnCount: cellColumnCount,
+    displayItemCount: cellDisplayItemCount,
+    groupStatsRef: cellGroupStatsRef,
+    getGroupRef: cellGetGroupRef,
+    computeGroupStats: cellComputeGroupStats,
+  }: any) => {
+    const index = rowIndex * cellColumnCount + columnIndex;
+    
+    // 如果超出显示范围，返回隐藏的占位符
+    if (index >= cellDisplayItemCount) {
+      return <div style={{ ...style, visibility: 'hidden' }} />;
     }
 
-    return () => {
-      if (gridElement) {
-        gridElement.removeEventListener('scroll', handleScroll);
+    const item = cellDisplayData[index];
+
+    if (!item) {
+      return <div style={{ ...style, visibility: 'hidden' }} />;
+    }
+
+    // 根据视图模式渲染不同内容
+    if (cellViewMode === 'agg') {
+      const [mapKey, group] = item as [string, SearchResult[]];
+      const title = group[0]?.title || '';
+      const poster = group[0]?.poster || '';
+      const year = group[0]?.year || 'unknown';
+      const { episodes, source_names, douban_id } = cellComputeGroupStats(group);
+      const type = episodes === 1 ? 'movie' : 'tv';
+
+      // 如果该聚合第一次出现，写入初始统计
+      if (!cellGroupStatsRef.current.has(mapKey)) {
+        cellGroupStatsRef.current.set(mapKey, {
+          episodes,
+          source_names,
+          douban_id,
+        });
       }
-      clearTimeout(timeoutId);
-    };
-  }, [loadMoreItems]);
+
+      return (
+        <div style={{ ...style, padding: '8px' }}>
+          <VideoCard
+            ref={cellGetGroupRef(mapKey)}
+            from='search'
+            isAggregate={true}
+            title={title}
+            poster={poster}
+            year={year}
+            episodes={episodes}
+            source_names={source_names}
+            douban_id={douban_id}
+            query={cellSearchQuery.trim() !== title ? cellSearchQuery.trim() : ''}
+            type={type}
+          />
+        </div>
+      );
+    } else {
+      const searchItem = item as SearchResult;
+      return (
+        <div style={{ ...style, padding: '8px' }}>
+          <VideoCard
+            id={searchItem.id}
+            title={searchItem.title}
+            poster={searchItem.poster}
+            episodes={searchItem.episodes.length}
+            source={searchItem.source}
+            source_name={searchItem.source_name}
+            douban_id={searchItem.douban_id}
+            query={cellSearchQuery.trim() !== searchItem.title ? cellSearchQuery.trim() : ''}
+            year={searchItem.year}
+            from='search'
+            type={searchItem.episodes.length > 1 ? 'tv' : 'movie'}
+          />
+        </div>
+      );
+    }
+  }, []);
 
   return (
-    <div className='w-full'>
+    <div ref={containerRef} className='w-full'>
       {totalItemCount === 0 ? (
-        <div className='flex flex-col justify-center items-center py-12'>
+        <div className='flex justify-center items-center h-40'>
           {isLoading ? (
             <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-green-500'></div>
           ) : (
-            <div className='text-center py-16 dark:text-gray-400'>
-              <div className='flex justify-center mb-4'>
-                <svg
-                  className='h-12 w-12 text-gray-300 dark:text-gray-600 animate-pulse'
-                  fill='none'
-                  viewBox='0 0 24 24'
-                  stroke='currentColor'
-                >
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={1}
-                    d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'
-                  />
-                </svg>
-              </div>
-              <h3 className='text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2 animate-fade-in'>
-                未找到相关结果
-              </h3>
-              <p className='text-gray-500 dark:text-gray-400 animate-fade-in'>
-                尝试调整搜索条件或使用其他关键词
-              </p>
+            <div className='text-center text-gray-500 py-8 dark:text-gray-400'>
+              未找到相关结果
             </div>
           )}
         </div>
-      ) : (
-        /* 使用虚拟列表渲染搜索结果 */
-        <div className='relative'>
-          <div
-            ref={gridRef}
-            className='grid grid-cols-2 gap-x-4 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8 transition-all duration-300 scrollbar-hide'
-            style={{
-              overflowY: 'auto',
-              scrollBehavior: 'smooth',
-              isolation: 'auto',
-            }}
-          >
-            {viewMode === 'agg'
-              ? filteredAggResults
-                  .slice(0, displayItemCount)
-                  .map(([mapKey, group], index) => {
-                    const title = group[0]?.title || '';
-                    const poster = group[0]?.poster || '';
-                    const year = group[0]?.year || 'unknown';
-                    const { episodes, source_names, douban_id } =
-                      computeGroupStats(group);
-                    const type = episodes === 1 ? 'movie' : 'tv';
-
-                    // 如果该聚合第一次出现，写入初始统计
-                    if (!groupStatsRef.current.has(mapKey)) {
-                      groupStatsRef.current.set(mapKey, {
-                        episodes,
-                        source_names,
-                        douban_id,
-                      });
-                    }
-
-                    return (
-                      <div
-                        key={`agg-${mapKey}`}
-                        className='w-full animate-fade-in transition-all duration-500 ease-out transform hover:scale-105 hover:shadow-xl opacity-0'
-                        style={{
-                          animationDelay: `${index * 20}ms`,
-                          animationFillMode: 'forwards',
-                        }}
-                      >
-                        <VideoCard
-                          ref={getGroupRef(mapKey)}
-                          from='search'
-                          isAggregate={true}
-                          title={title}
-                          poster={poster}
-                          year={year}
-                          episodes={episodes}
-                          source_names={source_names}
-                          douban_id={douban_id}
-                          query={
-                            searchQuery.trim() !== title
-                              ? searchQuery.trim()
-                              : ''
-                          }
-                          type={type}
-                        />
-                      </div>
-                    );
-                  })
-              : filteredResults
-                  .slice(0, displayItemCount)
-                  .map((item, index) => (
-                    <div
-                      key={`all-${item.source}-${item.id}`}
-                      className='w-full animate-fade-in transition-all duration-500 ease-out transform hover:scale-105 hover:shadow-xl opacity-0'
-                      style={{
-                        animationDelay: `${index * 20}ms`,
-                        animationFillMode: 'forwards',
-                      }}
-                    >
-                      <VideoCard
-                        id={item.id}
-                        title={item.title}
-                        poster={item.poster}
-                        episodes={item.episodes.length}
-                        source={item.source}
-                        source_name={item.source_name}
-                        douban_id={item.douban_id}
-                        query={
-                          searchQuery.trim() !== item.title
-                            ? searchQuery.trim()
-                            : ''
-                        }
-                        year={item.year}
-                        from='search'
-                        type={item.episodes.length > 1 ? 'tv' : 'movie'}
-                      />
-                    </div>
-                  ))}
-          </div>
+      ) : containerWidth <= 100 ? (
+        <div className='flex justify-center items-center h-40'>
+          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-green-500'></div>
+          <span className='ml-2 text-sm text-gray-500'>
+            初始化虚拟滑动... ({Math.round(containerWidth)}px)
+          </span>
         </div>
+      ) : (
+        <Grid
+          key={`grid-${containerWidth}-${columnCount}`}
+          gridRef={gridRef}
+          cellComponent={CellComponent}
+          cellProps={{
+            displayData,
+            viewMode,
+            searchQuery,
+            columnCount,
+            displayItemCount,
+            groupStatsRef,
+            getGroupRef,
+            computeGroupStats,
+          }}
+          columnCount={columnCount}
+          columnWidth={itemWidth + 16}
+          rowCount={rowCount}
+          rowHeight={itemHeight + 16}
+          overscanCount={5}
+          // 添加ARIA支持提升无障碍体验
+          role="grid"
+          aria-label={`搜索结果列表 "${searchQuery}"，共${displayItemCount}个结果，当前视图：${viewMode === 'agg' ? '聚合视图' : '全部结果'}`}
+          aria-rowcount={rowCount}
+          aria-colcount={columnCount}
+          style={{
+            // 确保不创建新的stacking context，让菜单能正确显示在最顶层
+            isolation: 'auto',
+            // 平滑滚动优化
+            scrollBehavior: 'smooth',
+            // 单行网格优化：防止高度异常
+            ...(isSingleRow && {
+              minHeight: itemHeight + 16,
+              maxHeight: itemHeight + 32,
+            }),
+          }}
+          onCellsRendered={(visibleCells) => {
+            // 简化逻辑：基于可见行检测
+            if (visibleCells.rowStopIndex >= rowCount - LOAD_MORE_THRESHOLD && hasNextPage && !isLoadingMore) {
+              loadMoreItems();
+            }
+          }}
+        />
       )}
-
+      
       {/* 加载更多指示器 */}
-      {isLoadingMore && (
-        <div className='flex justify-center items-center py-8 animate-fade-in'>
+      {containerWidth > 100 && isLoadingMore && (
+        <div className='flex justify-center items-center py-8'>
           <div className='animate-spin rounded-full h-8 w-8 border-4 border-green-200 border-t-green-600 dark:border-green-800 dark:border-t-green-400 shadow-lg'></div>
           <span className='ml-3 text-sm font-medium text-gray-600 dark:text-gray-300'>
             加载更多...
           </span>
         </div>
       )}
-
+      
       {/* 已加载完所有内容的提示 */}
-      {!hasNextPage && displayItemCount > INITIAL_BATCH_SIZE && (
-        <div className='text-center py-6 px-4 animate-fade-in'>
-          <div className='text-sm font-medium text-gray-600 dark:text-gray-300'>
-            已显示全部 {displayItemCount} 个结果
-          </div>
-          <div className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
-            没有更多内容了
-          </div>
+      {containerWidth > 100 && !hasNextPage && displayItemCount > INITIAL_BATCH_SIZE && (
+        <div className='text-center py-4 text-sm text-gray-500 dark:text-gray-400'>
+          已显示全部 {displayItemCount} 个结果
         </div>
       )}
     </div>
   );
-};
+});
+
+VirtualSearchGrid.displayName = 'VirtualSearchGrid';
 
 export default VirtualSearchGrid;
