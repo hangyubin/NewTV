@@ -162,7 +162,7 @@ const CombinedDetailModal: React.FC<CombinedDetailModalProps> = ({
       }}
     >
       {/* PC端布局 - 保持原有的横向布局 */}
-      <div className={`hidden md:block ${resolvedTheme === 'light' ? 'bg-white bg-opacity-95' : 'bg-gray-800 bg-opacity-90'} rounded-lg shadow-lg w-[90vw] max-w-4xl h-[70vh] overflow-hidden relative`}>
+      <div className={`hidden md:block ${resolvedTheme === 'light' ? 'bg-white bg-opacity-95' : 'bg-gray-800 bg-opacity-90'} rounded-lg shadow-lg w-[90vw] max-w-4xl max-h-[80vh] overflow-hidden relative`}>
         <div className="flex h-full">
           <button
             onClick={() => {
@@ -269,7 +269,7 @@ const CombinedDetailModal: React.FC<CombinedDetailModalProps> = ({
       </div>
 
       {/* 移动端布局 - 4段式垂直布局 */}
-      <div className={`block md:hidden ${resolvedTheme === 'light' ? 'bg-white bg-opacity-95' : 'bg-gray-800 bg-opacity-90'} rounded-lg shadow-lg w-[90vw] h-[70vh] flex flex-col overflow-hidden relative mt-[10vh]`}>
+      <div className={`block md:hidden ${resolvedTheme === 'light' ? 'bg-white bg-opacity-95' : 'bg-gray-800 bg-opacity-90'} rounded-lg shadow-lg w-[90vw] max-h-[80vh] flex flex-col overflow-hidden relative mt-[10vh]`}>
         <button
           onClick={() => {
             clearTimers();
