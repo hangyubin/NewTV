@@ -14,16 +14,16 @@ interface MobileHeaderProps {
 const MobileHeader = ({ showBackButton = false }: MobileHeaderProps) => {
   const { siteName } = useSite();
   return (
-    <header className='md:hidden fixed top-0 left-0 right-0 z-[999] w-full glass-nav border-b border-white/20 shadow-glass dark:border-white/10'>
-      <div className='h-12 flex items-center justify-between px-4'>
+    <header className='md:hidden fixed top-0 left-0 right-0 z-[999] w-full backdrop-blur-lg bg-white/90 dark:bg-gray-900/90 border-b border-white/30 dark:border-gray-800/50 shadow-lg shadow-black/5 dark:shadow-black/20 transition-all duration-300'>
+      <div className='h-14 flex items-center justify-between px-4 pt-1'>
         {/* 左侧：搜索按钮、AI推荐按钮、返回按钮和设置按钮 */}
         <div className='flex items-center gap-2'>
           <Link
             href='/search'
-            className='w-10 h-10 p-2 rounded-full flex items-center justify-center text-gray-600 hover:bg-white/20 dark:text-gray-300 dark:hover:bg-white/10 transition-all duration-200'
+            className='w-10 h-10 p-2 rounded-full flex items-center justify-center text-gray-600 hover:bg-blue-50 dark:text-gray-300 dark:hover:bg-blue-900/20 transition-all duration-300 group'
           >
             <svg
-              className='w-full h-full'
+              className='w-full h-full transition-all duration-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:scale-110'
               fill='none'
               stroke='currentColor'
               viewBox='0 0 24 24'
@@ -51,7 +51,7 @@ const MobileHeader = ({ showBackButton = false }: MobileHeaderProps) => {
       <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'>
         <Link
           href='/'
-          className='text-2xl font-bold text-black dark:text-white tracking-tight hover:opacity-80 transition-opacity'
+          className='text-2xl font-bold text-gray-900 dark:text-white tracking-tight hover:opacity-90 transition-all duration-300 hover:scale-105 drop-shadow-sm'
         >
           {siteName}
         </Link>

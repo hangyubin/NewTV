@@ -106,7 +106,7 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
 
   return (
     <nav
-      className='md:hidden fixed left-0 right-0 z-[600] glass-nav border-t border-white/20 overflow-visible dark:border-white/10'
+      className='md:hidden fixed left-0 right-0 z-[600] overflow-visible backdrop-blur-lg bg-white/80 dark:bg-gray-900/80 border-t border-white/30 dark:border-gray-800/50 shadow-lg shadow-black/5 dark:shadow-black/20 transition-all duration-300'
       style={{
         /* 紧贴视口底部，同时在内部留出安全区高度 */
         bottom: 0,
@@ -125,18 +125,22 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
               {item.label !== '更多' ? (
                 <Link
                   href={item.href}
-                  className='flex flex-col items-center justify-center w-full h-14 gap-1 text-xs transition-all duration-200 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg'
+                  className='flex flex-col items-center justify-center w-full h-14 gap-1 text-xs transition-all duration-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg relative group'
                 >
+                  {/* 激活状态的背景指示器 */}
+                  {active && (
+                    <div className='absolute inset-0 bg-blue-100 dark:bg-blue-900/30 rounded-lg opacity-70' />
+                  )}
                   <item.icon
-                    className={`h-6 w-6 transition-colors duration-200 ${active
-                      ? 'text-blue-600 dark:text-blue-400'
-                      : 'text-gray-500 dark:text-gray-400'
+                    className={`h-6 w-6 transition-all duration-300 ${active
+                      ? 'text-blue-600 dark:text-blue-400 scale-110 drop-shadow-[0_0_4px_rgba(59,130,246,0.5)]'
+                      : 'text-gray-500 dark:text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400'
                       }`}
                   />
                   <span
-                    className={`transition-colors duration-200 ${active
-                      ? 'text-blue-600 dark:text-blue-400'
-                      : 'text-gray-600 dark:text-gray-300'
+                    className={`transition-all duration-300 font-medium ${active
+                      ? 'text-blue-700 dark:text-blue-300 scale-105'
+                      : 'text-gray-600 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400'
                       } ${item.label === 'YouTube' ? 'text-[10px]' : 'text-xs'}`}
                   >
                     {item.label}
@@ -146,15 +150,19 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
                 <button
                   type='button'
                   onClick={() => setShowMore((v) => !v)}
-                  className='flex flex-col items-center justify-center w-full h-14 gap-1 text-xs transition-all duration-200 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg'
+                  className='flex flex-col items-center justify-center w-full h-14 gap-1 text-xs transition-all duration-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg relative group'
                 >
+                  {/* 激活状态的背景指示器 */}
+                  {moreActive && (
+                    <div className='absolute inset-0 bg-blue-100 dark:bg-blue-900/30 rounded-lg opacity-70' />
+                  )}
                   <item.icon
-                    className={`h-6 w-6 transition-colors duration-200 ${moreActive
-                      ? 'text-blue-600 dark:text-blue-400'
-                      : 'text-gray-500 dark:text-gray-400'
+                    className={`h-6 w-6 transition-all duration-300 ${moreActive
+                      ? 'text-blue-600 dark:text-blue-400 scale-110 drop-shadow-[0_0_4px_rgba(59,130,246,0.5)]'
+                      : 'text-gray-500 dark:text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400'
                       }`}
                   />
-                  <span className={`transition-colors duration-200 ${moreActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300'} text-xs`}>
+                  <span className={`transition-all duration-300 font-medium ${moreActive ? 'text-blue-700 dark:text-blue-300 scale-105' : 'text-gray-600 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400'} text-xs`}>
                     更多
                   </span>
                 </button>
@@ -165,40 +173,39 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
       </ul>
 
       {showMore && (
-        <div className='absolute bottom-[calc(3.5rem+env(safe-area-inset-bottom)+0.5rem)] left-0 right-0 z-[650] px-4'>
-          <div className='mx-auto max-w-sm glass-nav border border-white/20 dark:border-white/10 shadow-floating rounded-apple-xl'>
+        <div className='absolute bottom-[calc(3.5rem+env(safe-area-inset-bottom)+0.5rem)] left-0 right-0 z-[650] px-4 animate-fade-in-up'>
+          <div className='mx-auto max-w-sm backdrop-blur-lg bg-white/90 dark:bg-gray-900/90 border border-white/30 dark:border-gray-800/50 shadow-xl shadow-black/10 dark:shadow-black/30 rounded-2xl overflow-hidden transform transition-all duration-300 hover:shadow-2xl'>
             <div className='flex divide-x divide-gray-200/60 dark:divide-gray-700/60'>
               <Link
                 href='/douban?type=short-drama'
-                className='flex-1 px-2 py-3 flex items-center justify-center gap-1 text-xs text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400'
+                className='flex-1 px-3 py-4 flex items-center justify-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-300 group'
                 onClick={() => setShowMore(false)}
               >
-                <Clapperboard className='h-4 w-4' /> 短剧
+                <Clapperboard className='h-5 w-5 transition-colors duration-300 group-hover:text-blue-600 dark:group-hover:text-blue-400' /> 短剧
               </Link>
               <Link
                 href='/douban?type=anime'
-                className='flex-1 px-2 py-3 flex items-center justify-center gap-1 text-xs text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400'
+                className='flex-1 px-3 py-4 flex items-center justify-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-300 group'
                 onClick={() => setShowMore(false)}
               >
-                <Cat className='h-4 w-4' /> 动漫
+                <Cat className='h-5 w-5 transition-colors duration-300 group-hover:text-blue-600 dark:group-hover:text-blue-400' /> 动漫
               </Link>
               <Link
                 href='/douban?type=show'
-                className='flex-1 px-2 py-3 flex items-center justify-center gap-1 text-xs text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400'
+                className='flex-1 px-3 py-4 flex items-center justify-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-300 group'
                 onClick={() => setShowMore(false)}
               >
-                <Clover className='h-4 w-4' /> 综艺
+                <Clover className='h-5 w-5 transition-colors duration-300 group-hover:text-blue-600 dark:group-hover:text-blue-400' /> 综艺
               </Link>
               {hasCustom && (
                 <Link
                   href='/douban?type=custom'
-                  className='flex-1 px-2 py-3 flex items-center justify-center gap-1 text-xs text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400'
+                  className='flex-1 px-3 py-4 flex items-center justify-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-300 group'
                   onClick={() => setShowMore(false)}
                 >
-                  <Star className='h-4 w-4' /> 纪录
+                  <Star className='h-5 w-5 transition-colors duration-300 group-hover:text-blue-600 dark:group-hover:text-blue-400' /> 纪录
                 </Link>
               )}
-
             </div>
           </div>
         </div>
