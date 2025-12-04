@@ -468,22 +468,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     }, []);
 
     const handleClick = useCallback(() => {
-      // 如果是豆瓣来源，展示豆瓣详情
-      if (from === 'douban') {
-        handleDoubanClick();
-      } else if (isAggregate && !actualSource && !actualId) {
-        // 如果是聚合搜索且没有具体的source和id（即搜索源状态），使用统一的处理逻辑
-        handleDoubanClick();
-      } else {
-        // 其他情况直接跳转
-        navigateToPlay();
-      }
+      // 所有情况都直接跳转到播放，不再显示详情弹窗
+      navigateToPlay();
     }, [
-      from,
-      isAggregate,
-      actualSource,
-      actualId,
-      handleDoubanClick,
       navigateToPlay,
     ]);
 
