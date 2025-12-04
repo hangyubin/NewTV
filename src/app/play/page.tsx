@@ -24,7 +24,7 @@ import {
 } from '@/lib/db.client';
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import { getDoubanDetails } from '@/lib/douban.client';
-import { SearchResult } from '@/lib/types';
+import { Favorite, PlayRecord, SearchResult } from '@/lib/types';
 import { checkVideoUpdate } from '@/lib/watching-updates';
 
 
@@ -237,6 +237,8 @@ function PlayPageClient() {
   const lastVolumeRef = useRef<number>(0.7);
   // 上次使用的播放速率，默认 1.0
   const lastPlaybackRateRef = useRef<number>(1.0);
+  // 保存当前视频的总时长
+  const durationRef = useRef<number>(0);
 
   // 换源相关状态
   const [availableSources, setAvailableSources] = useState<SearchResult[]>([]);
@@ -819,7 +821,7 @@ function PlayPageClient() {
             skipConfigRef.current.intro_time === 0
               ? '设置片头时间'
               : `${formatTime(skipConfigRef.current.intro_time)}`,
-          onClick: function () {
+          onClick: function (this: any) {
             const currentTime = artPlayerRef.current?.currentTime || 0;
             if (currentTime > 0) {
               const newConfig = {
@@ -1189,8 +1191,19 @@ function PlayPageClient() {
     if (!currentSource || !currentId) return;
 
     try {
-      const key = generateStorageKey(currentSource, currentId);
-      await savePlayRecord(currentSource, currentId, time, index, videoTitle);
+      const record: PlayRecord = {
+        title: videoTitle,
+        source_name: detail?.source_name || '',
+        cover: detail?.poster || '',
+        year: videoYear,
+        index: index,
+        total_episodes: totalEpisodes,
+        play_time: time,
+        total_time: durationRef.current || 0, // 从播放器获取总时长
+        save_time: Date.now(),
+        search_title: videoTitle
+      };
+      await savePlayRecord(currentSource, currentId, record);
       lastSaveTimeRef.current = Date.now();
     } catch (err) {
       console.error('保存播放记录失败:', err);
@@ -1205,7 +1218,16 @@ function PlayPageClient() {
       if (favorited) {
         await deleteFavorite(currentSource, currentId);
       } else {
-        await saveFavorite(currentSource, currentId, videoTitle);
+        const favorite: Favorite = {
+          title: videoTitle,
+          source_name: detail?.source_name || '',
+          year: videoYear,
+          cover: detail?.poster || '',
+          total_episodes: totalEpisodes,
+          save_time: Date.now(),
+          search_title: videoTitle
+        };
+        await saveFavorite(currentSource, currentId, favorite);
       }
       setFavorited(!favorited);
     } catch (err) {
@@ -1231,20 +1253,18 @@ function PlayPageClient() {
 
   // 监听数据更新
   useEffect(() => {
-    const unsubscribe = subscribeToDataUpdates((type) => {
-      if (type === 'favorites') {
-        // 收藏数据更新，重新检查收藏状态
-        const checkFavorite = async () => {
-          if (!currentSource || !currentId) return;
-          try {
-            const isFavorite = await isFavorited(currentSource, currentId);
-            setFavorited(isFavorite);
-          } catch (err) {
-            console.error('检查收藏状态失败:', err);
-          }
-        };
-        checkFavorite();
-      }
+    const unsubscribe = subscribeToDataUpdates('favoritesUpdated', () => {
+      // 收藏数据更新，重新检查收藏状态
+      const checkFavorite = async () => {
+        if (!currentSource || !currentId) return;
+        try {
+          const isFavorite = await isFavorited(currentSource, currentId);
+          setFavorited(isFavorite);
+        } catch (err) {
+          console.error('检查收藏状态失败:', err);
+        }
+      };
+      checkFavorite();
     });
 
     return () => unsubscribe();
@@ -1261,7 +1281,7 @@ function PlayPageClient() {
     setIsVideoLoading(true);
 
     // 初始化ArtPlayer
-    const art = new (window as any).Artplayer({
+    const art: any = new (window as any).Artplayer({
       container: artRef.current || '',
       url: videoUrl,
       title: videoTitle,
@@ -1315,7 +1335,7 @@ function PlayPageClient() {
             skipConfig.intro_time === 0
               ? '设置片头时间'
               : `${formatTime(skipConfig.intro_time)}`,
-          onClick: function () {
+          onClick: function (): string | void {
             const currentTime = art.currentTime;
             if (currentTime > 0) {
               const newConfig = {
@@ -1335,7 +1355,7 @@ function PlayPageClient() {
             skipConfig.outro_time >= 0
               ? '设置片尾时间'
               : `-${formatTime(-skipConfig.outro_time)}`,
-          onClick: function () {
+          onClick: function (): string | void {
             const outroTime = 
               -(art.duration - art.currentTime) || 0;
             if (outroTime < 0) {
@@ -1406,6 +1426,9 @@ function PlayPageClient() {
       requestWakeLock();
       setIsVideoLoading(false);
 
+      // 更新总时长
+      durationRef.current = art.duration;
+
       // 跳转到指定进度
       if (resumeTimeRef.current !== null && resumeTimeRef.current > 0) {
         setTimeout(() => {
@@ -1419,6 +1442,9 @@ function PlayPageClient() {
         const currentTime = art.currentTime;
         const currentIndex = currentEpisodeIndex;
         const now = Date.now();
+
+        // 更新总时长（处理动态时长变化）
+        durationRef.current = art.duration;
 
         // 实现跳过片头片尾功能
         if (skipConfig.enable && art.duration > 0) {
@@ -1615,7 +1641,7 @@ function PlayPageClient() {
   }, []);
 
   return (
-    <PageLayout title={videoTitle} description={`正在播放 ${videoTitle}`}>
+    <PageLayout>
       <div className="relative flex flex-col h-screen bg-black">
         {/* 视频播放器 */}
         <div 
@@ -1655,13 +1681,16 @@ function PlayPageClient() {
 
         {/* 剧集选择器 */}
         <EpisodeSelector 
-          detail={detail} 
-          currentIndex={currentEpisodeIndex} 
-          availableSources={availableSources} 
-          onEpisodeChange={(index) => setCurrentEpisodeIndex(index)} 
+          totalEpisodes={totalEpisodes} 
+          episodes_titles={detail?.episodes_titles || []}
+          value={currentEpisodeIndex + 1} 
+          onChange={(episodeNumber) => setCurrentEpisodeIndex(episodeNumber - 1)} 
           onSourceChange={handleSourceChange}
-          isCollapsed={isEpisodeSelectorCollapsed}
-          onToggleCollapse={() => setIsEpisodeSelectorCollapsed(!isEpisodeSelectorCollapsed)}
+          currentSource={currentSource}
+          currentId={currentId}
+          videoTitle={videoTitle}
+          videoYear={videoYear}
+          availableSources={availableSources} 
           precomputedVideoInfo={precomputedVideoInfo}
         />
       </div>
