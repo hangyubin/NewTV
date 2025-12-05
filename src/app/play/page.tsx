@@ -1296,7 +1296,12 @@ function PlayPageClient() {
     setIsVideoLoading(true);
 
     // 初始化ArtPlayer
-    const art: any = new (window as any).Artplayer({
+    let art: any;
+    try {
+      if (!(window as any).Artplayer) {
+        throw new Error('ArtPlayer is not available');
+      }
+      art = new (window as any).Artplayer({
       container: artRef.current || '',
       url: videoUrl,
       title: videoTitle,
@@ -1434,6 +1439,12 @@ function PlayPageClient() {
     });
 
     artPlayerRef.current = art;
+    } catch (error) {
+      console.error('初始化播放器失败:', error);
+      setError('初始化播放器失败，请刷新页面重试');
+      setIsVideoLoading(false);
+      return;
+    }
 
     // 监听播放器准备就绪事件
     art.on('ready', () => {
