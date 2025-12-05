@@ -171,12 +171,27 @@ function PlayPageClient() {
   // 加载豆瓣详情
   useEffect(() => {
     const loadMovieDetails = async () => {
+      // 只有当videoDoubanId是有效的非0数值时才尝试加载豆瓣详情
       if (
         !videoDoubanId ||
         videoDoubanId === 0 ||
         loadingMovieDetails ||
         movieDetails
       ) {
+        // 如果没有有效的豆瓣ID，但有detail.class，使用回滚数据
+        if (detail?.class && !movieDetails) {
+          const fallbackData = {
+            id: '0',
+            title: detail.title || '',
+            poster: '',
+            rate: '',
+            year: detail.year || '',
+            genres: [detail.class], // 使用class作为genres的回滚
+            plot_summary: detail.desc || '', // 使用desc作为plot_summary的回滚
+          };
+          setMovieDetails(fallbackData);
+          console.log('使用回滚数据:', fallbackData);
+        }
         return;
       }
 
