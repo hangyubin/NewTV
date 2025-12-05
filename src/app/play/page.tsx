@@ -223,7 +223,7 @@ function PlayPageClient() {
     };
 
     loadMovieDetails();
-  }, [videoDoubanId, loadingMovieDetails, movieDetails, detail]);
+  }, [videoDoubanId, detail]);
 
   // 视频播放地址
   const [videoUrl, setVideoUrl] = useState('');
