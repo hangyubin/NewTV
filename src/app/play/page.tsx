@@ -1295,42 +1295,46 @@ function PlayPageClient() {
     // 重置加载状态
     setIsVideoLoading(true);
 
-    // 初始化ArtPlayer
-    let art: any;
-    try {
-      if (!(window as any).Artplayer) {
-        throw new Error('ArtPlayer is not available');
-      }
-      art = new (window as any).Artplayer({
-      container: artRef.current || '',
-      url: videoUrl,
-      title: videoTitle,
-      volume: lastVolumeRef.current,
-      playbackRate: lastPlaybackRateRef.current,
-      screenshot: true,
-      fullscreen: true,
-      pip: true,
-      mutex: true,
-      backdrop: true,
-      autoSize: true,
-      autoplay: true,
-      autoMini: true,
-      theme: '#ff3300',
-      lang: {
-        play: '播放',
-        pause: '暂停',
-        volume: '音量',
-        muted: '静音',
-        speed: '速度',
-        pip: '画中画',
-        fullscreen: '全屏',
-        loading: '加载中...',
-        screenshot: '截图',
-      },
-      quality: [
-        {
-          name: '自动',
+    // 动态导入ArtPlayer并初始化
+    const loadAndInit = async () => {
+      try {
+        // 动态导入ArtPlayer
+        const { default: Artplayer } = await import('artplayer');
+        
+        // 将导入的模块设置为全局变量
+        (window as any).DynamicArtplayer = Artplayer;
+        
+        // 使用动态导入的Artplayer，添加类型断言解决TypeScript编译错误
+        const art: any = new (Artplayer as any)({
+          container: artRef.current || '',
           url: videoUrl,
+          title: videoTitle,
+          volume: lastVolumeRef.current,
+          playbackRate: lastPlaybackRateRef.current,
+          screenshot: true,
+          fullscreen: true,
+          pip: true,
+          mutex: true,
+          backdrop: true,
+          autoSize: true,
+          autoplay: true,
+          autoMini: true,
+          theme: '#ff3300',
+          lang: {
+            play: '播放',
+            pause: '暂停',
+            volume: '音量',
+            muted: '静音',
+            speed: '速度',
+            pip: '画中画',
+            fullscreen: '全屏',
+            loading: '加载中...',
+            screenshot: '截图',
+          },
+          quality: [
+            {
+              name: '自动',
+              url: videoUrl,
         },
       ],
       setting: [
@@ -1438,154 +1442,152 @@ function PlayPageClient() {
       ],
     });
 
-    artPlayerRef.current = art;
-    } catch (error) {
-      console.error('初始化播放器失败:', error);
-      setError('初始化播放器失败，请刷新页面重试');
-      setIsVideoLoading(false);
-      return;
-    }
-
-    // 监听播放器准备就绪事件
-    art.on('ready', () => {
-      console.log('ArtPlayer 准备就绪');
-      requestWakeLock();
-      setIsVideoLoading(false);
-
-      // 更新总时长
-      durationRef.current = art.duration;
-
-      // 跳转到指定进度
-      if (resumeTimeRef.current !== null && resumeTimeRef.current > 0) {
-        setTimeout(() => {
-          art.seek = resumeTimeRef.current || 0;
-          resumeTimeRef.current = null;
-        }, 500);
-      }
-
-      // 监听播放进度变化，定期保存播放记录
-      art.on('timeupdate', () => {
-        const currentTime = art.currentTime;
-        const currentIndex = currentEpisodeIndex;
-        const now = Date.now();
-
-        // 更新总时长（处理动态时长变化）
+        // 保存播放器实例
+        artPlayerRef.current = art;
+        
+        // 更新总时长
         durationRef.current = art.duration;
 
-        // 实现跳过片头片尾功能
-        if (skipConfig.enable && art.duration > 0) {
-          const nowTime = Date.now();
-          if (nowTime - lastSkipCheckRef.current > 1000) { // 限制检查频率
-            lastSkipCheckRef.current = nowTime;
+        // 跳转到指定进度
+        if (resumeTimeRef.current !== null && resumeTimeRef.current > 0) {
+          setTimeout(() => {
+            art.seek = resumeTimeRef.current || 0;
+            resumeTimeRef.current = null;
+          }, 500);
+        }
 
-            // 跳过片头
-            if (skipConfig.intro_time > 0 && currentTime >= skipConfig.intro_time - 1 && currentTime <= skipConfig.intro_time + 1) {
-              art.seek = skipConfig.intro_time;
-              console.log('自动跳过片头到', skipConfig.intro_time, '秒');
-            }
+        // 监听播放进度变化，定期保存播放记录
+        art.on('timeupdate', () => {
+          const currentTime = art.currentTime;
+          const currentIndex = currentEpisodeIndex;
+          const now = Date.now();
 
-            // 跳过片尾
-            if (skipConfig.outro_time < 0) {
-              const outroStart = art.duration + skipConfig.outro_time;
-              if (currentTime >= outroStart - 1 && currentTime <= outroStart + 1) {
-                // 如果是最后一集，不跳过片尾
-                if (currentIndex < totalEpisodes - 1) {
-                  // 跳转到下一集
-                  art.on('seeked', () => {
-                    setCurrentEpisodeIndex(currentIndex + 1);
-                    art.play();
-                  });
-                  art.seek = art.duration;
-                  console.log('自动跳过片尾，跳转到下一集');
+          // 更新总时长（处理动态时长变化）
+          durationRef.current = art.duration;
+
+          // 实现跳过片头片尾功能
+          if (skipConfig.enable && art.duration > 0) {
+            const nowTime = Date.now();
+            if (nowTime - lastSkipCheckRef.current > 1000) { // 限制检查频率
+              lastSkipCheckRef.current = nowTime;
+
+              // 跳过片头
+              if (skipConfig.intro_time > 0 && currentTime >= skipConfig.intro_time - 1 && currentTime <= skipConfig.intro_time + 1) {
+                art.seek = skipConfig.intro_time;
+                console.log('自动跳过片头到', skipConfig.intro_time, '秒');
+              }
+
+              // 跳过片尾
+              if (skipConfig.outro_time < 0) {
+                const outroStart = art.duration + skipConfig.outro_time;
+                if (currentTime >= outroStart - 1 && currentTime <= outroStart + 1) {
+                  // 如果是最后一集，不跳过片尾
+                  if (currentIndex < totalEpisodes - 1) {
+                    // 跳转到下一集
+                    art.on('seeked', () => {
+                      setCurrentEpisodeIndex(currentIndex + 1);
+                      art.play();
+                    });
+                    art.seek = art.duration;
+                    console.log('自动跳过片尾，跳转到下一集');
+                  }
                 }
               }
             }
           }
-        }
 
-        // 保存播放记录 (每10秒保存一次，或播放结束时保存)
-        if (now - lastSaveTimeRef.current > 10000) {
-          savePlayRecordAsync(currentTime, currentIndex + 1);
-        }
-      });
+          // 保存播放记录 (每10秒保存一次，或播放结束时保存)
+          if (now - lastSaveTimeRef.current > 10000) {
+            savePlayRecordAsync(currentTime, currentIndex + 1);
+          }
+        });
 
-      // 监听播放结束事件
-      art.on('ended', () => {
-        const currentIndex = currentEpisodeIndex;
-        savePlayRecordAsync(0, currentIndex + 1);
+        // 监听播放结束事件
+        art.on('ended', () => {
+          const currentIndex = currentEpisodeIndex;
+          savePlayRecordAsync(0, currentIndex + 1);
 
-        // 自动播放下一集
-        if (currentIndex < totalEpisodes - 1) {
-          setCurrentEpisodeIndex(currentIndex + 1);
-        }
-      });
+          // 自动播放下一集
+          if (currentIndex < totalEpisodes - 1) {
+            setCurrentEpisodeIndex(currentIndex + 1);
+          }
+        });
 
-      // 监听播放器销毁事件
-      art.on('destroy', () => {
-        console.log('ArtPlayer 已销毁');
-        releaseWakeLock();
-      });
+        // 监听播放器销毁事件
+        art.on('destroy', () => {
+          console.log('ArtPlayer 已销毁');
+          releaseWakeLock();
+        });
 
-      // 处理视频缓冲事件
-      art.on('waiting', () => {
-        console.log('视频缓冲中...');
-      });
+        // 处理视频缓冲事件
+        art.on('waiting', () => {
+          console.log('视频缓冲中...');
+        });
 
-      // 处理视频播放事件
-      art.on('play', () => {
-        console.log('视频开始播放');
-        requestWakeLock();
-      });
-
-      // 处理视频暂停事件
-      art.on('pause', () => {
-        console.log('视频已暂停');
-      });
-
-      // 处理全屏变化事件
-      art.on('fullscreen', (fullscreen: boolean) => {
-        console.log('全屏状态:', fullscreen);
-        if (fullscreen) {
+        // 处理视频播放事件
+        art.on('play', () => {
+          console.log('视频开始播放');
           requestWakeLock();
-        }
-      });
+        });
 
-      // 处理画中画变化事件
-      art.on('pip', (pip: boolean) => {
-        console.log('画中画状态:', pip);
-      });
+        // 处理视频暂停事件
+        art.on('pause', () => {
+          console.log('视频已暂停');
+        });
 
-      // 处理错误事件
-      art.on('error', (err: any) => {
-        console.error('播放器错误:', err);
-        setError('播放器发生错误，请刷新页面重试');
-        setIsVideoLoading(false);
-      });
-    });
+        // 处理全屏变化事件
+        art.on('fullscreen', (fullscreen: boolean) => {
+          console.log('全屏状态:', fullscreen);
+          if (fullscreen) {
+            requestWakeLock();
+          }
+        });
 
-    // 监听播放器销毁事件
-    art.on('destroy', () => {
-      console.log('ArtPlayer 已销毁');
-      releaseWakeLock();
-    });
+        // 处理画中画变化事件
+        art.on('pip', (pip: boolean) => {
+          console.log('画中画状态:', pip);
+        });
 
-    // 监听HLS错误事件
-    if (art.video.hls) {
-      art.video.hls.on(Hls.Events.ERROR, (event: any, data: any) => {
-        console.error('HLS 错误:', event, data);
-        if (data.fatal) {
-          setError('视频加载失败，请切换播放源');
+        // 处理错误事件
+        art.on('error', (err: any) => {
+          console.error('播放器错误:', err);
+          setError('播放器发生错误，请刷新页面重试');
           setIsVideoLoading(false);
-        }
-      });
-    }
+        });
 
-    // 组件卸载时清理资源
+        // 监听HLS错误事件
+        if (art.video.hls) {
+          art.video.hls.on(Hls.Events.ERROR, (event: any, data: any) => {
+            console.error('HLS 错误:', event, data);
+            if (data.fatal) {
+              setError('视频加载失败，请切换播放源');
+              setIsVideoLoading(false);
+            }
+          });
+        }
+        
+        // 视频加载完成后更新状态
+        art.on('ready', () => {
+          setIsVideoLoading(false);
+          setError(null);
+        });
+      } catch (error) {
+        console.error('初始化播放器失败:', error);
+        setError('初始化播放器失败，请刷新页面重试');
+        setIsVideoLoading(false);
+        return;
+      }
+    };
+
+    // 调用动态加载和初始化函数
+    loadAndInit();
+    
+    // 清除定时器和事件监听
     return () => {
       cleanupPlayer();
       releaseWakeLock();
     };
-  }, [videoUrl, currentEpisodeIndex, favorited, skipConfig, totalEpisodes, videoTitle]);
+  }, [videoUrl, currentEpisodeIndex, skipConfig, blockAdEnabled, favorited, toggleFavorite, videoTitle, totalEpisodes]);
 
   // 监听键盘事件
   useEffect(() => {
