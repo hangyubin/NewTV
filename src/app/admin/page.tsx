@@ -50,7 +50,7 @@ import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 
 import DataMigration from '@/components/DataMigration';
 import PageLayout from '@/components/PageLayout';
-import ExternalAIConfigComponent from '@/components/AIConfigComponent';
+
 
 // 统一按钮样式系统
 const buttonStyles = {
@@ -3657,13 +3657,7 @@ const CloudDiskConfigComponent = ({ config, refreshConfig }: { config: AdminConf
 
   // 初始化配置
   useEffect(() => {
-    if (config?.CloudDiskConfig) {
-      setCloudDiskSettings({
-        enabled: config.CloudDiskConfig.enabled || false,
-        apiUrl: config.CloudDiskConfig.apiUrl || '',
-        name: config.CloudDiskConfig.name || '网盘',
-      });
-    }
+    // CloudDiskConfig has been removed
   }, [config]);
 
   // 保存网盘配置
@@ -5639,7 +5633,7 @@ function AdminPageClient() {
             isExpanded={expandedTabs.aiConfig}
             onToggle={() => toggleTab('aiConfig')}
           >
-            <ExternalAIConfigComponent />
+
           </CollapsibleTab>
 
           <div className='space-y-4'>

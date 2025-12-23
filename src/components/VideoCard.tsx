@@ -30,7 +30,7 @@ import { ImagePlaceholder } from '@/components/ImagePlaceholder';
 import MobileActionSheet from '@/components/MobileActionSheet';
 import CombinedDetailModal from './CombinedDetailModal';
 import VideoDetailPreview from '@/components/VideoDetailPreview';
-import AIChatModal from '@/components/AIChatModal';
+
 import { SearchResult, DoubanDetail } from '@/lib/types';
 
 export interface VideoCardProps {
@@ -105,7 +105,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // AI聊天模态框状态
-  const [isAIChatModalOpen, setIsAIChatModalOpen] = useState(false);
+
   const [isDesktop, setIsDesktop] = useState(false);
 
   // 可外部修改的可控字段
@@ -335,12 +335,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
     };
     localStorage.setItem('ai-chat-preset', JSON.stringify(presetContent));
 
-    // PC端打开模态框，移动端跳转页面
-    if (isDesktop) {
-      setIsAIChatModalOpen(true);
-    } else {
-      router.push('/ai-chat');
-    }
+    
   }, [actualTitle, actualPoster, actualDoubanId, isBangumi, router, isDesktop]);
 
   // 跳转到播放页面的函数
@@ -670,12 +665,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
         };
         localStorage.setItem('ai-chat-preset', JSON.stringify(presetContent));
 
-        // PC端打开模态框，移动端跳转页面
-        if (isDesktop) {
-          setIsAIChatModalOpen(true);
-        } else {
-          router.push('/ai-chat');
-        }
+        
       },
       color: 'default' as const,
     });
@@ -788,7 +778,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
     handleDeleteRecord,
     handlePlayInNewTab,
     isDesktop,
-    setIsAIChatModalOpen,
     router,
     origin,
   ]);
@@ -1455,12 +1444,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
         poster={actualPoster}
         title={actualTitle}
       />
-      {isDesktop && (
-        <AIChatModal
-          isOpen={isAIChatModalOpen}
-          onClose={() => setIsAIChatModalOpen(false)}
-        />
-      )}
+      
     </>
   );
 }
@@ -1468,3 +1452,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
 );
 
 export default memo(VideoCard);
+
+
+

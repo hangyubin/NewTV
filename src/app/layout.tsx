@@ -17,9 +17,10 @@ export const dynamic = 'force-dynamic';
 // 动态生成 metadata，支持配置更新后的标题变化
 export async function generateMetadata(): Promise<Metadata> {
   const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
-  const config = await getConfig();
   let siteName = process.env.NEXT_PUBLIC_SITE_NAME || 'NewTV';
+  
   if (storageType !== 'localstorage') {
+    const config = await getConfig();
     siteName = config.SiteConfig.SiteName;
   }
 
@@ -59,11 +60,7 @@ export default async function RootLayout({
     type: 'movie' | 'tv';
     query: string;
   }[];
-  let cloudDiskConfig = {
-    enabled: false,
-    apiUrl: '',
-    name: '网盘',
-  };
+  
   if (storageType !== 'localstorage') {
     const config = await getConfig();
     siteName = config.SiteConfig.SiteName;
@@ -82,11 +79,6 @@ export default async function RootLayout({
       query: category.query,
     }));
     fluidSearch = config.SiteConfig.FluidSearch;
-    cloudDiskConfig = config.CloudDiskConfig || {
-      enabled: false,
-      apiUrl: '',
-      name: '网盘',
-    };
   }
 
   // 将运行时配置注入到全局 window 对象，供客户端在运行时读取
@@ -99,7 +91,6 @@ export default async function RootLayout({
     DISABLE_YELLOW_FILTER: disableYellowFilter,
     CUSTOM_CATEGORIES: customCategories,
     FLUID_SEARCH: fluidSearch,
-    CLOUD_DISK_CONFIG: cloudDiskConfig,
   };
 
   return (
