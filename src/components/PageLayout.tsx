@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import { ThemeToggle } from './ThemeToggle';
 import { UserMenu } from './UserMenu';
 
+
 interface PageLayoutProps {
   children: React.ReactNode;
   activePath?: string;
