@@ -15,7 +15,6 @@ export async function GET(request: NextRequest) {
     SiteName: config.SiteConfig.SiteName,
     StorageType: process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage',
     Version: CURRENT_VERSION,
-    CLOUD_DISK_CONFIG: config.CloudDiskConfig,
   };
   return NextResponse.json(result);
 }

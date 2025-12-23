@@ -4,7 +4,6 @@ import MobileHeader from './MobileHeader';
 import Sidebar from './Sidebar';
 import { ThemeToggle } from './ThemeToggle';
 import { UserMenu } from './UserMenu';
-import AIChatEntry from './AIChatEntry';
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -32,7 +31,6 @@ const PageLayout = ({ children, activePath, defaultSidebarCollapsed }: PageLayou
 
           {/* 桌面端顶部按钮 */}
           <div className='absolute top-2 right-4 z-20 hidden md:flex items-center gap-2'>
-            <AIChatEntry />
             <ThemeToggle />
             <UserMenu />
           </div>
