@@ -80,9 +80,22 @@ export const VersionPanel: React.FC<VersionPanelProps> = ({
   // 获取远程变更日志
   const fetchRemoteChangelog = async () => {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
+
       const response = await fetch(
-        'https://raw.githubusercontent.com/joyce677/LunaTV/refs/heads/main/CHANGELOG'
+        'https://raw.githubusercontent.com/joyce677/LunaTV/refs/heads/main/CHANGELOG',
+        {
+          method: 'GET',
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'text/plain',
+          },
+        }
       );
+
+      clearTimeout(timeoutId);
+
       if (response.ok) {
         const content = await response.text();
         const parsed = parseChangelog(content);

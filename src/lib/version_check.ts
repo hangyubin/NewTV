@@ -22,19 +22,17 @@ const VERSION_CHECK_URLS = [
  */
 export async function checkForUpdates(): Promise<UpdateStatus> {
   try {
-    // 尝试从主要URL获取版本信息
-    const primaryVersion = await fetchVersionFromUrl(VERSION_CHECK_URLS[0]);
-    if (primaryVersion) {
-      return compareVersions(primaryVersion);
+    // 依次尝试每个URL
+    for (const url of VERSION_CHECK_URLS) {
+      if (url) {
+        const version = await fetchVersionFromUrl(url);
+        if (version) {
+          return compareVersions(version);
+        }
+      }
     }
 
-    // 如果主要URL失败，尝试备用URL
-    const backupVersion = await fetchVersionFromUrl(VERSION_CHECK_URLS[1]);
-    if (backupVersion) {
-      return compareVersions(backupVersion);
-    }
-
-    // 如果两个URL都失败，返回获取失败状态
+    // 如果所有URL都失败，返回获取失败状态
     return UpdateStatus.FETCH_FAILED;
   } catch (error) {
     console.error('版本检查失败:', error);
@@ -48,6 +46,12 @@ export async function checkForUpdates(): Promise<UpdateStatus> {
  * @returns Promise<string | null> - 版本字符串或null
  */
 async function fetchVersionFromUrl(url: string): Promise<string | null> {
+  // 检查URL是否有效
+  if (!url || typeof url !== 'string') {
+    console.warn('无效的版本检查URL:', url);
+    return null;
+  }
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
