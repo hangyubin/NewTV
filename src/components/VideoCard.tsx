@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any,react-hooks/exhaustive-deps,@typescript-eslint/no-empty-function */
 
-import { Bot, ExternalLink, Heart, Link, PlayCircleIcon, Radio, Trash2 } from 'lucide-react';
+import { ExternalLink, Heart, Link, PlayCircleIcon, Radio, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import React, {
@@ -99,10 +99,8 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
   const [isLoadingModal, setIsLoadingModal] = useState(false);
   const autoPlayTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 悬停AI功能相关状态（仅豆瓣卡片）
+  // 悬停相关状态（仅豆瓣卡片）
   const [isHovering, setIsHovering] = useState(false);
-  const [showAIButton, setShowAIButton] = useState(false);
-  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // AI聊天模态框状态
 
@@ -639,11 +637,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
       });
     }
 
-    // 问问AI操作 - 替换豆瓣详情页
+    
     actions.push({
-      id: 'ai-chat',
-      label: '问问AI',
-      icon: <Bot size={20} />,
+      
       onClick: () => {
         // 清除之前的聊天缓存，确保每次都显示新的剧信息
         localStorage.removeItem('ai-chat-messages');
@@ -1272,24 +1268,8 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
           </div>
         )}
 
-        {/* 标题与来源 - 豆瓣卡片悬停时整个底栏变成问问AI按钮 */}
-        {from === 'douban' && showAIButton ? (
-          <button
-            onClick={handleAIButtonClick}
-            className='flex-1 flex flex-col justify-center px-2 py-3 text-center bg-blue-500 hover:bg-white hover:text-black text-white transition-all duration-300 ease-in-out rounded-b-lg'
-            style={{
-              WebkitUserSelect: 'none',
-              userSelect: 'none',
-              WebkitTouchCallout: 'none',
-            } as React.CSSProperties}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              return false;
-            }}
-          >
-            <span className='text-sm font-medium'>问问 AI</span>
-          </button>
-        ) : (
+
+
           <div
             className='flex-1 flex flex-col justify-center px-2 py-3 text-center'
             style={{
@@ -1448,8 +1428,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
     </>
   );
 }
-
-);
 
 export default memo(VideoCard);
 

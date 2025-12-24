@@ -338,6 +338,9 @@ function DoubanPageClient() {
             year: item.year,
           })),
         };
+        
+        // 存储当前请求的总数据量，用于判断是否还有更多数据
+        localStorage.setItem(`shortDramaTotal_${type}_${multiLevelValues.type}_${multiLevelValues.region}_${multiLevelValues.year}`, shortDramaResponse.total.toString());
       } else if (type === 'anime') {
         data = await getDoubanRecommends({
           kind: primarySelection === '番剧' ? 'tv' : 'movie',
@@ -482,28 +485,31 @@ function DoubanPageClient() {
               throw new Error('没有找到对应的分类');
             }
           } else if (type === 'short-drama') {
-            // 短剧加载更多数据
-            const shortDramaResponse = await getShortDramaData({
-              type: multiLevelValues.type !== 'all' ? multiLevelValues.type : undefined,
-              region: multiLevelValues.region !== 'all' ? multiLevelValues.region : undefined,
-              year: multiLevelValues.year !== 'all' ? multiLevelValues.year : undefined,
-              page: currentPage + 1,
-              limit: 25,
-            });
-            
-            // 转换为豆瓣数据格式
-            data = {
-              code: 200,
-              message: 'success',
-              list: shortDramaResponse.results.map((item: any) => ({
-                id: item.id,
-                title: item.title,
-                poster: item.poster,
-                rate: '',
-                year: item.year,
-              })),
-            };
-          } else if (type === 'anime' && primarySelection === '每日放送') {
+          // 短剧加载更多数据
+          const shortDramaResponse = await getShortDramaData({
+            type: multiLevelValues.type !== 'all' ? multiLevelValues.type : undefined,
+            region: multiLevelValues.region !== 'all' ? multiLevelValues.region : undefined,
+            year: multiLevelValues.year !== 'all' ? multiLevelValues.year : undefined,
+            page: currentPage + 1,
+            limit: 25,
+          });
+          
+          // 转换为豆瓣数据格式
+          data = {
+            code: 200,
+            message: 'success',
+            list: shortDramaResponse.results.map((item: any) => ({
+              id: item.id,
+              title: item.title,
+              poster: item.poster,
+              rate: '',
+              year: item.year,
+            })),
+          };
+          
+          // 存储当前请求的总数据量，用于判断是否还有更多数据
+          localStorage.setItem(`shortDramaTotal_${type}_${multiLevelValues.type}_${multiLevelValues.region}_${multiLevelValues.year}`, shortDramaResponse.total.toString());
+        } else if (type === 'anime' && primarySelection === '每日放送') {
             // 每日放送模式下，不进行数据请求，返回空数据
             data = {
               code: 200,

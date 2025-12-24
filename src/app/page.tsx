@@ -80,7 +80,6 @@ function HomeClient() {
             pageLimit: 25,
             pageStart: 0,
             category: '动画',
-            format: '电视剧',
             sort: 'U',
           }),
           getDoubanCategories({ kind: 'tv', category: 'show', type: 'show' }),
