@@ -18,10 +18,14 @@ export const revalidate = 0;
  * 通过采集站API获取短剧内容，并进行内容分类和筛选
  */
 export async function GET(request: NextRequest) {
-  const authInfo = getAuthInfoFromCookie(request);
-  if (!authInfo || !authInfo.username) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  // 短剧API暂时不需要认证，移除认证检查
+  // const authInfo = getAuthInfoFromCookie(request);
+  // if (!authInfo || !authInfo.username) {
+  //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // }
+  
+  // 使用默认用户名获取API站点
+  const authInfo = { username: 'default' };
 
   const { searchParams } = new URL(request.url);
   const type = searchParams.get('type') || 'all'; // 短剧类型筛选

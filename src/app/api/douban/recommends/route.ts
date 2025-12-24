@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
   const pageLimit = parseInt(searchParams.get('limit') || '20');
   const pageStart = parseInt(searchParams.get('start') || '0');
   const category =
-    searchParams.get('category') === 'all' ? '' : searchParams.get('category');
+    searchParams.get('category') === 'all' || searchParams.get('category') === null ? '' : searchParams.get('category');
   const format =
     searchParams.get('format') === 'all' ? '' : searchParams.get('format');
   const region =
