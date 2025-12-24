@@ -61,7 +61,7 @@ export type VideoCardHandle = {
   setDoubanId: (id?: number) => void;
 };
 
-const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard(
+const VideoCard = memo(forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard(
   {
     id,
     title = '',
@@ -280,61 +280,16 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
     [from, actualSource, actualId, id, onDelete]
   );
 
-  // 悬停AI功能事件处理（仅豆瓣卡片）
+  // 悬停事件处理（仅豆瓣卡片）
   const handleMouseEnter = useCallback(() => {
     if (from !== 'douban') return;
-
     setIsHovering(true);
-    // 清除之前的定时器
-    if (hoverTimerRef.current) {
-      clearTimeout(hoverTimerRef.current);
-    }
-
-    // 设置0.5秒定时器
-    hoverTimerRef.current = setTimeout(() => {
-      setShowAIButton(true);
-    }, 500);
   }, [from]);
 
   const handleMouseLeave = useCallback(() => {
     if (from !== 'douban') return;
-
     setIsHovering(false);
-    setShowAIButton(false);
-
-    // 清除定时器
-    if (hoverTimerRef.current) {
-      clearTimeout(hoverTimerRef.current);
-      hoverTimerRef.current = null;
-    }
   }, [from]);
-
-  const handleAIButtonClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    // 清除之前的聊天缓存，确保每次都显示新的剧信息
-    localStorage.removeItem('ai-chat-messages');
-
-    // 构建豆瓣链接
-    const doubanLink = actualDoubanId && actualDoubanId !== 0
-      ? (isBangumi
-        ? `https://bgm.tv/subject/${actualDoubanId}`
-        : `https://movie.douban.com/subject/${actualDoubanId}`)
-      : '';
-
-    // 存储剧名、海报和豆瓣链接信息到localStorage
-    const presetContent = {
-      title: actualTitle,
-      poster: processImageUrl(actualPoster),
-      doubanLink: doubanLink,
-      hiddenContent: `这部剧的名字叫《${actualTitle}》，这部剧豆瓣链接地址：${doubanLink}\n`,
-      timestamp: Date.now()
-    };
-    localStorage.setItem('ai-chat-preset', JSON.stringify(presetContent));
-
-    
-  }, [actualTitle, actualPoster, actualDoubanId, isBangumi, router, isDesktop]);
 
   // 跳转到播放页面的函数
   const navigateToPlay = useCallback(() => {
@@ -638,34 +593,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
     }
 
     
-    actions.push({
-      
-      onClick: () => {
-        // 清除之前的聊天缓存，确保每次都显示新的剧信息
-        localStorage.removeItem('ai-chat-messages');
-
-        // 构建豆瓣链接
-        const doubanLink = actualDoubanId && actualDoubanId !== 0
-          ? (isBangumi
-            ? `https://bgm.tv/subject/${actualDoubanId}`
-            : `https://movie.douban.com/subject/${actualDoubanId}`)
-          : '';
-
-        // 存储剧名、海报和豆瓣链接信息到localStorage
-        const presetContent = {
-          title: actualTitle,
-          poster: processImageUrl(actualPoster),
-          doubanLink: doubanLink,
-          hiddenContent: `这部剧的名字叫《${actualTitle}》，这部剧豆瓣链接地址：${doubanLink}\n`,
-          timestamp: Date.now()
-        };
-        localStorage.setItem('ai-chat-preset', JSON.stringify(presetContent));
-
-        
-      },
-      color: 'default' as const,
-    });
-
     // 新标签页播放
     if (config.showPlayButton) {
       actions.push({
@@ -1426,9 +1353,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
       
     </>
   );
-}
+}));
 
-export default memo(VideoCard);
+export default VideoCard;
 
 
 
