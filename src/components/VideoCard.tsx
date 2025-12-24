@@ -143,15 +143,6 @@ const VideoCard = memo(forwardRef<VideoCardHandle, VideoCardProps>(function Vide
     };
   }, []);
 
-  // 清理定时器
-  useEffect(() => {
-    return () => {
-      if (hoverTimerRef.current) {
-        clearTimeout(hoverTimerRef.current);
-      }
-    };
-  }, []);
-
   useImperativeHandle(ref, () => ({
     setEpisodes: (eps?: number) => setDynamicEpisodes(eps),
     setSourceNames: (names?: string[]) => setDynamicSourceNames(names),
