@@ -6,7 +6,7 @@ import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 
-
+import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 // 客户端收藏 API
 import {
   clearAllFavorites,
@@ -15,7 +15,6 @@ import {
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import { getDoubanCategories, getDoubanRecommends } from '@/lib/douban.client';
-import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import { DoubanItem } from '@/lib/types';
 
 import CapsuleSwitch from '@/components/CapsuleSwitch';

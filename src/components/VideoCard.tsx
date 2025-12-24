@@ -1364,7 +1364,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
               </span>
             )}
           </div>
-        )}
       </div>
 
       {/* 操作菜单 - 支持右键和长按触发 */}
