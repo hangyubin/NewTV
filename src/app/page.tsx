@@ -15,6 +15,7 @@ import {
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import { getDoubanCategories, getDoubanRecommends } from '@/lib/douban.client';
+import { getShortDramaData } from '@/lib/short-drama.client';
 import { DoubanItem } from '@/lib/types';
 
 import CapsuleSwitch from '@/components/CapsuleSwitch';
@@ -29,6 +30,7 @@ function HomeClient() {
   const [hotTvShows, setHotTvShows] = useState<DoubanItem[]>([]);
   const [hotVarietyShows, setHotVarietyShows] = useState<DoubanItem[]>([]);
   const [hotAnime, setHotAnime] = useState<DoubanItem[]>([]);
+  const [hotShortDramas, setHotShortDramas] = useState<DoubanItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { announcement } = useSite();
 
@@ -66,14 +68,18 @@ function HomeClient() {
       try {
         setLoading(true);
 
-        // 并行获取热门电影、热门剧集、热门动漫和热门综艺
-        const [moviesData, tvShowsData, animeData, varietyShowsData] = await Promise.all([
+        // 并行获取热门电影、热门剧集、热门动漫、热门综艺和热门短剧
+        const [moviesData, tvShowsData, animeData, varietyShowsData, shortDramaData] = await Promise.all([
           getDoubanCategories({
             kind: 'movie',
             category: '热门',
             type: '全部',
           }),
-          getDoubanCategories({ kind: 'tv', category: 'tv', type: 'tv' }),
+          getDoubanCategories({
+            kind: 'tv',
+            category: 'tv',
+            type: 'tv',
+          }),
           getDoubanRecommends({
             kind: 'tv',
             pageLimit: 25,
@@ -81,7 +87,15 @@ function HomeClient() {
             category: '动画',
             sort: 'U',
           }),
-          getDoubanCategories({ kind: 'tv', category: 'show', type: 'show' }),
+          getDoubanCategories({
+            kind: 'tv',
+            category: 'show',
+            type: 'show',
+          }),
+          getShortDramaData({
+            page: 1,
+            limit: 25,
+          }),
         ]);
 
         if (moviesData.code === 200) {
@@ -98,6 +112,18 @@ function HomeClient() {
 
         if (varietyShowsData.code === 200) {
           setHotVarietyShows(varietyShowsData.list);
+        }
+
+        // 处理短剧数据
+        if (shortDramaData && shortDramaData.results) {
+          const shortDramaList = shortDramaData.results.map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            poster: item.poster,
+            rate: '', // 短剧通常没有豆瓣评分
+            year: item.year || '',
+          }));
+          setHotShortDramas(shortDramaList);
         }
       } catch (error) {
         console.error('获取推荐数据失败:', error);
@@ -423,6 +449,52 @@ function HomeClient() {
                           douban_id={Number(show.id)}
                           rate={show.rate}
                           year={show.year}
+                        />
+                      </div>
+                    ))}
+                </ScrollableRow>
+              </section>
+
+              {/* 热门短剧 */}
+              <section className='mb-8'>
+                <div className='mb-4 flex items-center justify-between'>
+                  <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
+                    热门短剧
+                  </h2>
+                  <Link
+                    href='/douban?type=anime'
+                    className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                  >
+                    查看更多
+                    <ChevronRight className='w-4 h-4 ml-1' />
+                  </Link>
+                </div>
+                <ScrollableRow>
+                  {loading
+                    ? // 加载状态显示灰色占位数据
+                    Array.from({ length: 8 }).map((_, index) => (
+                      <div
+                        key={index}
+                        className='min-w-[115px] w-[115px] sm:min-w-[180px] sm:w-44'
+                      >
+                        <div className='relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800'>
+                          <div className='absolute inset-0 bg-gray-300 dark:bg-gray-700'></div>
+                        </div>
+                        <div className='mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800'></div>
+                      </div>
+                    ))
+                    : // 显示真实数据
+                    hotShortDramas.map((drama, index) => (
+                      <div
+                        key={index}
+                        className='min-w-[115px] w-[115px] sm:min-w-[180px] sm:w-44'
+                      >
+                        <VideoCard
+                          from='douban'
+                          title={drama.title}
+                          poster={drama.poster}
+                          rate={drama.rate}
+                          year={drama.year}
                         />
                       </div>
                     ))}

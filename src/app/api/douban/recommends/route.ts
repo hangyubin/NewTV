@@ -78,34 +78,56 @@ export async function GET(request: NextRequest) {
     tags.push(platform);
   }
 
-  const baseUrl = `https://m.douban.com/rexxar/api/v2/${kind}/recommend`;
-  const params = new URLSearchParams();
-  params.append('refresh', '0');
-  params.append('start', pageStart.toString());
-  params.append('count', pageLimit.toString());
-  params.append('selected_categories', JSON.stringify(selectedCategories));
-  params.append('uncollect', 'false');
-  params.append('score_range', '0,10');
-  params.append('tags', tags.join(','));
-  if (sort) {
-    params.append('sort', sort);
+  // 使用正确的search_subjects API
+  let target = '';
+  if (category === '动画') {
+    // 热门动漫使用search_subjects API
+    target = `https://movie.douban.com/j/search_subjects?type=tv&tag=动画&sort=recommend&page_limit=${pageLimit}&page_start=${pageStart}`;
+  } else {
+    // 其他类型继续使用原来的API
+    const baseUrl = `https://m.douban.com/rexxar/api/v2/${kind}/recommend`;
+    const params = new URLSearchParams();
+    params.append('refresh', '0');
+    params.append('start', pageStart.toString());
+    params.append('count', pageLimit.toString());
+    params.append('selected_categories', JSON.stringify(selectedCategories));
+    params.append('uncollect', 'false');
+    params.append('score_range', '0,10');
+    params.append('tags', tags.join(','));
+    if (sort) {
+      params.append('sort', sort);
+    }
+    target = `${baseUrl}?${params.toString()}`;
   }
-
-  const target = `${baseUrl}?${params.toString()}`;
+  
   console.log(target);
   try {
-    const doubanData = await fetchDoubanData<DoubanRecommendApiResponse>(
-      target
-    );
-    const list = doubanData.items
-      .filter((item) => item.type == 'movie' || item.type == 'tv' || item.type == 'anime')
-      .map((item) => ({
+    let list = [];
+    
+    if (category === '动画') {
+      // 处理search_subjects API响应
+      const doubanData = await fetchDoubanData<{ subjects: any[] }>(target);
+      list = doubanData.subjects.map((item) => ({
         id: item.id,
         title: item.title,
-        poster: item.pic?.normal || item.pic?.large || '',
-        rate: item.rating?.value ? item.rating.value.toFixed(1) : '',
-        year: item.year,
+        poster: item.cover,
+        rate: item.rate,
+        year: item.title.match(/(\d{4})/)?.[1] || '',
       }));
+    } else {
+      // 处理原来的recommend API响应
+      const doubanData = await fetchDoubanData<DoubanRecommendApiResponse>(target);
+      list = doubanData.items
+        .filter((item) => item.type == 'movie' || item.type == 'tv' || item.type == 'anime')
+        .map((item) => ({
+          id: item.id,
+          title: item.title,
+          poster: item.pic?.normal || item.pic?.large || '',
+          rate: item.rating?.value ? item.rating.value.toFixed(1) : '',
+          year: item.year,
+        }));
+    }
+    
     const response: DoubanResult = {
       code: 200,
       message: '获取成功',
