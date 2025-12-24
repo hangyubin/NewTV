@@ -52,36 +52,50 @@ async function fetchVersionFromUrl(url: string): Promise<string | null> {
     return null;
   }
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
+  const MAX_RETRIES = 3;
+  const TIMEOUT = 10000; // 增加超时时间到10秒
 
-    // 添加时间戳参数以避免缓存
-    const timestamp = Date.now();
-    const urlWithTimestamp = url.includes('?')
-      ? `${url}&_t=${timestamp}`
-      : `${url}?_t=${timestamp}`;
+  // 重试机制
+  for (let retry = 0; retry < MAX_RETRIES; retry++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT);
 
-    const response = await fetch(urlWithTimestamp, {
-      method: 'GET',
-      signal: controller.signal,
-      headers: {
-        'Content-Type': 'text/plain',
-      },
-    });
+      // 添加时间戳参数以避免缓存
+      const timestamp = Date.now();
+      const urlWithTimestamp = url.includes('?')
+        ? `${url}&_t=${timestamp}`
+        : `${url}?_t=${timestamp}`;
 
-    clearTimeout(timeoutId);
+      const response = await fetch(urlWithTimestamp, {
+        method: 'GET',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'text/plain',
+        },
+        cache: 'no-cache',
+      });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const version = await response.text();
+      return version.trim();
+    } catch (error) {
+      console.warn(`从 ${url} 获取版本信息失败 (重试 ${retry + 1}/${MAX_RETRIES}):`, error);
+      // 如果是最后一次重试，返回null
+      if (retry === MAX_RETRIES - 1) {
+        return null;
+      }
+      // 否则，等待一段时间后重试
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
-
-    const version = await response.text();
-    return version.trim();
-  } catch (error) {
-    console.warn(`从 ${url} 获取版本信息失败:`, error);
-    return null;
   }
+
+  return null;
 }
 
 /**
