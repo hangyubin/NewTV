@@ -68,24 +68,23 @@ function HomeClient() {
         setLoading(true);
 
         // 并行获取热门电影、热门剧集、热门动漫和热门综艺
-        const [moviesData, tvShowsData, animeData, varietyShowsData] =
-          await Promise.all([
-            getDoubanCategories({
-              kind: 'movie',
-              category: '热门',
-              type: '全部',
-            }),
-            getDoubanCategories({ kind: 'tv', category: 'tv', type: 'tv' }),
-            getDoubanRecommends({
-              kind: 'tv',
-              pageLimit: 25,
-              pageStart: 0,
-              category: '动画',
-              format: '电视剧',
-              sort: 'U',
-            }),
-            getDoubanCategories({ kind: 'tv', category: 'show', type: 'show' }),
-          ]);
+        const [moviesData, tvShowsData, animeData, varietyShowsData] = await Promise.all([
+          getDoubanCategories({
+            kind: 'movie',
+            category: '热门',
+            type: '全部',
+          }),
+          getDoubanCategories({ kind: 'tv', category: 'tv', type: 'tv' }),
+          getDoubanRecommends({
+            kind: 'tv',
+            pageLimit: 25,
+            pageStart: 0,
+            category: '动画',
+            format: '电视剧',
+            sort: 'U',
+          }),
+          getDoubanCategories({ kind: 'tv', category: 'show', type: 'show' }),
+        ]);
 
         if (moviesData.code === 200) {
           setHotMovies(moviesData.list);

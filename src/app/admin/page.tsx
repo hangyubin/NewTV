@@ -24,12 +24,10 @@ import { CSS } from '@dnd-kit/utilities';
 import {
   AlertCircle,
   AlertTriangle,
-  Bot,
   Check,
   CheckCircle,
   ChevronDown,
   ChevronUp,
-  Cloud,
   Database,
   ExternalLink,
   FileText,
@@ -39,6 +37,8 @@ import {
   Tv,
   Users,
   Video,
+  Bot,
+  Cloud,
   Youtube,
 } from 'lucide-react';
 import { GripVertical } from 'lucide-react';
@@ -5471,10 +5471,7 @@ function AdminPageClient() {
     videoSource: false,
     liveSource: false,
     siteConfig: false,
-    aiConfig: false,
     categoryConfig: false,
-    cloudDiskConfig: false,
-    youtubeChannels: false,
     configFile: false,
     dataMigration: false,
   });
@@ -5621,7 +5618,7 @@ function AdminPageClient() {
             <SiteConfigComponent config={config} refreshConfig={fetchConfig} />
           </CollapsibleTab>
 
-          {/* AI配置标签 */}
+
           <CollapsibleTab
             title='AI推荐配置'
             icon={
