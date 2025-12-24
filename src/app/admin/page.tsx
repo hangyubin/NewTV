@@ -32,16 +32,12 @@ import {
   ExternalLink,
   FileText,
   FolderOpen,
+  GripVertical,
   Settings,
-  Trash2,
   Tv,
   Users,
   Video,
-  Bot,
-  Cloud,
-  Youtube,
 } from 'lucide-react';
-import { GripVertical } from 'lucide-react';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -51,39 +47,56 @@ import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import DataMigration from '@/components/DataMigration';
 import PageLayout from '@/components/PageLayout';
 
-
 // 统一按钮样式系统
 const buttonStyles = {
   // 主要操作按钮（蓝色）- 用于配置、设置、确认等
-  primary: 'px-3 py-1.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg transition-colors',
+  primary:
+    'px-3 py-1.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg transition-colors',
   // 成功操作按钮（绿色）- 用于添加、启用、保存等
-  success: 'px-3 py-1.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg transition-colors',
+  success:
+    'px-3 py-1.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg transition-colors',
   // 危险操作按钮（红色）- 用于删除、禁用、重置等
-  danger: 'px-3 py-1.5 text-sm font-medium bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded-lg transition-colors',
+  danger:
+    'px-3 py-1.5 text-sm font-medium bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded-lg transition-colors',
   // 次要操作按钮（灰色）- 用于取消、关闭等
-  secondary: 'px-3 py-1.5 text-sm font-medium bg-gray-600 hover:bg-gray-700 dark:bg-gray-600 dark:hover:bg-gray-700 text-white rounded-lg transition-colors',
+  secondary:
+    'px-3 py-1.5 text-sm font-medium bg-gray-600 hover:bg-gray-700 dark:bg-gray-600 dark:hover:bg-gray-700 text-white rounded-lg transition-colors',
   // 警告操作按钮（黄色）- 用于批量禁用等
-  warning: 'px-3 py-1.5 text-sm font-medium bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-white rounded-lg transition-colors',
+  warning:
+    'px-3 py-1.5 text-sm font-medium bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-white rounded-lg transition-colors',
   // 小尺寸主要按钮
-  primarySmall: 'px-2 py-1 text-xs font-medium bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-md transition-colors',
+  primarySmall:
+    'px-2 py-1 text-xs font-medium bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-md transition-colors',
   // 小尺寸成功按钮
-  successSmall: 'px-2 py-1 text-xs font-medium bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-md transition-colors',
+  successSmall:
+    'px-2 py-1 text-xs font-medium bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-md transition-colors',
   // 小尺寸危险按钮
-  dangerSmall: 'px-2 py-1 text-xs font-medium bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded-md transition-colors',
+  dangerSmall:
+    'px-2 py-1 text-xs font-medium bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded-md transition-colors',
   // 小尺寸次要按钮
-  secondarySmall: 'px-2 py-1 text-xs font-medium bg-gray-600 hover:bg-gray-700 dark:bg-gray-600 dark:hover:bg-gray-700 text-white rounded-md transition-colors',
+  secondarySmall:
+    'px-2 py-1 text-xs font-medium bg-gray-600 hover:bg-gray-700 dark:bg-gray-600 dark:hover:bg-gray-700 text-white rounded-md transition-colors',
   // 小尺寸警告按钮
-  warningSmall: 'px-2 py-1 text-xs font-medium bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-white rounded-md transition-colors',
+  warningSmall:
+    'px-2 py-1 text-xs font-medium bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-white rounded-md transition-colors',
   // 圆角小按钮（用于表格操作）
-  roundedPrimary: 'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 dark:text-blue-200 transition-colors',
-  roundedSuccess: 'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/40 dark:hover:bg-green-900/60 dark:text-green-200 transition-colors',
-  roundedDanger: 'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 dark:text-red-200 transition-colors',
-  roundedSecondary: 'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700/40 dark:hover:bg-gray-700/60 dark:text-gray-200 transition-colors',
-  roundedWarning: 'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900/40 dark:hover:bg-yellow-900/60 dark:text-yellow-200 transition-colors',
-  roundedPurple: 'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900/40 dark:hover:bg-purple-900/60 dark:text-purple-200 transition-colors',
+  roundedPrimary:
+    'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 dark:text-blue-200 transition-colors',
+  roundedSuccess:
+    'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/40 dark:hover:bg-green-900/60 dark:text-green-200 transition-colors',
+  roundedDanger:
+    'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 dark:text-red-200 transition-colors',
+  roundedSecondary:
+    'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700/40 dark:hover:bg-gray-700/60 dark:text-gray-200 transition-colors',
+  roundedWarning:
+    'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900/40 dark:hover:bg-yellow-900/60 dark:text-yellow-200 transition-colors',
+  roundedPurple:
+    'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900/40 dark:hover:bg-purple-900/60 dark:text-purple-200 transition-colors',
   // 禁用状态
-  disabled: 'px-3 py-1.5 text-sm font-medium bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white rounded-lg transition-colors',
-  disabledSmall: 'px-2 py-1 text-xs font-medium bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white rounded-md transition-colors',
+  disabled:
+    'px-3 py-1.5 text-sm font-medium bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white rounded-lg transition-colors',
+  disabledSmall:
+    'px-2 py-1 text-xs font-medium bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white rounded-md transition-colors',
   // 开关按钮样式
   toggleOn: 'bg-blue-600 dark:bg-blue-600',
   toggleOff: 'bg-gray-200 dark:bg-gray-700',
@@ -91,7 +104,8 @@ const buttonStyles = {
   toggleThumbOn: 'translate-x-6',
   toggleThumbOff: 'translate-x-1',
   // 快速操作按钮样式
-  quickAction: 'px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors',
+  quickAction:
+    'px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors',
 };
 
 // 通用弹窗组件
@@ -112,7 +126,7 @@ const AlertModal = ({
   title,
   message,
   timer,
-  showConfirm = false
+  showConfirm = false,
 }: AlertModalProps) => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -134,11 +148,11 @@ const AlertModal = ({
   const getIcon = () => {
     switch (type) {
       case 'success':
-        return <CheckCircle className="w-8 h-8 text-green-500" />;
+        return <CheckCircle className='w-8 h-8 text-green-500' />;
       case 'error':
-        return <AlertCircle className="w-8 h-8 text-red-500" />;
+        return <AlertCircle className='w-8 h-8 text-red-500' />;
       case 'warning':
-        return <AlertTriangle className="w-8 h-8 text-yellow-500" />;
+        return <AlertTriangle className='w-8 h-8 text-yellow-500' />;
       default:
         return null;
     }
@@ -158,21 +172,25 @@ const AlertModal = ({
   };
 
   return createPortal(
-    <div className={`fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 transition-opacity duration-200 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-      <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-sm w-full border ${getBgColor()} transition-all duration-200 ${isVisible ? 'scale-100' : 'scale-95'}`}>
-        <div className="p-6 text-center">
-          <div className="flex justify-center mb-4">
-            {getIcon()}
-          </div>
+    <div
+      className={`fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 transition-opacity duration-200 ${
+        isVisible ? 'opacity-100' : 'opacity-0'
+      }`}
+    >
+      <div
+        className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-sm w-full border ${getBgColor()} transition-all duration-200 ${
+          isVisible ? 'scale-100' : 'scale-95'
+        }`}
+      >
+        <div className='p-6 text-center'>
+          <div className='flex justify-center mb-4'>{getIcon()}</div>
 
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2'>
             {title}
           </h3>
 
           {message && (
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              {message}
-            </p>
+            <p className='text-gray-600 dark:text-gray-400 mb-4'>{message}</p>
           )}
 
           {showConfirm && (
@@ -210,7 +228,7 @@ const useAlertModal = () => {
   };
 
   const hideAlert = () => {
-    setAlertModal(prev => ({ ...prev, isOpen: false }));
+    setAlertModal((prev) => ({ ...prev, isOpen: false }));
   };
 
   return { alertModal, showAlert, hideAlert };
@@ -242,12 +260,15 @@ const useLoadingState = () => {
   const [loadingStates, setLoadingStates] = useState<LoadingState>({});
 
   const setLoading = (key: string, loading: boolean) => {
-    setLoadingStates(prev => ({ ...prev, [key]: loading }));
+    setLoadingStates((prev) => ({ ...prev, [key]: loading }));
   };
 
   const isLoading = (key: string) => loadingStates[key] || false;
 
-  const withLoading = async (key: string, operation: () => Promise<any>): Promise<any> => {
+  const withLoading = async (
+    key: string,
+    operation: () => Promise<any>
+  ): Promise<any> => {
     setLoading(key, true);
     try {
       const result = await operation();
@@ -351,7 +372,12 @@ interface UserConfigProps {
   setConfig: React.Dispatch<React.SetStateAction<AdminConfig | null>>;
 }
 
-const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps) => {
+const UserConfig = ({
+  config,
+  role,
+  refreshConfig,
+  setConfig,
+}: UserConfigProps) => {
   const { alertModal, showAlert, hideAlert } = useAlertModal();
   const { isLoading, withLoading } = useLoadingState();
   const [showAddUserForm, setShowAddUserForm] = useState(false);
@@ -383,7 +409,8 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
     tags?: string[];
   } | null>(null);
   const [selectedApis, setSelectedApis] = useState<string[]>([]);
-  const [showConfigureUserGroupModal, setShowConfigureUserGroupModal] = useState(false);
+  const [showConfigureUserGroupModal, setShowConfigureUserGroupModal] =
+    useState(false);
   const [selectedUserForGroup, setSelectedUserForGroup] = useState<{
     username: string;
     role: 'user' | 'admin' | 'owner';
@@ -393,10 +420,14 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [showBatchUserGroupModal, setShowBatchUserGroupModal] = useState(false);
   const [selectedUserGroup, setSelectedUserGroup] = useState<string>('');
-  const [showDeleteUserGroupModal, setShowDeleteUserGroupModal] = useState(false);
+  const [showDeleteUserGroupModal, setShowDeleteUserGroupModal] =
+    useState(false);
   const [deletingUserGroup, setDeletingUserGroup] = useState<{
     name: string;
-    affectedUsers: Array<{ username: string; role: 'user' | 'admin' | 'owner' }>;
+    affectedUsers: Array<{
+      username: string;
+      role: 'user' | 'admin' | 'owner';
+    }>;
   } | null>(null);
   const [showDeleteUserModal, setShowDeleteUserModal] = useState(false);
   const [deletingUser, setDeletingUser] = useState<string | null>(null);
@@ -406,12 +437,13 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
 
   // 使用 useMemo 计算全选状态，避免每次渲染都重新计算
   const selectAllUsers = useMemo(() => {
-    const selectableUserCount = config?.UserConfig?.Users?.filter(user =>
-    (role === 'owner' ||
-      (role === 'admin' &&
-        (user.role === 'user' ||
-          user.username === currentUsername)))
-    ).length || 0;
+    const selectableUserCount =
+      config?.UserConfig?.Users?.filter(
+        (user) =>
+          role === 'owner' ||
+          (role === 'admin' &&
+            (user.role === 'user' || user.username === currentUsername))
+      ).length || 0;
     return selectedUsers.size === selectableUserCount && selectedUsers.size > 0;
   }, [selectedUsers.size, config?.UserConfig?.Users, role, currentUsername]);
 
@@ -452,7 +484,14 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
           setShowEditUserGroupForm(false);
         }
 
-        showSuccess(action === 'add' ? '用户组添加成功' : action === 'edit' ? '用户组更新成功' : '用户组删除成功', showAlert);
+        showSuccess(
+          action === 'add'
+            ? '用户组添加成功'
+            : action === 'edit'
+            ? '用户组更新成功'
+            : '用户组删除成功',
+          showAlert
+        );
       } catch (err) {
         showError(err instanceof Error ? err.message : '操作失败', showAlert);
         throw err;
@@ -467,18 +506,26 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
 
   const handleEditUserGroup = () => {
     if (!editingUserGroup?.name.trim()) return;
-    handleUserGroupAction('edit', editingUserGroup.name, editingUserGroup.enabledApis);
+    handleUserGroupAction(
+      'edit',
+      editingUserGroup.name,
+      editingUserGroup.enabledApis
+    );
   };
 
   const handleDeleteUserGroup = (groupName: string) => {
     // 计算会受影响的用户数量
-    const affectedUsers = config?.UserConfig?.Users?.filter(user =>
-      user.tags && user.tags.includes(groupName)
-    ) || [];
+    const affectedUsers =
+      config?.UserConfig?.Users?.filter(
+        (user) => user.tags && user.tags.includes(groupName)
+      ) || [];
 
     setDeletingUserGroup({
       name: groupName,
-      affectedUsers: affectedUsers.map(u => ({ username: u.username, role: u.role }))
+      affectedUsers: affectedUsers.map((u) => ({
+        username: u.username,
+        role: u.role,
+      })),
     });
     setShowDeleteUserGroupModal(true);
   };
@@ -495,14 +542,20 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
     }
   };
 
-  const handleStartEditUserGroup = (group: { name: string; enabledApis: string[] }) => {
+  const handleStartEditUserGroup = (group: {
+    name: string;
+    enabledApis: string[];
+  }) => {
     setEditingUserGroup({ ...group });
     setShowEditUserGroupForm(true);
     setShowAddUserGroupForm(false);
   };
 
   // 为用户分配用户组
-  const handleAssignUserGroup = async (username: string, userGroups: string[]) => {
+  const handleAssignUserGroup = async (
+    username: string,
+    userGroups: string[]
+  ) => {
     return withLoading(`assignUserGroup_${username}`, async () => {
       try {
         const res = await fetch('/api/admin/user', {
@@ -534,21 +587,32 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
   };
 
   const handleUnbanUser = async (uname: string) => {
-    await withLoading(`unbanUser_${uname}`, () => handleUserAction('unban', uname));
+    await withLoading(`unbanUser_${uname}`, () =>
+      handleUserAction('unban', uname)
+    );
   };
 
   const handleSetAdmin = async (uname: string) => {
-    await withLoading(`setAdmin_${uname}`, () => handleUserAction('setAdmin', uname));
+    await withLoading(`setAdmin_${uname}`, () =>
+      handleUserAction('setAdmin', uname)
+    );
   };
 
   const handleRemoveAdmin = async (uname: string) => {
-    await withLoading(`removeAdmin_${uname}`, () => handleUserAction('cancelAdmin', uname));
+    await withLoading(`removeAdmin_${uname}`, () =>
+      handleUserAction('cancelAdmin', uname)
+    );
   };
 
   const handleAddUser = async () => {
     if (!newUser.username || !newUser.password) return;
     await withLoading('addUser', async () => {
-      await handleUserAction('add', newUser.username, newUser.password, newUser.userGroup);
+      await handleUserAction(
+        'add',
+        newUser.username,
+        newUser.password,
+        newUser.userGroup
+      );
       setNewUser({ username: '', password: '', userGroup: '' });
       setShowAddUserForm(false);
     });
@@ -556,15 +620,18 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
 
   const handleChangePassword = async () => {
     if (!changePasswordUser.username || !changePasswordUser.password) return;
-    await withLoading(`changePassword_${changePasswordUser.username}`, async () => {
-      await handleUserAction(
-        'changePassword',
-        changePasswordUser.username,
-        changePasswordUser.password
-      );
-      setChangePasswordUser({ username: '', password: '' });
-      setShowChangePasswordForm(false);
-    });
+    await withLoading(
+      `changePassword_${changePasswordUser.username}`,
+      async () => {
+        await handleUserAction(
+          'changePassword',
+          changePasswordUser.username,
+          changePasswordUser.password
+        );
+        setChangePasswordUser({ username: '', password: '' });
+        setShowChangePasswordForm(false);
+      }
+    );
   };
 
   const handleShowChangePasswordForm = (username: string) => {
@@ -601,21 +668,27 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
   const handleSaveUserGroups = async () => {
     if (!selectedUserForGroup) return;
 
-    await withLoading(`saveUserGroups_${selectedUserForGroup.username}`, async () => {
-      try {
-        await handleAssignUserGroup(selectedUserForGroup.username, selectedUserGroups);
-        setShowConfigureUserGroupModal(false);
-        setSelectedUserForGroup(null);
-        setSelectedUserGroups([]);
-      } catch (err) {
-        // 错误处理已在 handleAssignUserGroup 中处理
+    await withLoading(
+      `saveUserGroups_${selectedUserForGroup.username}`,
+      async () => {
+        try {
+          await handleAssignUserGroup(
+            selectedUserForGroup.username,
+            selectedUserGroups
+          );
+          setShowConfigureUserGroupModal(false);
+          setSelectedUserForGroup(null);
+          setSelectedUserGroups([]);
+        } catch (err) {
+          // 错误处理已在 handleAssignUserGroup 中处理
+        }
       }
-    });
+    );
   };
 
   // 处理用户选择
   const handleSelectUser = useCallback((username: string, checked: boolean) => {
-    setSelectedUsers(prev => {
+    setSelectedUsers((prev) => {
       const newSelectedUsers = new Set(prev);
       if (checked) {
         newSelectedUsers.add(username);
@@ -626,20 +699,24 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
     });
   }, []);
 
-  const handleSelectAllUsers = useCallback((checked: boolean) => {
-    if (checked) {
-      // 只选择自己有权限操作的用户
-      const selectableUsernames = config?.UserConfig?.Users?.filter(user =>
-      (role === 'owner' ||
-        (role === 'admin' &&
-          (user.role === 'user' ||
-            user.username === currentUsername)))
-      ).map(u => u.username) || [];
-      setSelectedUsers(new Set(selectableUsernames));
-    } else {
-      setSelectedUsers(new Set());
-    }
-  }, [config?.UserConfig?.Users, role, currentUsername]);
+  const handleSelectAllUsers = useCallback(
+    (checked: boolean) => {
+      if (checked) {
+        // 只选择自己有权限操作的用户
+        const selectableUsernames =
+          config?.UserConfig?.Users?.filter(
+            (user) =>
+              role === 'owner' ||
+              (role === 'admin' &&
+                (user.role === 'user' || user.username === currentUsername))
+          ).map((u) => u.username) || [];
+        setSelectedUsers(new Set(selectableUsernames));
+      } else {
+        setSelectedUsers(new Set());
+      }
+    },
+    [config?.UserConfig?.Users, role, currentUsername]
+  );
 
   // 批量设置用户组
   const handleBatchSetUserGroup = async (userGroup: string) => {
@@ -666,7 +743,10 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
         setSelectedUsers(new Set());
         setShowBatchUserGroupModal(false);
         setSelectedUserGroup('');
-        showSuccess(`已为 ${userCount} 个用户设置用户组: ${userGroup}`, showAlert);
+        showSuccess(
+          `已为 ${userCount} 个用户设置用户组: ${userGroup}`,
+          showAlert
+        );
 
         // 刷新配置
         await refreshConfig();
@@ -676,8 +756,6 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
       }
     });
   };
-
-
 
   // 提取URL域名的辅助函数
   const extractDomain = (url: string): string => {
@@ -802,10 +880,13 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
               </div>
               <div className='flex items-center'>
                 <button
-                  type="button"
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${config.UserConfig.AllowRegister ? buttonStyles.toggleOn : buttonStyles.toggleOff
-                    }`}
-                  role="switch"
+                  type='button'
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
+                    config.UserConfig.AllowRegister
+                      ? buttonStyles.toggleOn
+                      : buttonStyles.toggleOff
+                  }`}
+                  role='switch'
                   aria-checked={config.UserConfig.AllowRegister}
                   onClick={async () => {
                     // 乐观更新：立即更新UI状态
@@ -813,12 +894,12 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                     const newValue = !previousValue;
 
                     // 立即更新本地状态
-                    setConfig(prev => ({
+                    setConfig((prev) => ({
                       ...prev!,
                       UserConfig: {
                         ...prev!.UserConfig,
-                        AllowRegister: newValue
-                      }
+                        AllowRegister: newValue,
+                      },
                     }));
 
                     await withLoading('toggleAllowRegister', async () => {
@@ -830,39 +911,49 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                             ...config,
                             UserConfig: {
                               ...config.UserConfig,
-                              AllowRegister: newValue
-                            }
-                          })
+                              AllowRegister: newValue,
+                            },
+                          }),
                         });
 
                         if (response.ok) {
                           showAlert({
                             type: 'success',
                             title: '设置已更新',
-                            message: newValue ? '已允许用户注册' : '已禁止用户注册',
-                            timer: 2000
+                            message: newValue
+                              ? '已允许用户注册'
+                              : '已禁止用户注册',
+                            timer: 2000,
                           });
                         } else {
                           throw new Error('更新配置失败');
                         }
                       } catch (err) {
                         // 发生错误时回滚状态
-                        setConfig(prev => ({
+                        setConfig((prev) => ({
                           ...prev!,
                           UserConfig: {
                             ...prev!.UserConfig,
-                            AllowRegister: previousValue
-                          }
+                            AllowRegister: previousValue,
+                          },
                         }));
-                        showError(err instanceof Error ? err.message : '操作失败', showAlert);
+                        showError(
+                          err instanceof Error ? err.message : '操作失败',
+                          showAlert
+                        );
                       }
                     });
                   }}
                 >
                   <span
-                    aria-hidden="true"
-                    className={`pointer-events-none inline-block h-5 w-5 rounded-full ${buttonStyles.toggleThumb} shadow transform ring-0 transition duration-200 ease-in-out ${config.UserConfig.AllowRegister ? buttonStyles.toggleThumbOn : buttonStyles.toggleThumbOff
-                      }`}
+                    aria-hidden='true'
+                    className={`pointer-events-none inline-block h-5 w-5 rounded-full ${
+                      buttonStyles.toggleThumb
+                    } shadow transform ring-0 transition duration-200 ease-in-out ${
+                      config.UserConfig.AllowRegister
+                        ? buttonStyles.toggleThumbOn
+                        : buttonStyles.toggleThumbOff
+                    }`}
                   />
                 </button>
                 <span className='ml-3 text-sm font-medium text-gray-900 dark:text-gray-100'>
@@ -883,24 +974,29 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
               </div>
               <div className='flex items-center'>
                 <button
-                  type="button"
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${(config as any).UserConfig.RequireApproval ? buttonStyles.toggleOn : buttonStyles.toggleOff
-                    }`}
-                  role="switch"
+                  type='button'
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
+                    (config as any).UserConfig.RequireApproval
+                      ? buttonStyles.toggleOn
+                      : buttonStyles.toggleOff
+                  }`}
+                  role='switch'
                   aria-checked={(config as any).UserConfig.RequireApproval}
                   onClick={async () => {
                     // 乐观更新：立即更新UI状态
-                    const previousValue = (config as any).UserConfig.RequireApproval;
+                    const previousValue = (config as any).UserConfig
+                      .RequireApproval;
                     const newValue = !previousValue;
 
                     // 立即更新本地状态
-                    setConfig(prev => ({
+                    setConfig((prev) => ({
                       ...prev!,
                       UserConfig: {
                         ...prev!.UserConfig,
                         RequireApproval: newValue,
-                        PendingUsers: (prev!.UserConfig as any).PendingUsers || [],
-                      }
+                        PendingUsers:
+                          (prev!.UserConfig as any).PendingUsers || [],
+                      },
                     }));
 
                     await withLoading('toggleRequireApproval', async () => {
@@ -913,39 +1009,51 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                             UserConfig: {
                               ...config.UserConfig,
                               RequireApproval: newValue,
-                              PendingUsers: (config as any).UserConfig.PendingUsers || [],
-                            }
-                          })
+                              PendingUsers:
+                                (config as any).UserConfig.PendingUsers || [],
+                            },
+                          }),
                         });
                         if (response.ok) {
                           showAlert({
                             type: 'success',
                             title: '设置已更新',
-                            message: newValue ? '已开启注册审核' : '已关闭注册审核',
-                            timer: 2000
+                            message: newValue
+                              ? '已开启注册审核'
+                              : '已关闭注册审核',
+                            timer: 2000,
                           });
                         } else {
                           throw new Error('更新配置失败');
                         }
                       } catch (err) {
                         // 发生错误时回滚状态
-                        setConfig(prev => ({
+                        setConfig((prev) => ({
                           ...prev!,
                           UserConfig: {
                             ...prev!.UserConfig,
                             RequireApproval: previousValue,
-                            PendingUsers: (prev!.UserConfig as any).PendingUsers || [],
-                          }
+                            PendingUsers:
+                              (prev!.UserConfig as any).PendingUsers || [],
+                          },
                         }));
-                        showError(err instanceof Error ? err.message : '操作失败', showAlert);
+                        showError(
+                          err instanceof Error ? err.message : '操作失败',
+                          showAlert
+                        );
                       }
                     });
                   }}
                 >
                   <span
-                    aria-hidden="true"
-                    className={`pointer-events-none inline-block h-5 w-5 rounded-full ${buttonStyles.toggleThumb} shadow transform ring-0 transition duration-200 ease-in-out ${(config as any).UserConfig.RequireApproval ? buttonStyles.toggleThumbOn : buttonStyles.toggleThumbOff
-                      }`}
+                    aria-hidden='true'
+                    className={`pointer-events-none inline-block h-5 w-5 rounded-full ${
+                      buttonStyles.toggleThumb
+                    } shadow transform ring-0 transition duration-200 ease-in-out ${
+                      (config as any).UserConfig.RequireApproval
+                        ? buttonStyles.toggleThumbOn
+                        : buttonStyles.toggleThumbOff
+                    }`}
                   />
                 </button>
                 <span className='ml-3 text-sm font-medium text-gray-900 dark:text-gray-100'>
@@ -981,7 +1089,13 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
           </div>
           <div className='p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800'>
             <div className='text-2xl font-bold text-purple-800 dark:text-purple-300'>
-              {config.UserConfig.Users.filter(u => (u as any).createdAt?.slice(0, 10) === new Date().toISOString().slice(0, 10)).length}
+              {
+                config.UserConfig.Users.filter(
+                  (u) =>
+                    (u as any).createdAt?.slice(0, 10) ===
+                    new Date().toISOString().slice(0, 10)
+                ).length
+              }
             </div>
             <div className='text-sm text-purple-600 dark:text-purple-400'>
               今日新增
@@ -1000,61 +1114,99 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
             <table className='min-w-[720px] md:min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
               <thead className='bg-gray-50 dark:bg-gray-900/40'>
                 <tr>
-                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>用户名</th>
-                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>说明</th>
-                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>申请时间</th>
-                  <th className='px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>操作</th>
+                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                    用户名
+                  </th>
+                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                    说明
+                  </th>
+                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                    申请时间
+                  </th>
+                  <th className='px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                    操作
+                  </th>
                 </tr>
               </thead>
               <tbody className='bg-white dark:bg-black divide-y divide-gray-200 dark:divide-gray-700'>
-                {((config as any).UserConfig.PendingUsers || []).length === 0 ? (
+                {((config as any).UserConfig.PendingUsers || []).length ===
+                0 ? (
                   <tr>
-                    <td colSpan={4} className='px-6 py-6 text-center text-sm text-gray-500 dark:text-gray-400'>暂无待审核用户</td>
+                    <td
+                      colSpan={4}
+                      className='px-6 py-6 text-center text-sm text-gray-500 dark:text-gray-400'
+                    >
+                      暂无待审核用户
+                    </td>
                   </tr>
                 ) : (
-                  ((config as any).UserConfig.PendingUsers || []).map((p: any) => (
-                    <tr key={p.username}>
-                      <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100'>{p.username}</td>
-                      <td className='px-6 py-4 text-sm text-gray-600 dark:text-gray-300 break-words max-w-[28rem]'>{p.reason || '-'}</td>
-                      <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400'>{new Date(p.appliedAt).toLocaleString()}</td>
-                      <td className='px-6 py-4 whitespace-nowrap text-right text-sm'>
-                        <button
-                          className={buttonStyles.success}
-                          onClick={async () => {
-                            await withLoading(`approve_${p.username}`, async () => {
-                              const resp = await fetch('/api/admin/user', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ action: 'approveRegister', targetUsername: p.username })
-                              });
-                              if (resp.ok) {
-                                await refreshConfig();
-                              }
-                            });
-                          }}
-                        >
-                          通过
-                        </button>
-                        <button
-                          className={`ml-2 ${buttonStyles.danger}`}
-                          onClick={async () => {
-                            await withLoading(`reject_${p.username}`, async () => {
-                              const resp = await fetch('/api/admin/user', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ action: 'rejectRegister', targetUsername: p.username })
-                              });
-                              if (resp.ok) {
-                                await refreshConfig();
-                              }
-                            });
-                          }}
-                        >
-                          拒绝
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  ((config as any).UserConfig.PendingUsers || []).map(
+                    (p: any) => (
+                      <tr key={p.username}>
+                        <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100'>
+                          {p.username}
+                        </td>
+                        <td className='px-6 py-4 text-sm text-gray-600 dark:text-gray-300 break-words max-w-[28rem]'>
+                          {p.reason || '-'}
+                        </td>
+                        <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400'>
+                          {new Date(p.appliedAt).toLocaleString()}
+                        </td>
+                        <td className='px-6 py-4 whitespace-nowrap text-right text-sm'>
+                          <button
+                            className={buttonStyles.success}
+                            onClick={async () => {
+                              await withLoading(
+                                `approve_${p.username}`,
+                                async () => {
+                                  const resp = await fetch('/api/admin/user', {
+                                    method: 'POST',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                      action: 'approveRegister',
+                                      targetUsername: p.username,
+                                    }),
+                                  });
+                                  if (resp.ok) {
+                                    await refreshConfig();
+                                  }
+                                }
+                              );
+                            }}
+                          >
+                            通过
+                          </button>
+                          <button
+                            className={`ml-2 ${buttonStyles.danger}`}
+                            onClick={async () => {
+                              await withLoading(
+                                `reject_${p.username}`,
+                                async () => {
+                                  const resp = await fetch('/api/admin/user', {
+                                    method: 'POST',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                      action: 'rejectRegister',
+                                      targetUsername: p.username,
+                                    }),
+                                  });
+                                  if (resp.ok) {
+                                    await refreshConfig();
+                                  }
+                                }
+                              );
+                            }}
+                          >
+                            拒绝
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  )
                 )}
               </tbody>
             </table>
@@ -1076,7 +1228,11 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                 setEditingUserGroup(null);
               }
             }}
-            className={showAddUserGroupForm ? buttonStyles.secondary : buttonStyles.primary}
+            className={
+              showAddUserGroupForm
+                ? buttonStyles.secondary
+                : buttonStyles.primary
+            }
           >
             {showAddUserGroupForm ? '取消' : '添加用户组'}
           </button>
@@ -1100,7 +1256,10 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
             </thead>
             <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
               {userGroups.map((group) => (
-                <tr key={group.name} className='hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'>
+                <tr
+                  key={group.name}
+                  className='hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'
+                >
                   <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100'>
                     {group.name}
                   </td>
@@ -1117,7 +1276,11 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                     <button
                       onClick={() => handleStartEditUserGroup(group)}
                       disabled={isLoading(`userGroup_edit_${group.name}`)}
-                      className={`${buttonStyles.roundedPrimary} ${isLoading(`userGroup_edit_${group.name}`) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`${buttonStyles.roundedPrimary} ${
+                        isLoading(`userGroup_edit_${group.name}`)
+                          ? 'opacity-50 cursor-not-allowed'
+                          : ''
+                      }`}
                     >
                       编辑
                     </button>
@@ -1132,7 +1295,10 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
               ))}
               {userGroups.length === 0 && (
                 <tr>
-                  <td colSpan={3} className='px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400'>
+                  <td
+                    colSpan={3}
+                    className='px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400'
+                  >
                     暂无用户组，请添加用户组来管理用户权限
                   </td>
                 </tr>
@@ -1174,7 +1340,9 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                   setChangePasswordUser({ username: '', password: '' });
                 }
               }}
-              className={showAddUserForm ? buttonStyles.secondary : buttonStyles.success}
+              className={
+                showAddUserForm ? buttonStyles.secondary : buttonStyles.success
+              }
             >
               {showAddUserForm ? '取消' : '添加用户'}
             </button>
@@ -1191,7 +1359,10 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                   placeholder='用户名'
                   value={newUser.username}
                   onChange={(e) =>
-                    setNewUser((prev) => ({ ...prev, username: e.target.value }))
+                    setNewUser((prev) => ({
+                      ...prev,
+                      username: e.target.value,
+                    }))
                   }
                   className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                 />
@@ -1200,7 +1371,10 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                   placeholder='密码'
                   value={newUser.password}
                   onChange={(e) =>
-                    setNewUser((prev) => ({ ...prev, password: e.target.value }))
+                    setNewUser((prev) => ({
+                      ...prev,
+                      password: e.target.value,
+                    }))
                   }
                   className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                 />
@@ -1212,14 +1386,21 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                 <select
                   value={newUser.userGroup}
                   onChange={(e) =>
-                    setNewUser((prev) => ({ ...prev, userGroup: e.target.value }))
+                    setNewUser((prev) => ({
+                      ...prev,
+                      userGroup: e.target.value,
+                    }))
                   }
                   className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                 >
                   <option value=''>无用户组（无限制）</option>
                   {userGroups.map((group) => (
                     <option key={group.name} value={group.name}>
-                      {group.name} ({group.enabledApis && group.enabledApis.length > 0 ? `${group.enabledApis.length} 个源` : '无限制'})
+                      {group.name} (
+                      {group.enabledApis && group.enabledApis.length > 0
+                        ? `${group.enabledApis.length} 个源`
+                        : '无限制'}
+                      )
                     </option>
                   ))}
                 </select>
@@ -1227,8 +1408,18 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
               <div className='flex justify-end'>
                 <button
                   onClick={handleAddUser}
-                  disabled={!newUser.username || !newUser.password || isLoading('addUser')}
-                  className={!newUser.username || !newUser.password || isLoading('addUser') ? buttonStyles.disabled : buttonStyles.success}
+                  disabled={
+                    !newUser.username ||
+                    !newUser.password ||
+                    isLoading('addUser')
+                  }
+                  className={
+                    !newUser.username ||
+                    !newUser.password ||
+                    isLoading('addUser')
+                      ? buttonStyles.disabled
+                      : buttonStyles.success
+                  }
                 >
                   {isLoading('addUser') ? '添加中...' : '添加'}
                 </button>
@@ -1265,10 +1456,20 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
               />
               <button
                 onClick={handleChangePassword}
-                disabled={!changePasswordUser.password || isLoading(`changePassword_${changePasswordUser.username}`)}
-                className={`w-full sm:w-auto ${!changePasswordUser.password || isLoading(`changePassword_${changePasswordUser.username}`) ? buttonStyles.disabled : buttonStyles.primary}`}
+                disabled={
+                  !changePasswordUser.password ||
+                  isLoading(`changePassword_${changePasswordUser.username}`)
+                }
+                className={`w-full sm:w-auto ${
+                  !changePasswordUser.password ||
+                  isLoading(`changePassword_${changePasswordUser.username}`)
+                    ? buttonStyles.disabled
+                    : buttonStyles.primary
+                }`}
               >
-                {isLoading(`changePassword_${changePasswordUser.username}`) ? '修改中...' : '修改密码'}
+                {isLoading(`changePassword_${changePasswordUser.username}`)
+                  ? '修改中...'
+                  : '修改密码'}
               </button>
               <button
                 onClick={() => {
@@ -1284,7 +1485,10 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
         )}
 
         {/* 用户列表 */}
-        <div className='border border-gray-200 dark:border-gray-700 rounded-lg max-h-[28rem] overflow-y-auto overflow-x-auto relative' data-table="user-list">
+        <div
+          className='border border-gray-200 dark:border-gray-700 rounded-lg max-h-[28rem] overflow-y-auto overflow-x-auto relative'
+          data-table='user-list'
+        >
           <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
             <thead className='bg-gray-50 dark:bg-gray-900 sticky top-0 z-10'>
               <tr>
@@ -1292,11 +1496,12 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                 <th className='w-10 px-1 py-3 text-center'>
                   {(() => {
                     // 检查是否有权限操作任何用户
-                    const hasAnyPermission = config?.UserConfig?.Users?.some(user =>
-                    (role === 'owner' ||
-                      (role === 'admin' &&
-                        (user.role === 'user' ||
-                          user.username === currentUsername)))
+                    const hasAnyPermission = config?.UserConfig?.Users?.some(
+                      (user) =>
+                        role === 'owner' ||
+                        (role === 'admin' &&
+                          (user.role === 'user' ||
+                            user.username === currentUsername))
                     );
 
                     return hasAnyPermission ? (
@@ -1390,14 +1595,19 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                       >
                         <td className='w-4' />
                         <td className='w-10 px-1 py-3 text-center'>
-                          {(role === 'owner' ||
-                            (role === 'admin' &&
-                              (user.role === 'user' ||
-                                user.username === currentUsername))) ? (
+                          {role === 'owner' ||
+                          (role === 'admin' &&
+                            (user.role === 'user' ||
+                              user.username === currentUsername)) ? (
                             <input
                               type='checkbox'
                               checked={selectedUsers.has(user.username)}
-                              onChange={(e) => handleSelectUser(user.username, e.target.checked)}
+                              onChange={(e) =>
+                                handleSelectUser(
+                                  user.username,
+                                  e.target.checked
+                                )
+                              }
                               className='w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600'
                             />
                           ) : (
@@ -1409,26 +1619,28 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap'>
                           <span
-                            className={`px-2 py-1 text-xs rounded-full ${user.role === 'owner'
-                              ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300'
-                              : user.role === 'admin'
+                            className={`px-2 py-1 text-xs rounded-full ${
+                              user.role === 'owner'
+                                ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300'
+                                : user.role === 'admin'
                                 ? 'bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-300'
                                 : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                              }`}
+                            }`}
                           >
                             {user.role === 'owner'
                               ? '站长'
                               : user.role === 'admin'
-                                ? '管理员'
-                                : '普通用户'}
+                              ? '管理员'
+                              : '普通用户'}
                           </span>
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap'>
                           <span
-                            className={`px-2 py-1 text-xs rounded-full ${!user.banned
-                              ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
-                              : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300'
-                              }`}
+                            className={`px-2 py-1 text-xs rounded-full ${
+                              !user.banned
+                                ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
+                                : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300'
+                            }`}
                           >
                             {!user.banned ? '正常' : '已封禁'}
                           </span>
@@ -1445,13 +1657,13 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                               (role === 'admin' &&
                                 (user.role === 'user' ||
                                   user.username === currentUsername))) && (
-                                <button
-                                  onClick={() => handleConfigureUserGroup(user)}
-                                  className={buttonStyles.roundedPrimary}
-                                >
-                                  配置
-                                </button>
-                              )}
+                              <button
+                                onClick={() => handleConfigureUserGroup(user)}
+                                className={buttonStyles.roundedPrimary}
+                              >
+                                配置
+                              </button>
+                            )}
                           </div>
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap'>
@@ -1466,13 +1678,13 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                               (role === 'admin' &&
                                 (user.role === 'user' ||
                                   user.username === currentUsername))) && (
-                                <button
-                                  onClick={() => handleConfigureUserApis(user)}
-                                  className={buttonStyles.roundedPrimary}
-                                >
-                                  配置
-                                </button>
-                              )}
+                              <button
+                                onClick={() => handleConfigureUserApis(user)}
+                                className={buttonStyles.roundedPrimary}
+                              >
+                                配置
+                              </button>
+                            )}
                           </div>
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2'>
@@ -1493,8 +1705,14 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                               {user.role === 'user' && (
                                 <button
                                   onClick={() => handleSetAdmin(user.username)}
-                                  disabled={isLoading(`setAdmin_${user.username}`)}
-                                  className={`${buttonStyles.roundedPurple} ${isLoading(`setAdmin_${user.username}`) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                  disabled={isLoading(
+                                    `setAdmin_${user.username}`
+                                  )}
+                                  className={`${buttonStyles.roundedPurple} ${
+                                    isLoading(`setAdmin_${user.username}`)
+                                      ? 'opacity-50 cursor-not-allowed'
+                                      : ''
+                                  }`}
                                 >
                                   设为管理
                                 </button>
@@ -1504,8 +1722,16 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                                   onClick={() =>
                                     handleRemoveAdmin(user.username)
                                   }
-                                  disabled={isLoading(`removeAdmin_${user.username}`)}
-                                  className={`${buttonStyles.roundedSecondary} ${isLoading(`removeAdmin_${user.username}`) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                  disabled={isLoading(
+                                    `removeAdmin_${user.username}`
+                                  )}
+                                  className={`${
+                                    buttonStyles.roundedSecondary
+                                  } ${
+                                    isLoading(`removeAdmin_${user.username}`)
+                                      ? 'opacity-50 cursor-not-allowed'
+                                      : ''
+                                  }`}
                                 >
                                   取消管理
                                 </button>
@@ -1514,8 +1740,14 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                                 (!user.banned ? (
                                   <button
                                     onClick={() => handleBanUser(user.username)}
-                                    disabled={isLoading(`banUser_${user.username}`)}
-                                    className={`${buttonStyles.roundedDanger} ${isLoading(`banUser_${user.username}`) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    disabled={isLoading(
+                                      `banUser_${user.username}`
+                                    )}
+                                    className={`${buttonStyles.roundedDanger} ${
+                                      isLoading(`banUser_${user.username}`)
+                                        ? 'opacity-50 cursor-not-allowed'
+                                        : ''
+                                    }`}
                                   >
                                     封禁
                                   </button>
@@ -1524,8 +1756,16 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                                     onClick={() =>
                                       handleUnbanUser(user.username)
                                     }
-                                    disabled={isLoading(`unbanUser_${user.username}`)}
-                                    className={`${buttonStyles.roundedSuccess} ${isLoading(`unbanUser_${user.username}`) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    disabled={isLoading(
+                                      `unbanUser_${user.username}`
+                                    )}
+                                    className={`${
+                                      buttonStyles.roundedSuccess
+                                    } ${
+                                      isLoading(`unbanUser_${user.username}`)
+                                        ? 'opacity-50 cursor-not-allowed'
+                                        : ''
+                                    }`}
                                   >
                                     解封
                                   </button>
@@ -1553,199 +1793,97 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
       </div>
 
       {/* 配置用户采集源权限弹窗 */}
-      {showConfigureApisModal && selectedUser && createPortal(
-        <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4' onClick={() => {
-          setShowConfigureApisModal(false);
-          setSelectedUser(null);
-          setSelectedApis([]);
-        }}>
-          <div className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-y-auto' onClick={(e) => e.stopPropagation()}>
-            <div className='p-6'>
-              <div className='flex items-center justify-between mb-6'>
-                <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
-                  配置用户采集源权限 - {selectedUser.username}
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowConfigureApisModal(false);
-                    setSelectedUser(null);
-                    setSelectedApis([]);
-                  }}
-                  className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
-                >
-                  <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
-                  </svg>
-                </button>
-              </div>
-
-              <div className='mb-6'>
-                <div className='bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4'>
-                  <div className='flex items-center space-x-2 mb-2'>
-                    <svg className='w-5 h-5 text-blue-600 dark:text-blue-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' />
-                    </svg>
-                    <span className='text-sm font-medium text-blue-800 dark:text-blue-300'>
-                      配置说明
-                    </span>
-                  </div>
-                  <p className='text-sm text-blue-700 dark:text-blue-400 mt-1'>
-                    提示：全不选为无限制，选中的采集源将限制用户只能访问这些源
-                  </p>
-                </div>
-              </div>
-
-              {/* 采集源选择 - 多列布局 */}
-              <div className='mb-6'>
-                <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-4'>
-                  选择可用的采集源：
-                </h4>
-                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                  {config?.SourceConfig?.map((source) => (
-                    <label key={source.key} className='flex items-center space-x-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors'>
-                      <input
-                        type='checkbox'
-                        checked={selectedApis.includes(source.key)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedApis([...selectedApis, source.key]);
-                          } else {
-                            setSelectedApis(selectedApis.filter(api => api !== source.key));
-                          }
-                        }}
-                        className='rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700'
-                      />
-                      <div className='flex-1 min-w-0'>
-                        <div className='text-sm font-medium text-gray-900 dark:text-gray-100 truncate'>
-                          {source.name}
-                        </div>
-                        {source.api && (
-                          <div className='text-xs text-gray-500 dark:text-gray-400 truncate'>
-                            {extractDomain(source.api)}
-                          </div>
-                        )}
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* 快速操作按钮 */}
-              <div className='flex flex-wrap items-center justify-between mb-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg'>
-                <div className='flex space-x-2'>
-                  <button
-                    onClick={() => setSelectedApis([])}
-                    className={buttonStyles.quickAction}
-                  >
-                    全不选（无限制）
-                  </button>
+      {showConfigureApisModal &&
+        selectedUser &&
+        createPortal(
+          <div
+            className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4'
+            onClick={() => {
+              setShowConfigureApisModal(false);
+              setSelectedUser(null);
+              setSelectedApis([]);
+            }}
+          >
+            <div
+              className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-y-auto'
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className='p-6'>
+                <div className='flex items-center justify-between mb-6'>
+                  <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
+                    配置用户采集源权限 - {selectedUser.username}
+                  </h3>
                   <button
                     onClick={() => {
-                      const allApis = config?.SourceConfig?.filter(source => !source.disabled).map(s => s.key) || [];
-                      setSelectedApis(allApis);
+                      setShowConfigureApisModal(false);
+                      setSelectedUser(null);
+                      setSelectedApis([]);
                     }}
-                    className={buttonStyles.quickAction}
+                    className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
                   >
-                    全选
+                    <svg
+                      className='w-6 h-6'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M6 18L18 6M6 6l12 12'
+                      />
+                    </svg>
                   </button>
                 </div>
-                <div className='text-sm text-gray-600 dark:text-gray-400'>
-                  已选择：<span className='font-medium text-blue-600 dark:text-blue-400'>
-                    {selectedApis.length > 0 ? `${selectedApis.length} 个源` : '无限制'}
-                  </span>
-                </div>
-              </div>
 
-              {/* 操作按钮 */}
-              <div className='flex justify-end space-x-3'>
-                <button
-                  onClick={() => {
-                    setShowConfigureApisModal(false);
-                    setSelectedUser(null);
-                    setSelectedApis([]);
-                  }}
-                  className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
-                >
-                  取消
-                </button>
-                <button
-                  onClick={handleSaveUserApis}
-                  disabled={isLoading(`saveUserApis_${selectedUser?.username}`)}
-                  className={`px-6 py-2.5 text-sm font-medium ${isLoading(`saveUserApis_${selectedUser?.username}`) ? buttonStyles.disabled : buttonStyles.primary}`}
-                >
-                  {isLoading(`saveUserApis_${selectedUser?.username}`) ? '配置中...' : '确认配置'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* 添加用户组弹窗 */}
-      {showAddUserGroupForm && createPortal(
-        <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4' onClick={() => {
-          setShowAddUserGroupForm(false);
-          setNewUserGroup({ name: '', enabledApis: [] });
-        }}>
-          <div className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-y-auto' onClick={(e) => e.stopPropagation()}>
-            <div className='p-6'>
-              <div className='flex items-center justify-between mb-6'>
-                <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
-                  添加新用户组
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowAddUserGroupForm(false);
-                    setNewUserGroup({ name: '', enabledApis: [] });
-                  }}
-                  className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
-                >
-                  <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
-                  </svg>
-                </button>
-              </div>
-
-              <div className='space-y-6'>
-                {/* 用户组名称 */}
-                <div>
-                  <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
-                    用户组名称
-                  </label>
-                  <input
-                    type='text'
-                    placeholder='请输入用户组名称'
-                    value={newUserGroup.name}
-                    onChange={(e) =>
-                      setNewUserGroup((prev) => ({ ...prev, name: e.target.value }))
-                    }
-                    className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                  />
+                <div className='mb-6'>
+                  <div className='bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4'>
+                    <div className='flex items-center space-x-2 mb-2'>
+                      <svg
+                        className='w-5 h-5 text-blue-600 dark:text-blue-400'
+                        fill='none'
+                        stroke='currentColor'
+                        viewBox='0 0 24 24'
+                      >
+                        <path
+                          strokeLinecap='round'
+                          strokeLinejoin='round'
+                          strokeWidth={2}
+                          d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                        />
+                      </svg>
+                      <span className='text-sm font-medium text-blue-800 dark:text-blue-300'>
+                        配置说明
+                      </span>
+                    </div>
+                    <p className='text-sm text-blue-700 dark:text-blue-400 mt-1'>
+                      提示：全不选为无限制，选中的采集源将限制用户只能访问这些源
+                    </p>
+                  </div>
                 </div>
 
-                {/* 可用视频源 */}
-                <div>
-                  <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4'>
-                    可用视频源
-                  </label>
-                  <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3'>
+                {/* 采集源选择 - 多列布局 */}
+                <div className='mb-6'>
+                  <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-4'>
+                    选择可用的采集源：
+                  </h4>
+                  <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
                     {config?.SourceConfig?.map((source) => (
-                      <label key={source.key} className='flex items-center space-x-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors'>
+                      <label
+                        key={source.key}
+                        className='flex items-center space-x-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors'
+                      >
                         <input
                           type='checkbox'
-                          checked={newUserGroup.enabledApis.includes(source.key)}
+                          checked={selectedApis.includes(source.key)}
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setNewUserGroup(prev => ({
-                                ...prev,
-                                enabledApis: [...prev.enabledApis, source.key]
-                              }));
+                              setSelectedApis([...selectedApis, source.key]);
                             } else {
-                              setNewUserGroup(prev => ({
-                                ...prev,
-                                enabledApis: prev.enabledApis.filter(api => api !== source.key)
-                              }));
+                              setSelectedApis(
+                                selectedApis.filter((api) => api !== source.key)
+                              );
                             }
                           }}
                           className='rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700'
@@ -1763,479 +1901,511 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                       </label>
                     ))}
                   </div>
+                </div>
 
-                  {/* 快速操作按钮 */}
-                  <div className='mt-4 flex space-x-2'>
+                {/* 快速操作按钮 */}
+                <div className='flex flex-wrap items-center justify-between mb-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg'>
+                  <div className='flex space-x-2'>
                     <button
-                      onClick={() => setNewUserGroup(prev => ({ ...prev, enabledApis: [] }))}
+                      onClick={() => setSelectedApis([])}
                       className={buttonStyles.quickAction}
                     >
                       全不选（无限制）
                     </button>
                     <button
                       onClick={() => {
-                        const allApis = config?.SourceConfig?.filter(source => !source.disabled).map(s => s.key) || [];
-                        setNewUserGroup(prev => ({ ...prev, enabledApis: allApis }));
+                        const allApis =
+                          config?.SourceConfig?.filter(
+                            (source) => !source.disabled
+                          ).map((s) => s.key) || [];
+                        setSelectedApis(allApis);
                       }}
                       className={buttonStyles.quickAction}
                     >
                       全选
                     </button>
                   </div>
-                </div>
-
-                {/* 操作按钮 */}
-                <div className='flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700'>
-                  <button
-                    onClick={() => {
-                      setShowAddUserGroupForm(false);
-                      setNewUserGroup({ name: '', enabledApis: [] });
-                    }}
-                    className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
-                  >
-                    取消
-                  </button>
-                  <button
-                    onClick={handleAddUserGroup}
-                    disabled={!newUserGroup.name.trim() || isLoading('userGroup_add_new')}
-                    className={`px-6 py-2.5 text-sm font-medium ${!newUserGroup.name.trim() || isLoading('userGroup_add_new') ? buttonStyles.disabled : buttonStyles.primary}`}
-                  >
-                    {isLoading('userGroup_add_new') ? '添加中...' : '添加用户组'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* 编辑用户组弹窗 */}
-      {showEditUserGroupForm && editingUserGroup && createPortal(
-        <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4' onClick={() => {
-          setShowEditUserGroupForm(false);
-          setEditingUserGroup(null);
-        }}>
-          <div className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-y-auto' onClick={(e) => e.stopPropagation()}>
-            <div className='p-6'>
-              <div className='flex items-center justify-between mb-6'>
-                <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
-                  编辑用户组 - {editingUserGroup.name}
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowEditUserGroupForm(false);
-                    setEditingUserGroup(null);
-                  }}
-                  className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
-                >
-                  <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
-                  </svg>
-                </button>
-              </div>
-
-              <div className='space-y-6'>
-                {/* 可用视频源 */}
-                <div>
-                  <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4'>
-                    可用视频源
-                  </label>
-                  <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3'>
-                    {config?.SourceConfig?.map((source) => (
-                      <label key={source.key} className='flex items-center space-x-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors'>
-                        <input
-                          type='checkbox'
-                          checked={editingUserGroup.enabledApis.includes(source.key)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setEditingUserGroup(prev => prev ? {
-                                ...prev,
-                                enabledApis: [...prev.enabledApis, source.key]
-                              } : null);
-                            } else {
-                              setEditingUserGroup(prev => prev ? {
-                                ...prev,
-                                enabledApis: prev.enabledApis.filter(api => api !== source.key)
-                              } : null);
-                            }
-                          }}
-                          className='rounded border-gray-300 text-purple-600 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700'
-                        />
-                        <div className='flex-1 min-w-0'>
-                          <div className='text-sm font-medium text-gray-900 dark:text-gray-100 truncate'>
-                            {source.name}
-                          </div>
-                          {source.api && (
-                            <div className='text-xs text-gray-500 dark:text-gray-400 truncate'>
-                              {extractDomain(source.api)}
-                            </div>
-                          )}
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-
-                  {/* 快速操作按钮 */}
-                  <div className='mt-4 flex space-x-2'>
-                    <button
-                      onClick={() => setEditingUserGroup(prev => prev ? { ...prev, enabledApis: [] } : null)}
-                      className={buttonStyles.quickAction}
-                    >
-                      全不选（无限制）
-                    </button>
-                    <button
-                      onClick={() => {
-                        const allApis = config?.SourceConfig?.filter(source => !source.disabled).map(s => s.key) || [];
-                        setEditingUserGroup(prev => prev ? { ...prev, enabledApis: allApis } : null);
-                      }}
-                      className={buttonStyles.quickAction}
-                    >
-                      全选
-                    </button>
-                  </div>
-                </div>
-
-                {/* 操作按钮 */}
-                <div className='flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700'>
-                  <button
-                    onClick={() => {
-                      setShowEditUserGroupForm(false);
-                      setEditingUserGroup(null);
-                    }}
-                    className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
-                  >
-                    取消
-                  </button>
-                  <button
-                    onClick={handleEditUserGroup}
-                    disabled={isLoading(`userGroup_edit_${editingUserGroup?.name}`)}
-                    className={`px-6 py-2.5 text-sm font-medium ${isLoading(`userGroup_edit_${editingUserGroup?.name}`) ? buttonStyles.disabled : buttonStyles.primary}`}
-                  >
-                    {isLoading(`userGroup_edit_${editingUserGroup?.name}`) ? '保存中...' : '保存修改'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* 配置用户组弹窗 */}
-      {showConfigureUserGroupModal && selectedUserForGroup && createPortal(
-        <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4' onClick={() => {
-          setShowConfigureUserGroupModal(false);
-          setSelectedUserForGroup(null);
-          setSelectedUserGroups([]);
-        }}>
-          <div className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-y-auto' onClick={(e) => e.stopPropagation()}>
-            <div className='p-6'>
-              <div className='flex items-center justify-between mb-6'>
-                <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
-                  配置用户组 - {selectedUserForGroup.username}
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowConfigureUserGroupModal(false);
-                    setSelectedUserForGroup(null);
-                    setSelectedUserGroups([]);
-                  }}
-                  className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
-                >
-                  <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
-                  </svg>
-                </button>
-              </div>
-
-              <div className='mb-6'>
-                <div className='bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4'>
-                  <div className='flex items-center space-x-2 mb-2'>
-                    <svg className='w-5 h-5 text-blue-600 dark:text-blue-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' />
-                    </svg>
-                    <span className='text-sm font-medium text-blue-800 dark:text-blue-300'>
-                      配置说明
+                  <div className='text-sm text-gray-600 dark:text-gray-400'>
+                    已选择：
+                    <span className='font-medium text-blue-600 dark:text-blue-400'>
+                      {selectedApis.length > 0
+                        ? `${selectedApis.length} 个源`
+                        : '无限制'}
                     </span>
                   </div>
-                  <p className='text-sm text-blue-700 dark:text-blue-400 mt-1'>
-                    提示：选择"无用户组"为无限制，选择特定用户组将限制用户只能访问该用户组允许的采集源
-                  </p>
-                </div>
-              </div>
-
-              {/* 用户组选择 - 下拉选择器 */}
-              <div className='mb-6'>
-                <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
-                  选择用户组：
-                </label>
-                <select
-                  value={selectedUserGroups.length > 0 ? selectedUserGroups[0] : ''}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setSelectedUserGroups(value ? [value] : []);
-                  }}
-                  className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors'
-                >
-                  <option value=''>无用户组（无限制）</option>
-                  {userGroups.map((group) => (
-                    <option key={group.name} value={group.name}>
-                      {group.name} {group.enabledApis && group.enabledApis.length > 0 ? `(${group.enabledApis.length} 个源)` : ''}
-                    </option>
-                  ))}
-                </select>
-                <p className='mt-2 text-xs text-gray-500 dark:text-gray-400'>
-                  选择"无用户组"为无限制，选择特定用户组将限制用户只能访问该用户组允许的采集源
-                </p>
-              </div>
-
-
-
-              {/* 操作按钮 */}
-              <div className='flex justify-end space-x-3'>
-                <button
-                  onClick={() => {
-                    setShowConfigureUserGroupModal(false);
-                    setSelectedUserForGroup(null);
-                    setSelectedUserGroups([]);
-                  }}
-                  className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
-                >
-                  取消
-                </button>
-                <button
-                  onClick={handleSaveUserGroups}
-                  disabled={isLoading(`saveUserGroups_${selectedUserForGroup?.username}`)}
-                  className={`px-6 py-2.5 text-sm font-medium ${isLoading(`saveUserGroups_${selectedUserForGroup?.username}`) ? buttonStyles.disabled : buttonStyles.primary}`}
-                >
-                  {isLoading(`saveUserGroups_${selectedUserForGroup?.username}`) ? '配置中...' : '确认配置'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* 删除用户组确认弹窗 */}
-      {showDeleteUserGroupModal && deletingUserGroup && createPortal(
-        <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4' onClick={() => {
-          setShowDeleteUserGroupModal(false);
-          setDeletingUserGroup(null);
-        }}>
-          <div className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full' onClick={(e) => e.stopPropagation()}>
-            <div className='p-6'>
-              <div className='flex items-center justify-between mb-6'>
-                <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
-                  确认删除用户组
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowDeleteUserGroupModal(false);
-                    setDeletingUserGroup(null);
-                  }}
-                  className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
-                >
-                  <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
-                  </svg>
-                </button>
-              </div>
-
-              <div className='mb-6'>
-                <div className='bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4'>
-                  <div className='flex items-center space-x-2 mb-2'>
-                    <svg className='w-5 h-5 text-red-600 dark:text-red-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z' />
-                    </svg>
-                    <span className='text-sm font-medium text-red-800 dark:text-red-300'>
-                      危险操作警告
-                    </span>
-                  </div>
-                  <p className='text-sm text-red-700 dark:text-red-400'>
-                    删除用户组 <strong>{deletingUserGroup.name}</strong> 将影响所有使用该组的用户，此操作不可恢复！
-                  </p>
-                </div>
-
-                {deletingUserGroup.affectedUsers.length > 0 ? (
-                  <div className='bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4'>
-                    <div className='flex items-center space-x-2 mb-2'>
-                      <svg className='w-5 h-5 text-yellow-600 dark:text-yellow-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                        <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' />
-                      </svg>
-                      <span className='text-sm font-medium text-yellow-800 dark:text-yellow-300'>
-                        ⚠️ 将影响 {deletingUserGroup.affectedUsers.length} 个用户：
-                      </span>
-                    </div>
-                    <div className='space-y-1'>
-                      {deletingUserGroup.affectedUsers.map((user, index) => (
-                        <div key={index} className='text-sm text-yellow-700 dark:text-yellow-300'>
-                          • {user.username} ({user.role})
-                        </div>
-                      ))}
-                    </div>
-                    <p className='text-xs text-yellow-600 dark:text-yellow-400 mt-2'>
-                      这些用户的用户组将被自动移除
-                    </p>
-                  </div>
-                ) : (
-                  <div className='bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4'>
-                    <div className='flex items-center space-x-2'>
-                      <svg className='w-5 h-5 text-green-600 dark:text-green-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                        <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M5 13l4 4L19 7' />
-                      </svg>
-                      <span className='text-sm font-medium text-green-800 dark:text-green-300'>
-                        ✅ 当前没有用户使用此用户组
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* 操作按钮 */}
-              <div className='flex justify-end space-x-3'>
-                <button
-                  onClick={() => {
-                    setShowDeleteUserGroupModal(false);
-                    setDeletingUserGroup(null);
-                  }}
-                  className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
-                >
-                  取消
-                </button>
-                <button
-                  onClick={handleConfirmDeleteUserGroup}
-                  disabled={isLoading(`userGroup_delete_${deletingUserGroup?.name}`)}
-                  className={`px-6 py-2.5 text-sm font-medium ${isLoading(`userGroup_delete_${deletingUserGroup?.name}`) ? buttonStyles.disabled : buttonStyles.danger}`}
-                >
-                  {isLoading(`userGroup_delete_${deletingUserGroup?.name}`) ? '删除中...' : '确认删除'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* 删除用户确认弹窗 */}
-      {showDeleteUserModal && deletingUser && createPortal(
-        <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4' onClick={() => {
-          setShowDeleteUserModal(false);
-          setDeletingUser(null);
-        }}>
-          <div className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full' onClick={(e) => e.stopPropagation()}>
-            <div className='p-6'>
-              <div className='flex items-center justify-between mb-6'>
-                <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
-                  确认删除用户
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowDeleteUserModal(false);
-                    setDeletingUser(null);
-                  }}
-                  className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
-                >
-                  <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
-                  </svg>
-                </button>
-              </div>
-
-              <div className='mb-6'>
-                <div className='bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4'>
-                  <div className='flex items-center space-x-2 mb-2'>
-                    <svg className='w-5 h-5 text-red-600 dark:text-red-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z' />
-                    </svg>
-                    <span className='text-sm font-medium text-red-800 dark:text-red-300'>
-                      危险操作警告
-                    </span>
-                  </div>
-                  <p className='text-sm text-red-700 dark:text-red-400'>
-                    删除用户 <strong>{deletingUser}</strong> 将同时删除其搜索历史、播放记录和收藏夹，此操作不可恢复！
-                  </p>
                 </div>
 
                 {/* 操作按钮 */}
                 <div className='flex justify-end space-x-3'>
                   <button
                     onClick={() => {
-                      setShowDeleteUserModal(false);
-                      setDeletingUser(null);
+                      setShowConfigureApisModal(false);
+                      setSelectedUser(null);
+                      setSelectedApis([]);
                     }}
                     className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
                   >
                     取消
                   </button>
                   <button
-                    onClick={handleConfirmDeleteUser}
-                    className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.danger}`}
+                    onClick={handleSaveUserApis}
+                    disabled={isLoading(
+                      `saveUserApis_${selectedUser?.username}`
+                    )}
+                    className={`px-6 py-2.5 text-sm font-medium ${
+                      isLoading(`saveUserApis_${selectedUser?.username}`)
+                        ? buttonStyles.disabled
+                        : buttonStyles.primary
+                    }`}
                   >
-                    确认删除
+                    {isLoading(`saveUserApis_${selectedUser?.username}`)
+                      ? '配置中...'
+                      : '确认配置'}
                   </button>
                 </div>
               </div>
             </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body
+        )}
 
-      {/* 批量设置用户组弹窗 */}
-      {showBatchUserGroupModal && createPortal(
-        <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4' onClick={() => {
-          setShowBatchUserGroupModal(false);
-          setSelectedUserGroup('');
-        }}>
-          <div className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full' onClick={(e) => e.stopPropagation()}>
-            <div className='p-6'>
-              <div className='flex items-center justify-between mb-6'>
-                <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
-                  批量设置用户组
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowBatchUserGroupModal(false);
-                    setSelectedUserGroup('');
-                  }}
-                  className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
-                >
-                  <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
-                  </svg>
-                </button>
-              </div>
-
-              <div className='mb-6'>
-                <div className='bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4'>
-                  <div className='flex items-center space-x-2 mb-2'>
-                    <svg className='w-5 h-5 text-blue-600 dark:text-blue-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' />
+      {/* 添加用户组弹窗 */}
+      {showAddUserGroupForm &&
+        createPortal(
+          <div
+            className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4'
+            onClick={() => {
+              setShowAddUserGroupForm(false);
+              setNewUserGroup({ name: '', enabledApis: [] });
+            }}
+          >
+            <div
+              className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-y-auto'
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className='p-6'>
+                <div className='flex items-center justify-between mb-6'>
+                  <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
+                    添加新用户组
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowAddUserGroupForm(false);
+                      setNewUserGroup({ name: '', enabledApis: [] });
+                    }}
+                    className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
+                  >
+                    <svg
+                      className='w-6 h-6'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M6 18L18 6M6 6l12 12'
+                      />
                     </svg>
-                    <span className='text-sm font-medium text-blue-800 dark:text-blue-300'>
-                      批量操作说明
-                    </span>
-                  </div>
-                  <p className='text-sm text-blue-700 dark:text-blue-400'>
-                    将为选中的 <strong>{selectedUsers.size} 个用户</strong> 设置用户组，选择"无用户组"为无限制
-                  </p>
+                  </button>
                 </div>
 
-                <div>
+                <div className='space-y-6'>
+                  {/* 用户组名称 */}
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
+                      用户组名称
+                    </label>
+                    <input
+                      type='text'
+                      placeholder='请输入用户组名称'
+                      value={newUserGroup.name}
+                      onChange={(e) =>
+                        setNewUserGroup((prev) => ({
+                          ...prev,
+                          name: e.target.value,
+                        }))
+                      }
+                      className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                    />
+                  </div>
+
+                  {/* 可用视频源 */}
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4'>
+                      可用视频源
+                    </label>
+                    <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3'>
+                      {config?.SourceConfig?.map((source) => (
+                        <label
+                          key={source.key}
+                          className='flex items-center space-x-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors'
+                        >
+                          <input
+                            type='checkbox'
+                            checked={newUserGroup.enabledApis.includes(
+                              source.key
+                            )}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setNewUserGroup((prev) => ({
+                                  ...prev,
+                                  enabledApis: [
+                                    ...prev.enabledApis,
+                                    source.key,
+                                  ],
+                                }));
+                              } else {
+                                setNewUserGroup((prev) => ({
+                                  ...prev,
+                                  enabledApis: prev.enabledApis.filter(
+                                    (api) => api !== source.key
+                                  ),
+                                }));
+                              }
+                            }}
+                            className='rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700'
+                          />
+                          <div className='flex-1 min-w-0'>
+                            <div className='text-sm font-medium text-gray-900 dark:text-gray-100 truncate'>
+                              {source.name}
+                            </div>
+                            {source.api && (
+                              <div className='text-xs text-gray-500 dark:text-gray-400 truncate'>
+                                {extractDomain(source.api)}
+                              </div>
+                            )}
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+
+                    {/* 快速操作按钮 */}
+                    <div className='mt-4 flex space-x-2'>
+                      <button
+                        onClick={() =>
+                          setNewUserGroup((prev) => ({
+                            ...prev,
+                            enabledApis: [],
+                          }))
+                        }
+                        className={buttonStyles.quickAction}
+                      >
+                        全不选（无限制）
+                      </button>
+                      <button
+                        onClick={() => {
+                          const allApis =
+                            config?.SourceConfig?.filter(
+                              (source) => !source.disabled
+                            ).map((s) => s.key) || [];
+                          setNewUserGroup((prev) => ({
+                            ...prev,
+                            enabledApis: allApis,
+                          }));
+                        }}
+                        className={buttonStyles.quickAction}
+                      >
+                        全选
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 操作按钮 */}
+                  <div className='flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700'>
+                    <button
+                      onClick={() => {
+                        setShowAddUserGroupForm(false);
+                        setNewUserGroup({ name: '', enabledApis: [] });
+                      }}
+                      className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
+                    >
+                      取消
+                    </button>
+                    <button
+                      onClick={handleAddUserGroup}
+                      disabled={
+                        !newUserGroup.name.trim() ||
+                        isLoading('userGroup_add_new')
+                      }
+                      className={`px-6 py-2.5 text-sm font-medium ${
+                        !newUserGroup.name.trim() ||
+                        isLoading('userGroup_add_new')
+                          ? buttonStyles.disabled
+                          : buttonStyles.primary
+                      }`}
+                    >
+                      {isLoading('userGroup_add_new')
+                        ? '添加中...'
+                        : '添加用户组'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* 编辑用户组弹窗 */}
+      {showEditUserGroupForm &&
+        editingUserGroup &&
+        createPortal(
+          <div
+            className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4'
+            onClick={() => {
+              setShowEditUserGroupForm(false);
+              setEditingUserGroup(null);
+            }}
+          >
+            <div
+              className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-y-auto'
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className='p-6'>
+                <div className='flex items-center justify-between mb-6'>
+                  <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
+                    编辑用户组 - {editingUserGroup.name}
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowEditUserGroupForm(false);
+                      setEditingUserGroup(null);
+                    }}
+                    className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
+                  >
+                    <svg
+                      className='w-6 h-6'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M6 18L18 6M6 6l12 12'
+                      />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className='space-y-6'>
+                  {/* 可用视频源 */}
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4'>
+                      可用视频源
+                    </label>
+                    <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3'>
+                      {config?.SourceConfig?.map((source) => (
+                        <label
+                          key={source.key}
+                          className='flex items-center space-x-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors'
+                        >
+                          <input
+                            type='checkbox'
+                            checked={editingUserGroup.enabledApis.includes(
+                              source.key
+                            )}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setEditingUserGroup((prev) =>
+                                  prev
+                                    ? {
+                                        ...prev,
+                                        enabledApis: [
+                                          ...prev.enabledApis,
+                                          source.key,
+                                        ],
+                                      }
+                                    : null
+                                );
+                              } else {
+                                setEditingUserGroup((prev) =>
+                                  prev
+                                    ? {
+                                        ...prev,
+                                        enabledApis: prev.enabledApis.filter(
+                                          (api) => api !== source.key
+                                        ),
+                                      }
+                                    : null
+                                );
+                              }
+                            }}
+                            className='rounded border-gray-300 text-purple-600 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700'
+                          />
+                          <div className='flex-1 min-w-0'>
+                            <div className='text-sm font-medium text-gray-900 dark:text-gray-100 truncate'>
+                              {source.name}
+                            </div>
+                            {source.api && (
+                              <div className='text-xs text-gray-500 dark:text-gray-400 truncate'>
+                                {extractDomain(source.api)}
+                              </div>
+                            )}
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+
+                    {/* 快速操作按钮 */}
+                    <div className='mt-4 flex space-x-2'>
+                      <button
+                        onClick={() =>
+                          setEditingUserGroup((prev) =>
+                            prev ? { ...prev, enabledApis: [] } : null
+                          )
+                        }
+                        className={buttonStyles.quickAction}
+                      >
+                        全不选（无限制）
+                      </button>
+                      <button
+                        onClick={() => {
+                          const allApis =
+                            config?.SourceConfig?.filter(
+                              (source) => !source.disabled
+                            ).map((s) => s.key) || [];
+                          setEditingUserGroup((prev) =>
+                            prev ? { ...prev, enabledApis: allApis } : null
+                          );
+                        }}
+                        className={buttonStyles.quickAction}
+                      >
+                        全选
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 操作按钮 */}
+                  <div className='flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700'>
+                    <button
+                      onClick={() => {
+                        setShowEditUserGroupForm(false);
+                        setEditingUserGroup(null);
+                      }}
+                      className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
+                    >
+                      取消
+                    </button>
+                    <button
+                      onClick={handleEditUserGroup}
+                      disabled={isLoading(
+                        `userGroup_edit_${editingUserGroup?.name}`
+                      )}
+                      className={`px-6 py-2.5 text-sm font-medium ${
+                        isLoading(`userGroup_edit_${editingUserGroup?.name}`)
+                          ? buttonStyles.disabled
+                          : buttonStyles.primary
+                      }`}
+                    >
+                      {isLoading(`userGroup_edit_${editingUserGroup?.name}`)
+                        ? '保存中...'
+                        : '保存修改'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* 配置用户组弹窗 */}
+      {showConfigureUserGroupModal &&
+        selectedUserForGroup &&
+        createPortal(
+          <div
+            className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4'
+            onClick={() => {
+              setShowConfigureUserGroupModal(false);
+              setSelectedUserForGroup(null);
+              setSelectedUserGroups([]);
+            }}
+          >
+            <div
+              className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-y-auto'
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className='p-6'>
+                <div className='flex items-center justify-between mb-6'>
+                  <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
+                    配置用户组 - {selectedUserForGroup.username}
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowConfigureUserGroupModal(false);
+                      setSelectedUserForGroup(null);
+                      setSelectedUserGroups([]);
+                    }}
+                    className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
+                  >
+                    <svg
+                      className='w-6 h-6'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M6 18L18 6M6 6l12 12'
+                      />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className='mb-6'>
+                  <div className='bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4'>
+                    <div className='flex items-center space-x-2 mb-2'>
+                      <svg
+                        className='w-5 h-5 text-blue-600 dark:text-blue-400'
+                        fill='none'
+                        stroke='currentColor'
+                        viewBox='0 0 24 24'
+                      >
+                        <path
+                          strokeLinecap='round'
+                          strokeLinejoin='round'
+                          strokeWidth={2}
+                          d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                        />
+                      </svg>
+                      <span className='text-sm font-medium text-blue-800 dark:text-blue-300'>
+                        配置说明
+                      </span>
+                    </div>
+                    <p className='text-sm text-blue-700 dark:text-blue-400 mt-1'>
+                      提示：选择"无用户组"为无限制，选择特定用户组将限制用户只能访问该用户组允许的采集源
+                    </p>
+                  </div>
+                </div>
+
+                {/* 用户组选择 - 下拉选择器 */}
+                <div className='mb-6'>
                   <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
                     选择用户组：
                   </label>
                   <select
-                    onChange={(e) => setSelectedUserGroup(e.target.value)}
+                    value={
+                      selectedUserGroups.length > 0 ? selectedUserGroups[0] : ''
+                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSelectedUserGroups(value ? [value] : []);
+                    }}
                     className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors'
-                    value={selectedUserGroup}
                   >
                     <option value=''>无用户组（无限制）</option>
                     {userGroups.map((group) => (
                       <option key={group.name} value={group.name}>
-                        {group.name} {group.enabledApis && group.enabledApis.length > 0 ? `(${group.enabledApis.length} 个源)` : ''}
+                        {group.name}{' '}
+                        {group.enabledApis && group.enabledApis.length > 0
+                          ? `(${group.enabledApis.length} 个源)`
+                          : ''}
                       </option>
                     ))}
                   </select>
@@ -2243,32 +2413,421 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
                     选择"无用户组"为无限制，选择特定用户组将限制用户只能访问该用户组允许的采集源
                   </p>
                 </div>
-              </div>
 
-              {/* 操作按钮 */}
-              <div className='flex justify-end space-x-3'>
-                <button
-                  onClick={() => {
-                    setShowBatchUserGroupModal(false);
-                    setSelectedUserGroup('');
-                  }}
-                  className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
-                >
-                  取消
-                </button>
-                <button
-                  onClick={() => handleBatchSetUserGroup(selectedUserGroup)}
-                  disabled={isLoading('batchSetUserGroup')}
-                  className={`px-6 py-2.5 text-sm font-medium ${isLoading('batchSetUserGroup') ? buttonStyles.disabled : buttonStyles.primary}`}
-                >
-                  {isLoading('batchSetUserGroup') ? '设置中...' : '确认设置'}
-                </button>
+                {/* 操作按钮 */}
+                <div className='flex justify-end space-x-3'>
+                  <button
+                    onClick={() => {
+                      setShowConfigureUserGroupModal(false);
+                      setSelectedUserForGroup(null);
+                      setSelectedUserGroups([]);
+                    }}
+                    className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={handleSaveUserGroups}
+                    disabled={isLoading(
+                      `saveUserGroups_${selectedUserForGroup?.username}`
+                    )}
+                    className={`px-6 py-2.5 text-sm font-medium ${
+                      isLoading(
+                        `saveUserGroups_${selectedUserForGroup?.username}`
+                      )
+                        ? buttonStyles.disabled
+                        : buttonStyles.primary
+                    }`}
+                  >
+                    {isLoading(
+                      `saveUserGroups_${selectedUserForGroup?.username}`
+                    )
+                      ? '配置中...'
+                      : '确认配置'}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body
+        )}
+
+      {/* 删除用户组确认弹窗 */}
+      {showDeleteUserGroupModal &&
+        deletingUserGroup &&
+        createPortal(
+          <div
+            className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4'
+            onClick={() => {
+              setShowDeleteUserGroupModal(false);
+              setDeletingUserGroup(null);
+            }}
+          >
+            <div
+              className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full'
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className='p-6'>
+                <div className='flex items-center justify-between mb-6'>
+                  <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
+                    确认删除用户组
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowDeleteUserGroupModal(false);
+                      setDeletingUserGroup(null);
+                    }}
+                    className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
+                  >
+                    <svg
+                      className='w-6 h-6'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M6 18L18 6M6 6l12 12'
+                      />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className='mb-6'>
+                  <div className='bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4'>
+                    <div className='flex items-center space-x-2 mb-2'>
+                      <svg
+                        className='w-5 h-5 text-red-600 dark:text-red-400'
+                        fill='none'
+                        stroke='currentColor'
+                        viewBox='0 0 24 24'
+                      >
+                        <path
+                          strokeLinecap='round'
+                          strokeLinejoin='round'
+                          strokeWidth={2}
+                          d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z'
+                        />
+                      </svg>
+                      <span className='text-sm font-medium text-red-800 dark:text-red-300'>
+                        危险操作警告
+                      </span>
+                    </div>
+                    <p className='text-sm text-red-700 dark:text-red-400'>
+                      删除用户组 <strong>{deletingUserGroup.name}</strong>{' '}
+                      将影响所有使用该组的用户，此操作不可恢复！
+                    </p>
+                  </div>
+
+                  {deletingUserGroup.affectedUsers.length > 0 ? (
+                    <div className='bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4'>
+                      <div className='flex items-center space-x-2 mb-2'>
+                        <svg
+                          className='w-5 h-5 text-yellow-600 dark:text-yellow-400'
+                          fill='none'
+                          stroke='currentColor'
+                          viewBox='0 0 24 24'
+                        >
+                          <path
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
+                            strokeWidth={2}
+                            d='M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                          />
+                        </svg>
+                        <span className='text-sm font-medium text-yellow-800 dark:text-yellow-300'>
+                          ⚠️ 将影响 {deletingUserGroup.affectedUsers.length}{' '}
+                          个用户：
+                        </span>
+                      </div>
+                      <div className='space-y-1'>
+                        {deletingUserGroup.affectedUsers.map((user, index) => (
+                          <div
+                            key={index}
+                            className='text-sm text-yellow-700 dark:text-yellow-300'
+                          >
+                            • {user.username} ({user.role})
+                          </div>
+                        ))}
+                      </div>
+                      <p className='text-xs text-yellow-600 dark:text-yellow-400 mt-2'>
+                        这些用户的用户组将被自动移除
+                      </p>
+                    </div>
+                  ) : (
+                    <div className='bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4'>
+                      <div className='flex items-center space-x-2'>
+                        <svg
+                          className='w-5 h-5 text-green-600 dark:text-green-400'
+                          fill='none'
+                          stroke='currentColor'
+                          viewBox='0 0 24 24'
+                        >
+                          <path
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
+                            strokeWidth={2}
+                            d='M5 13l4 4L19 7'
+                          />
+                        </svg>
+                        <span className='text-sm font-medium text-green-800 dark:text-green-300'>
+                          ✅ 当前没有用户使用此用户组
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 操作按钮 */}
+                <div className='flex justify-end space-x-3'>
+                  <button
+                    onClick={() => {
+                      setShowDeleteUserGroupModal(false);
+                      setDeletingUserGroup(null);
+                    }}
+                    className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={handleConfirmDeleteUserGroup}
+                    disabled={isLoading(
+                      `userGroup_delete_${deletingUserGroup?.name}`
+                    )}
+                    className={`px-6 py-2.5 text-sm font-medium ${
+                      isLoading(`userGroup_delete_${deletingUserGroup?.name}`)
+                        ? buttonStyles.disabled
+                        : buttonStyles.danger
+                    }`}
+                  >
+                    {isLoading(`userGroup_delete_${deletingUserGroup?.name}`)
+                      ? '删除中...'
+                      : '确认删除'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* 删除用户确认弹窗 */}
+      {showDeleteUserModal &&
+        deletingUser &&
+        createPortal(
+          <div
+            className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4'
+            onClick={() => {
+              setShowDeleteUserModal(false);
+              setDeletingUser(null);
+            }}
+          >
+            <div
+              className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full'
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className='p-6'>
+                <div className='flex items-center justify-between mb-6'>
+                  <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
+                    确认删除用户
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowDeleteUserModal(false);
+                      setDeletingUser(null);
+                    }}
+                    className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
+                  >
+                    <svg
+                      className='w-6 h-6'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M6 18L18 6M6 6l12 12'
+                      />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className='mb-6'>
+                  <div className='bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4'>
+                    <div className='flex items-center space-x-2 mb-2'>
+                      <svg
+                        className='w-5 h-5 text-red-600 dark:text-red-400'
+                        fill='none'
+                        stroke='currentColor'
+                        viewBox='0 0 24 24'
+                      >
+                        <path
+                          strokeLinecap='round'
+                          strokeLinejoin='round'
+                          strokeWidth={2}
+                          d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z'
+                        />
+                      </svg>
+                      <span className='text-sm font-medium text-red-800 dark:text-red-300'>
+                        危险操作警告
+                      </span>
+                    </div>
+                    <p className='text-sm text-red-700 dark:text-red-400'>
+                      删除用户 <strong>{deletingUser}</strong>{' '}
+                      将同时删除其搜索历史、播放记录和收藏夹，此操作不可恢复！
+                    </p>
+                  </div>
+
+                  {/* 操作按钮 */}
+                  <div className='flex justify-end space-x-3'>
+                    <button
+                      onClick={() => {
+                        setShowDeleteUserModal(false);
+                        setDeletingUser(null);
+                      }}
+                      className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
+                    >
+                      取消
+                    </button>
+                    <button
+                      onClick={handleConfirmDeleteUser}
+                      className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.danger}`}
+                    >
+                      确认删除
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* 批量设置用户组弹窗 */}
+      {showBatchUserGroupModal &&
+        createPortal(
+          <div
+            className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4'
+            onClick={() => {
+              setShowBatchUserGroupModal(false);
+              setSelectedUserGroup('');
+            }}
+          >
+            <div
+              className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full'
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className='p-6'>
+                <div className='flex items-center justify-between mb-6'>
+                  <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
+                    批量设置用户组
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowBatchUserGroupModal(false);
+                      setSelectedUserGroup('');
+                    }}
+                    className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
+                  >
+                    <svg
+                      className='w-6 h-6'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M6 18L18 6M6 6l12 12'
+                      />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className='mb-6'>
+                  <div className='bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4'>
+                    <div className='flex items-center space-x-2 mb-2'>
+                      <svg
+                        className='w-5 h-5 text-blue-600 dark:text-blue-400'
+                        fill='none'
+                        stroke='currentColor'
+                        viewBox='0 0 24 24'
+                      >
+                        <path
+                          strokeLinecap='round'
+                          strokeLinejoin='round'
+                          strokeWidth={2}
+                          d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                        />
+                      </svg>
+                      <span className='text-sm font-medium text-blue-800 dark:text-blue-300'>
+                        批量操作说明
+                      </span>
+                    </div>
+                    <p className='text-sm text-blue-700 dark:text-blue-400'>
+                      将为选中的 <strong>{selectedUsers.size} 个用户</strong>{' '}
+                      设置用户组，选择"无用户组"为无限制
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
+                      选择用户组：
+                    </label>
+                    <select
+                      onChange={(e) => setSelectedUserGroup(e.target.value)}
+                      className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors'
+                      value={selectedUserGroup}
+                    >
+                      <option value=''>无用户组（无限制）</option>
+                      {userGroups.map((group) => (
+                        <option key={group.name} value={group.name}>
+                          {group.name}{' '}
+                          {group.enabledApis && group.enabledApis.length > 0
+                            ? `(${group.enabledApis.length} 个源)`
+                            : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <p className='mt-2 text-xs text-gray-500 dark:text-gray-400'>
+                      选择"无用户组"为无限制，选择特定用户组将限制用户只能访问该用户组允许的采集源
+                    </p>
+                  </div>
+                </div>
+
+                {/* 操作按钮 */}
+                <div className='flex justify-end space-x-3'>
+                  <button
+                    onClick={() => {
+                      setShowBatchUserGroupModal(false);
+                      setSelectedUserGroup('');
+                    }}
+                    className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={() => handleBatchSetUserGroup(selectedUserGroup)}
+                    disabled={isLoading('batchSetUserGroup')}
+                    className={`px-6 py-2.5 text-sm font-medium ${
+                      isLoading('batchSetUserGroup')
+                        ? buttonStyles.disabled
+                        : buttonStyles.primary
+                    }`}
+                  >
+                    {isLoading('batchSetUserGroup') ? '设置中...' : '确认设置'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* 通用弹窗组件 */}
       <AlertModal
@@ -2280,11 +2839,9 @@ const UserConfig = ({ config, role, refreshConfig, setConfig }: UserConfigProps)
         timer={alertModal.timer}
         showConfirm={alertModal.showConfirm}
       />
-
-
     </div>
   );
-}
+};
 
 // 视频源配置组件
 const VideoSourceConfig = ({
@@ -2309,7 +2866,9 @@ const VideoSourceConfig = ({
   });
 
   // 批量操作相关状态
-  const [selectedSources, setSelectedSources] = useState<Set<string>>(new Set());
+  const [selectedSources, setSelectedSources] = useState<Set<string>>(
+    new Set()
+  );
 
   // 使用 useMemo 计算全选状态，避免每次渲染都重新计算
   const selectAll = useMemo(() => {
@@ -2327,21 +2886,23 @@ const VideoSourceConfig = ({
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => { },
-    onCancel: () => { }
+    onConfirm: () => {},
+    onCancel: () => {},
   });
 
   // 有效性检测相关状态
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [isValidating, setIsValidating] = useState(false);
-  const [validationResults, setValidationResults] = useState<Array<{
-    key: string;
-    name: string;
-    status: 'valid' | 'no_results' | 'invalid' | 'validating';
-    message: string;
-    resultCount: number;
-  }>>([]);
+  const [validationResults, setValidationResults] = useState<
+    Array<{
+      key: string;
+      name: string;
+      status: 'valid' | 'no_results' | 'invalid' | 'validating';
+      message: string;
+      resultCount: number;
+    }>
+  >([]);
 
   // dnd-kit 传感器
   const sensors = useSensors(
@@ -2395,13 +2956,17 @@ const VideoSourceConfig = ({
     const target = sources.find((s) => s.key === key);
     if (!target) return;
     const action = target.disabled ? 'enable' : 'disable';
-    withLoading(`toggleSource_${key}`, () => callSourceApi({ action, key })).catch(() => {
+    withLoading(`toggleSource_${key}`, () =>
+      callSourceApi({ action, key })
+    ).catch(() => {
       console.error('操作失败', action, key);
     });
   };
 
   const handleDelete = (key: string) => {
-    withLoading(`deleteSource_${key}`, () => callSourceApi({ action: 'delete', key })).catch(() => {
+    withLoading(`deleteSource_${key}`, () =>
+      callSourceApi({ action: 'delete', key })
+    ).catch(() => {
       console.error('操作失败', 'delete', key);
     });
   };
@@ -2441,7 +3006,9 @@ const VideoSourceConfig = ({
 
   const handleSaveOrder = () => {
     const order = sources.map((s) => s.key);
-    withLoading('saveSourceOrder', () => callSourceApi({ action: 'sort', order }))
+    withLoading('saveSourceOrder', () =>
+      callSourceApi({ action: 'sort', order })
+    )
       .then(() => {
         setOrderChanged(false);
       })
@@ -2453,7 +3020,11 @@ const VideoSourceConfig = ({
   // 有效性检测函数
   const handleValidateSources = async () => {
     if (!searchKeyword.trim()) {
-      showAlert({ type: 'warning', title: '请输入搜索关键词', message: '搜索关键词不能为空' });
+      showAlert({
+        type: 'warning',
+        title: '请输入搜索关键词',
+        message: '搜索关键词不能为空',
+      });
       return;
     }
 
@@ -2463,18 +3034,22 @@ const VideoSourceConfig = ({
       setShowValidationModal(false); // 立即关闭弹窗
 
       // 初始化所有视频源为检测中状态
-      const initialResults = sources.map(source => ({
+      const initialResults = sources.map((source) => ({
         key: source.key,
         name: source.name,
         status: 'validating' as const,
         message: '检测中...',
-        resultCount: 0
+        resultCount: 0,
       }));
       setValidationResults(initialResults);
 
       try {
         // 使用EventSource接收流式数据
-        const eventSource = new EventSource(`/api/admin/source/validate?q=${encodeURIComponent(searchKeyword.trim())}`);
+        const eventSource = new EventSource(
+          `/api/admin/source/validate?q=${encodeURIComponent(
+            searchKeyword.trim()
+          )}`
+        );
 
         eventSource.onmessage = (event) => {
           try {
@@ -2488,32 +3063,53 @@ const VideoSourceConfig = ({
               case 'source_result':
               case 'source_error':
                 // 更新验证结果
-                setValidationResults(prev => {
-                  const existing = prev.find(r => r.key === data.source);
+                setValidationResults((prev) => {
+                  const existing = prev.find((r) => r.key === data.source);
                   if (existing) {
-                    return prev.map(r => r.key === data.source ? {
-                      key: data.source,
-                      name: sources.find(s => s.key === data.source)?.name || data.source,
-                      status: data.status,
-                      message: data.status === 'valid' ? '搜索正常' :
-                        data.status === 'no_results' ? '无法搜索到结果' : '连接失败',
-                      resultCount: data.status === 'valid' ? 1 : 0
-                    } : r);
+                    return prev.map((r) =>
+                      r.key === data.source
+                        ? {
+                            key: data.source,
+                            name:
+                              sources.find((s) => s.key === data.source)
+                                ?.name || data.source,
+                            status: data.status,
+                            message:
+                              data.status === 'valid'
+                                ? '搜索正常'
+                                : data.status === 'no_results'
+                                ? '无法搜索到结果'
+                                : '连接失败',
+                            resultCount: data.status === 'valid' ? 1 : 0,
+                          }
+                        : r
+                    );
                   } else {
-                    return [...prev, {
-                      key: data.source,
-                      name: sources.find(s => s.key === data.source)?.name || data.source,
-                      status: data.status,
-                      message: data.status === 'valid' ? '搜索正常' :
-                        data.status === 'no_results' ? '无法搜索到结果' : '连接失败',
-                      resultCount: data.status === 'valid' ? 1 : 0
-                    }];
+                    return [
+                      ...prev,
+                      {
+                        key: data.source,
+                        name:
+                          sources.find((s) => s.key === data.source)?.name ||
+                          data.source,
+                        status: data.status,
+                        message:
+                          data.status === 'valid'
+                            ? '搜索正常'
+                            : data.status === 'no_results'
+                            ? '无法搜索到结果'
+                            : '连接失败',
+                        resultCount: data.status === 'valid' ? 1 : 0,
+                      },
+                    ];
                   }
                 });
                 break;
 
               case 'complete':
-                console.log(`检测完成，共检测 ${data.completedSources} 个视频源`);
+                console.log(
+                  `检测完成，共检测 ${data.completedSources} 个视频源`
+                );
                 eventSource.close();
                 setIsValidating(false);
                 break;
@@ -2527,7 +3123,11 @@ const VideoSourceConfig = ({
           console.error('EventSource错误:', error);
           eventSource.close();
           setIsValidating(false);
-          showAlert({ type: 'error', title: '验证失败', message: '连接错误，请重试' });
+          showAlert({
+            type: 'error',
+            title: '验证失败',
+            message: '连接错误，请重试',
+          });
         };
 
         // 设置超时，防止长时间等待
@@ -2535,13 +3135,20 @@ const VideoSourceConfig = ({
           if (eventSource.readyState === EventSource.OPEN) {
             eventSource.close();
             setIsValidating(false);
-            showAlert({ type: 'warning', title: '验证超时', message: '检测超时，请重试' });
+            showAlert({
+              type: 'warning',
+              title: '验证超时',
+              message: '检测超时，请重试',
+            });
           }
         }, 60000); // 60秒超时
-
       } catch (error) {
         setIsValidating(false);
-        showAlert({ type: 'error', title: '验证失败', message: error instanceof Error ? error.message : '未知错误' });
+        showAlert({
+          type: 'error',
+          title: '验证失败',
+          message: error instanceof Error ? error.message : '未知错误',
+        });
         throw error;
       }
     });
@@ -2549,37 +3156,41 @@ const VideoSourceConfig = ({
 
   // 获取有效性状态显示
   const getValidationStatus = (sourceKey: string) => {
-    const result = validationResults.find(r => r.key === sourceKey);
+    const result = validationResults.find((r) => r.key === sourceKey);
     if (!result) return null;
 
     switch (result.status) {
       case 'validating':
         return {
           text: '检测中',
-          className: 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300',
+          className:
+            'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300',
           icon: '⟳',
-          message: result.message
+          message: result.message,
         };
       case 'valid':
         return {
           text: '有效',
-          className: 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300',
+          className:
+            'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300',
           icon: '✓',
-          message: result.message
+          message: result.message,
         };
       case 'no_results':
         return {
           text: '无法搜索',
-          className: 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300',
+          className:
+            'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300',
           icon: '⚠',
-          message: result.message
+          message: result.message,
         };
       case 'invalid':
         return {
           text: '无效',
-          className: 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300',
+          className:
+            'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300',
           icon: '✗',
-          message: result.message
+          message: result.message,
         };
       default:
         return null;
@@ -2638,10 +3249,11 @@ const VideoSourceConfig = ({
         </td>
         <td className='px-6 py-4 whitespace-nowrap max-w-[1rem]'>
           <span
-            className={`px-2 py-1 text-xs rounded-full ${!source.disabled
-              ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
-              : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300'
-              }`}
+            className={`px-2 py-1 text-xs rounded-full ${
+              !source.disabled
+                ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
+                : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300'
+            }`}
           >
             {!source.disabled ? '启用中' : '已禁用'}
           </span>
@@ -2657,7 +3269,10 @@ const VideoSourceConfig = ({
               );
             }
             return (
-              <span className={`px-2 py-1 text-xs rounded-full ${status.className}`} title={status.message}>
+              <span
+                className={`px-2 py-1 text-xs rounded-full ${status.className}`}
+                title={status.message}
+              >
                 {status.icon} {status.text}
               </span>
             );
@@ -2667,10 +3282,15 @@ const VideoSourceConfig = ({
           <button
             onClick={() => handleToggleEnable(source.key)}
             disabled={isLoading(`toggleSource_${source.key}`)}
-            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${!source.disabled
-              ? buttonStyles.roundedDanger
-              : buttonStyles.roundedSuccess
-              } transition-colors ${isLoading(`toggleSource_${source.key}`) ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${
+              !source.disabled
+                ? buttonStyles.roundedDanger
+                : buttonStyles.roundedSuccess
+            } transition-colors ${
+              isLoading(`toggleSource_${source.key}`)
+                ? 'opacity-50 cursor-not-allowed'
+                : ''
+            }`}
           >
             {!source.disabled ? '禁用' : '启用'}
           </button>
@@ -2678,7 +3298,11 @@ const VideoSourceConfig = ({
             <button
               onClick={() => handleDelete(source.key)}
               disabled={isLoading(`deleteSource_${source.key}`)}
-              className={`${buttonStyles.roundedSecondary} ${isLoading(`deleteSource_${source.key}`) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`${buttonStyles.roundedSecondary} ${
+                isLoading(`deleteSource_${source.key}`)
+                  ? 'opacity-50 cursor-not-allowed'
+                  : ''
+              }`}
             >
               删除
             </button>
@@ -2689,18 +3313,21 @@ const VideoSourceConfig = ({
   };
 
   // 全选/取消全选
-  const handleSelectAll = useCallback((checked: boolean) => {
-    if (checked) {
-      const allKeys = sources.map(s => s.key);
-      setSelectedSources(new Set(allKeys));
-    } else {
-      setSelectedSources(new Set());
-    }
-  }, [sources]);
+  const handleSelectAll = useCallback(
+    (checked: boolean) => {
+      if (checked) {
+        const allKeys = sources.map((s) => s.key);
+        setSelectedSources(new Set(allKeys));
+      } else {
+        setSelectedSources(new Set());
+      }
+    },
+    [sources]
+  );
 
   // 单个选择
   const handleSelectSource = useCallback((key: string, checked: boolean) => {
-    setSelectedSources(prev => {
+    setSelectedSources((prev) => {
       const newSelected = new Set(prev);
       if (checked) {
         newSelected.add(key);
@@ -2712,9 +3339,15 @@ const VideoSourceConfig = ({
   }, []);
 
   // 批量操作
-  const handleBatchOperation = async (action: 'batch_enable' | 'batch_disable' | 'batch_delete') => {
+  const handleBatchOperation = async (
+    action: 'batch_enable' | 'batch_disable' | 'batch_delete'
+  ) => {
     if (selectedSources.size === 0) {
-      showAlert({ type: 'warning', title: '请先选择要操作的视频源', message: '请选择至少一个视频源' });
+      showAlert({
+        type: 'warning',
+        title: '请先选择要操作的视频源',
+        message: '请选择至少一个视频源',
+      });
       return;
     }
 
@@ -2744,18 +3377,41 @@ const VideoSourceConfig = ({
       message: confirmMessage,
       onConfirm: async () => {
         try {
-          await withLoading(`batchSource_${action}`, () => callSourceApi({ action, keys }));
-          showAlert({ type: 'success', title: `${actionName}成功`, message: `${actionName}了 ${keys.length} 个视频源`, timer: 2000 });
+          await withLoading(`batchSource_${action}`, () =>
+            callSourceApi({ action, keys })
+          );
+          showAlert({
+            type: 'success',
+            title: `${actionName}成功`,
+            message: `${actionName}了 ${keys.length} 个视频源`,
+            timer: 2000,
+          });
           // 重置选择状态
           setSelectedSources(new Set());
         } catch (err) {
-          showAlert({ type: 'error', title: `${actionName}失败`, message: err instanceof Error ? err.message : '操作失败' });
+          showAlert({
+            type: 'error',
+            title: `${actionName}失败`,
+            message: err instanceof Error ? err.message : '操作失败',
+          });
         }
-        setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: () => { }, onCancel: () => { } });
+        setConfirmModal({
+          isOpen: false,
+          title: '',
+          message: '',
+          onConfirm: () => {},
+          onCancel: () => {},
+        });
       },
       onCancel: () => {
-        setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: () => { }, onCancel: () => { } });
-      }
+        setConfirmModal({
+          isOpen: false,
+          title: '',
+          message: '',
+          onConfirm: () => {},
+          onCancel: () => {},
+        });
+      },
     });
   };
 
@@ -2781,28 +3437,48 @@ const VideoSourceConfig = ({
               <div className='flex flex-wrap items-center gap-3 order-2 sm:order-1'>
                 <span className='text-sm text-gray-600 dark:text-gray-400'>
                   <span className='sm:hidden'>已选 {selectedSources.size}</span>
-                  <span className='hidden sm:inline'>已选择 {selectedSources.size} 个视频源</span>
+                  <span className='hidden sm:inline'>
+                    已选择 {selectedSources.size} 个视频源
+                  </span>
                 </span>
                 <button
                   onClick={() => handleBatchOperation('batch_enable')}
                   disabled={isLoading('batchSource_batch_enable')}
-                  className={`px-3 py-1 text-sm ${isLoading('batchSource_batch_enable') ? buttonStyles.disabled : buttonStyles.success}`}
+                  className={`px-3 py-1 text-sm ${
+                    isLoading('batchSource_batch_enable')
+                      ? buttonStyles.disabled
+                      : buttonStyles.success
+                  }`}
                 >
-                  {isLoading('batchSource_batch_enable') ? '启用中...' : '批量启用'}
+                  {isLoading('batchSource_batch_enable')
+                    ? '启用中...'
+                    : '批量启用'}
                 </button>
                 <button
                   onClick={() => handleBatchOperation('batch_disable')}
                   disabled={isLoading('batchSource_batch_disable')}
-                  className={`px-3 py-1 text-sm ${isLoading('batchSource_batch_disable') ? buttonStyles.disabled : buttonStyles.warning}`}
+                  className={`px-3 py-1 text-sm ${
+                    isLoading('batchSource_batch_disable')
+                      ? buttonStyles.disabled
+                      : buttonStyles.warning
+                  }`}
                 >
-                  {isLoading('batchSource_batch_disable') ? '禁用中...' : '批量禁用'}
+                  {isLoading('batchSource_batch_disable')
+                    ? '禁用中...'
+                    : '批量禁用'}
                 </button>
                 <button
                   onClick={() => handleBatchOperation('batch_delete')}
                   disabled={isLoading('batchSource_batch_delete')}
-                  className={`px-3 py-1 text-sm ${isLoading('batchSource_batch_delete') ? buttonStyles.disabled : buttonStyles.danger}`}
+                  className={`px-3 py-1 text-sm ${
+                    isLoading('batchSource_batch_delete')
+                      ? buttonStyles.disabled
+                      : buttonStyles.danger
+                  }`}
                 >
-                  {isLoading('batchSource_batch_delete') ? '删除中...' : '批量删除'}
+                  {isLoading('batchSource_batch_delete')
+                    ? '删除中...'
+                    : '批量删除'}
                 </button>
               </div>
               <div className='hidden sm:block w-px h-6 bg-gray-300 dark:bg-gray-600 order-2'></div>
@@ -2812,10 +3488,9 @@ const VideoSourceConfig = ({
             <button
               onClick={() => setShowValidationModal(true)}
               disabled={isValidating}
-              className={`px-3 py-1 text-sm rounded-lg transition-colors flex items-center space-x-1 ${isValidating
-                ? buttonStyles.disabled
-                : buttonStyles.primary
-                }`}
+              className={`px-3 py-1 text-sm rounded-lg transition-colors flex items-center space-x-1 ${
+                isValidating ? buttonStyles.disabled : buttonStyles.primary
+              }`}
             >
               {isValidating ? (
                 <>
@@ -2828,7 +3503,9 @@ const VideoSourceConfig = ({
             </button>
             <button
               onClick={() => setShowAddForm(!showAddForm)}
-              className={showAddForm ? buttonStyles.secondary : buttonStyles.success}
+              className={
+                showAddForm ? buttonStyles.secondary : buttonStyles.success
+              }
             >
               {showAddForm ? '取消' : '添加视频源'}
             </button>
@@ -2879,8 +3556,20 @@ const VideoSourceConfig = ({
           <div className='flex justify-end'>
             <button
               onClick={handleAddSource}
-              disabled={!newSource.name || !newSource.key || !newSource.api || isLoading('addSource')}
-              className={`w-full sm:w-auto px-4 py-2 ${!newSource.name || !newSource.key || !newSource.api || isLoading('addSource') ? buttonStyles.disabled : buttonStyles.success}`}
+              disabled={
+                !newSource.name ||
+                !newSource.key ||
+                !newSource.api ||
+                isLoading('addSource')
+              }
+              className={`w-full sm:w-auto px-4 py-2 ${
+                !newSource.name ||
+                !newSource.key ||
+                !newSource.api ||
+                isLoading('addSource')
+                  ? buttonStyles.disabled
+                  : buttonStyles.success
+              }`}
             >
               {isLoading('addSource') ? '添加中...' : '添加'}
             </button>
@@ -2888,10 +3577,11 @@ const VideoSourceConfig = ({
         </div>
       )}
 
-
-
       {/* 视频源表格 */}
-      <div className='border border-gray-200 dark:border-gray-700 rounded-lg max-h-[28rem] overflow-y-auto overflow-x-auto relative' data-table="source-list">
+      <div
+        className='border border-gray-200 dark:border-gray-700 rounded-lg max-h-[28rem] overflow-y-auto overflow-x-auto relative'
+        data-table='source-list'
+      >
         <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
           <thead className='bg-gray-50 dark:bg-gray-900 sticky top-0 z-10'>
             <tr>
@@ -2954,7 +3644,11 @@ const VideoSourceConfig = ({
           <button
             onClick={handleSaveOrder}
             disabled={isLoading('saveSourceOrder')}
-            className={`px-3 py-1.5 text-sm ${isLoading('saveSourceOrder') ? buttonStyles.disabled : buttonStyles.primary}`}
+            className={`px-3 py-1.5 text-sm ${
+              isLoading('saveSourceOrder')
+                ? buttonStyles.disabled
+                : buttonStyles.primary
+            }`}
           >
             {isLoading('saveSourceOrder') ? '保存中...' : '保存排序'}
           </button>
@@ -2962,44 +3656,57 @@ const VideoSourceConfig = ({
       )}
 
       {/* 有效性检测弹窗 */}
-      {showValidationModal && createPortal(
-        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50' onClick={() => setShowValidationModal(false)}>
-          <div className='bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4' onClick={(e) => e.stopPropagation()}>
-            <h3 className='text-lg font-medium text-gray-900 dark:text-gray-100 mb-4'>
-              视频源有效性检测
-            </h3>
-            <p className='text-sm text-gray-600 dark:text-gray-400 mb-4'>
-              请输入检测用的搜索关键词
-            </p>
-            <div className='space-y-4'>
-              <input
-                type='text'
-                placeholder='请输入搜索关键词'
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-                className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
-                onKeyPress={(e) => e.key === 'Enter' && handleValidateSources()}
-              />
-              <div className='flex justify-end space-x-3'>
-                <button
-                  onClick={() => setShowValidationModal(false)}
-                  className='px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors'
-                >
-                  取消
-                </button>
-                <button
-                  onClick={handleValidateSources}
-                  disabled={!searchKeyword.trim()}
-                  className={`px-4 py-2 ${!searchKeyword.trim() ? buttonStyles.disabled : buttonStyles.primary}`}
-                >
-                  开始检测
-                </button>
+      {showValidationModal &&
+        createPortal(
+          <div
+            className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
+            onClick={() => setShowValidationModal(false)}
+          >
+            <div
+              className='bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4'
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className='text-lg font-medium text-gray-900 dark:text-gray-100 mb-4'>
+                视频源有效性检测
+              </h3>
+              <p className='text-sm text-gray-600 dark:text-gray-400 mb-4'>
+                请输入检测用的搜索关键词
+              </p>
+              <div className='space-y-4'>
+                <input
+                  type='text'
+                  placeholder='请输入搜索关键词'
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
+                  className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+                  onKeyPress={(e) =>
+                    e.key === 'Enter' && handleValidateSources()
+                  }
+                />
+                <div className='flex justify-end space-x-3'>
+                  <button
+                    onClick={() => setShowValidationModal(false)}
+                    className='px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors'
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={handleValidateSources}
+                    disabled={!searchKeyword.trim()}
+                    className={`px-4 py-2 ${
+                      !searchKeyword.trim()
+                        ? buttonStyles.disabled
+                        : buttonStyles.primary
+                    }`}
+                  >
+                    开始检测
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* 通用弹窗组件 */}
       <AlertModal
@@ -3013,51 +3720,82 @@ const VideoSourceConfig = ({
       />
 
       {/* 批量操作确认弹窗 */}
-      {confirmModal.isOpen && createPortal(
-        <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4' onClick={confirmModal.onCancel}>
-          <div className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full' onClick={(e) => e.stopPropagation()}>
-            <div className='p-6'>
-              <div className='flex items-center justify-between mb-4'>
-                <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
-                  {confirmModal.title}
-                </h3>
-                <button
-                  onClick={confirmModal.onCancel}
-                  className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
-                >
-                  <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
-                  </svg>
-                </button>
-              </div>
+      {confirmModal.isOpen &&
+        createPortal(
+          <div
+            className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4'
+            onClick={confirmModal.onCancel}
+          >
+            <div
+              className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full'
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className='p-6'>
+                <div className='flex items-center justify-between mb-4'>
+                  <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
+                    {confirmModal.title}
+                  </h3>
+                  <button
+                    onClick={confirmModal.onCancel}
+                    className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
+                  >
+                    <svg
+                      className='w-5 h-5'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M6 18L18 6M6 6l12 12'
+                      />
+                    </svg>
+                  </button>
+                </div>
 
-              <div className='mb-6'>
-                <p className='text-sm text-gray-600 dark:text-gray-400'>
-                  {confirmModal.message}
-                </p>
-              </div>
+                <div className='mb-6'>
+                  <p className='text-sm text-gray-600 dark:text-gray-400'>
+                    {confirmModal.message}
+                  </p>
+                </div>
 
-              {/* 操作按钮 */}
-              <div className='flex justify-end space-x-3'>
-                <button
-                  onClick={confirmModal.onCancel}
-                  className={`px-4 py-2 text-sm font-medium ${buttonStyles.secondary}`}
-                >
-                  取消
-                </button>
-                <button
-                  onClick={confirmModal.onConfirm}
-                  disabled={isLoading('batchSource_batch_enable') || isLoading('batchSource_batch_disable') || isLoading('batchSource_batch_delete')}
-                  className={`px-4 py-2 text-sm font-medium ${isLoading('batchSource_batch_enable') || isLoading('batchSource_batch_disable') || isLoading('batchSource_batch_delete') ? buttonStyles.disabled : buttonStyles.primary}`}
-                >
-                  {isLoading('batchSource_batch_enable') || isLoading('batchSource_batch_disable') || isLoading('batchSource_batch_delete') ? '操作中...' : '确认'}
-                </button>
+                {/* 操作按钮 */}
+                <div className='flex justify-end space-x-3'>
+                  <button
+                    onClick={confirmModal.onCancel}
+                    className={`px-4 py-2 text-sm font-medium ${buttonStyles.secondary}`}
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={confirmModal.onConfirm}
+                    disabled={
+                      isLoading('batchSource_batch_enable') ||
+                      isLoading('batchSource_batch_disable') ||
+                      isLoading('batchSource_batch_delete')
+                    }
+                    className={`px-4 py-2 text-sm font-medium ${
+                      isLoading('batchSource_batch_enable') ||
+                      isLoading('batchSource_batch_disable') ||
+                      isLoading('batchSource_batch_delete')
+                        ? buttonStyles.disabled
+                        : buttonStyles.primary
+                    }`}
+                  >
+                    {isLoading('batchSource_batch_enable') ||
+                    isLoading('batchSource_batch_disable') ||
+                    isLoading('batchSource_batch_delete')
+                      ? '操作中...'
+                      : '确认'}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 };
@@ -3133,13 +3871,17 @@ const CategoryConfig = ({
     const target = categories.find((c) => c.query === query && c.type === type);
     if (!target) return;
     const action = target.disabled ? 'enable' : 'disable';
-    withLoading(`toggleCategory_${query}_${type}`, () => callCategoryApi({ action, query, type })).catch(() => {
+    withLoading(`toggleCategory_${query}_${type}`, () =>
+      callCategoryApi({ action, query, type })
+    ).catch(() => {
       console.error('操作失败', action, query, type);
     });
   };
 
   const handleDelete = (query: string, type: 'movie' | 'tv') => {
-    withLoading(`deleteCategory_${query}_${type}`, () => callCategoryApi({ action: 'delete', query, type })).catch(() => {
+    withLoading(`deleteCategory_${query}_${type}`, () =>
+      callCategoryApi({ action: 'delete', query, type })
+    ).catch(() => {
       console.error('操作失败', 'delete', query, type);
     });
   };
@@ -3181,7 +3923,9 @@ const CategoryConfig = ({
 
   const handleSaveOrder = () => {
     const order = categories.map((c) => `${c.query}:${c.type}`);
-    withLoading('saveCategoryOrder', () => callCategoryApi({ action: 'sort', order }))
+    withLoading('saveCategoryOrder', () =>
+      callCategoryApi({ action: 'sort', order })
+    )
       .then(() => {
         setOrderChanged(false);
       })
@@ -3207,7 +3951,7 @@ const CategoryConfig = ({
         className='hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors select-none'
       >
         <td
-          className="px-2 py-4 cursor-grab text-gray-400"
+          className='px-2 py-4 cursor-grab text-gray-400'
           style={{ touchAction: 'none' }}
           {...{ ...attributes, ...listeners }}
         >
@@ -3218,10 +3962,11 @@ const CategoryConfig = ({
         </td>
         <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100'>
           <span
-            className={`px-2 py-1 text-xs rounded-full ${category.type === 'movie'
-              ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
-              : 'bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-300'
-              }`}
+            className={`px-2 py-1 text-xs rounded-full ${
+              category.type === 'movie'
+                ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
+                : 'bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-300'
+            }`}
           >
             {category.type === 'movie' ? '电影' : '电视剧'}
           </span>
@@ -3234,32 +3979,44 @@ const CategoryConfig = ({
         </td>
         <td className='px-6 py-4 whitespace-nowrap max-w-[1rem]'>
           <span
-            className={`px-2 py-1 text-xs rounded-full ${!category.disabled
-              ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
-              : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300'
-              }`}
+            className={`px-2 py-1 text-xs rounded-full ${
+              !category.disabled
+                ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
+                : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300'
+            }`}
           >
             {!category.disabled ? '启用中' : '已禁用'}
           </span>
         </td>
         <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2'>
           <button
-            onClick={() =>
-              handleToggleEnable(category.query, category.type)
-            }
-            disabled={isLoading(`toggleCategory_${category.query}_${category.type}`)}
-            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${!category.disabled
-              ? buttonStyles.roundedDanger
-              : buttonStyles.roundedSuccess
-              } transition-colors ${isLoading(`toggleCategory_${category.query}_${category.type}`) ? 'opacity-50 cursor-not-allowed' : ''}`}
+            onClick={() => handleToggleEnable(category.query, category.type)}
+            disabled={isLoading(
+              `toggleCategory_${category.query}_${category.type}`
+            )}
+            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${
+              !category.disabled
+                ? buttonStyles.roundedDanger
+                : buttonStyles.roundedSuccess
+            } transition-colors ${
+              isLoading(`toggleCategory_${category.query}_${category.type}`)
+                ? 'opacity-50 cursor-not-allowed'
+                : ''
+            }`}
           >
             {!category.disabled ? '禁用' : '启用'}
           </button>
           {category.from !== 'config' && (
             <button
               onClick={() => handleDelete(category.query, category.type)}
-              disabled={isLoading(`deleteCategory_${category.query}_${category.type}`)}
-              className={`${buttonStyles.roundedSecondary} ${isLoading(`deleteCategory_${category.query}_${category.type}`) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={isLoading(
+                `deleteCategory_${category.query}_${category.type}`
+              )}
+              className={`${buttonStyles.roundedSecondary} ${
+                isLoading(`deleteCategory_${category.query}_${category.type}`)
+                  ? 'opacity-50 cursor-not-allowed'
+                  : ''
+              }`}
             >
               删除
             </button>
@@ -3286,7 +4043,9 @@ const CategoryConfig = ({
         </h4>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className={`px-3 py-1 text-sm rounded-lg transition-colors ${showAddForm ? buttonStyles.secondary : buttonStyles.success}`}
+          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+            showAddForm ? buttonStyles.secondary : buttonStyles.success
+          }`}
         >
           {showAddForm ? '取消' : '添加分类'}
         </button>
@@ -3330,8 +4089,18 @@ const CategoryConfig = ({
           <div className='flex justify-end'>
             <button
               onClick={handleAddCategory}
-              disabled={!newCategory.name || !newCategory.query || isLoading('addCategory')}
-              className={`w-full sm:w-auto px-4 py-2 ${!newCategory.name || !newCategory.query || isLoading('addCategory') ? buttonStyles.disabled : buttonStyles.success}`}
+              disabled={
+                !newCategory.name ||
+                !newCategory.query ||
+                isLoading('addCategory')
+              }
+              className={`w-full sm:w-auto px-4 py-2 ${
+                !newCategory.name ||
+                !newCategory.query ||
+                isLoading('addCategory')
+                  ? buttonStyles.disabled
+                  : buttonStyles.success
+              }`}
             >
               {isLoading('addCategory') ? '添加中...' : '添加'}
             </button>
@@ -3392,7 +4161,11 @@ const CategoryConfig = ({
           <button
             onClick={handleSaveOrder}
             disabled={isLoading('saveCategoryOrder')}
-            className={`px-3 py-1.5 text-sm ${isLoading('saveCategoryOrder') ? buttonStyles.disabled : buttonStyles.primary}`}
+            className={`px-3 py-1.5 text-sm ${
+              isLoading('saveCategoryOrder')
+                ? buttonStyles.disabled
+                : buttonStyles.primary
+            }`}
           >
             {isLoading('saveCategoryOrder') ? '保存中...' : '保存排序'}
           </button>
@@ -3414,15 +4187,19 @@ const CategoryConfig = ({
 };
 
 // 新增配置文件组件
-const ConfigFileComponent = ({ config, refreshConfig }: { config: AdminConfig | null; refreshConfig: () => Promise<void> }) => {
+const ConfigFileComponent = ({
+  config,
+  refreshConfig,
+}: {
+  config: AdminConfig | null;
+  refreshConfig: () => Promise<void>;
+}) => {
   const { alertModal, showAlert, hideAlert } = useAlertModal();
   const { isLoading, withLoading } = useLoadingState();
   const [configContent, setConfigContent] = useState('');
   const [subscriptionUrl, setSubscriptionUrl] = useState('');
   const [autoUpdate, setAutoUpdate] = useState(false);
   const [lastCheckTime, setLastCheckTime] = useState<string>('');
-
-
 
   useEffect(() => {
     if (config?.ConfigFile) {
@@ -3434,8 +4211,6 @@ const ConfigFileComponent = ({ config, refreshConfig }: { config: AdminConfig | 
       setLastCheckTime(config.ConfigSubscribtion.LastCheck || '');
     }
   }, [config]);
-
-
 
   // 拉取订阅配置
   const handleFetchConfig = async () => {
@@ -3485,7 +4260,7 @@ const ConfigFileComponent = ({ config, refreshConfig }: { config: AdminConfig | 
             configFile: configContent,
             subscriptionUrl,
             autoUpdate,
-            lastCheckTime: lastCheckTime || new Date().toISOString()
+            lastCheckTime: lastCheckTime || new Date().toISOString(),
           }),
         });
 
@@ -3502,8 +4277,6 @@ const ConfigFileComponent = ({ config, refreshConfig }: { config: AdminConfig | 
       }
     });
   };
-
-
 
   if (!config) {
     return (
@@ -3522,7 +4295,10 @@ const ConfigFileComponent = ({ config, refreshConfig }: { config: AdminConfig | 
             配置订阅
           </h3>
           <div className='text-sm text-gray-500 dark:text-gray-400 px-3 py-1.5 rounded-full'>
-            最后更新: {lastCheckTime ? new Date(lastCheckTime).toLocaleString('zh-CN') : '从未更新'}
+            最后更新:{' '}
+            {lastCheckTime
+              ? new Date(lastCheckTime).toLocaleString('zh-CN')
+              : '从未更新'}
           </div>
         </div>
 
@@ -3550,10 +4326,11 @@ const ConfigFileComponent = ({ config, refreshConfig }: { config: AdminConfig | 
             <button
               onClick={handleFetchConfig}
               disabled={isLoading('fetchConfig') || !subscriptionUrl.trim()}
-              className={`w-full px-6 py-3 rounded-lg font-medium transition-all duration-200 ${isLoading('fetchConfig') || !subscriptionUrl.trim()
-                ? buttonStyles.disabled
-                : buttonStyles.primary
-                }`}
+              className={`w-full px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+                isLoading('fetchConfig') || !subscriptionUrl.trim()
+                  ? buttonStyles.disabled
+                  : buttonStyles.primary
+              }`}
             >
               {isLoading('fetchConfig') ? (
                 <div className='flex items-center justify-center gap-2'>
@@ -3580,16 +4357,18 @@ const ConfigFileComponent = ({ config, refreshConfig }: { config: AdminConfig | 
               type='button'
               onClick={() => setAutoUpdate(!autoUpdate)}
               disabled={false}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${autoUpdate
-                ? buttonStyles.toggleOn
-                : buttonStyles.toggleOff
-                }`}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                autoUpdate ? buttonStyles.toggleOn : buttonStyles.toggleOff
+              }`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full ${buttonStyles.toggleThumb} transition-transform ${autoUpdate
-                  ? buttonStyles.toggleThumbOn
-                  : buttonStyles.toggleThumbOff
-                  }`}
+                className={`inline-block h-4 w-4 transform rounded-full ${
+                  buttonStyles.toggleThumb
+                } transition-transform ${
+                  autoUpdate
+                    ? buttonStyles.toggleThumbOn
+                    : buttonStyles.toggleThumbOff
+                }`}
               />
             </button>
           </div>
@@ -3607,7 +4386,8 @@ const ConfigFileComponent = ({ config, refreshConfig }: { config: AdminConfig | 
             disabled={false}
             className='w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-mono text-sm leading-relaxed resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 dark:hover:border-gray-500'
             style={{
-              fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace'
+              fontFamily:
+                'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
             }}
             spellCheck={false}
             data-gramm={false}
@@ -3621,10 +4401,11 @@ const ConfigFileComponent = ({ config, refreshConfig }: { config: AdminConfig | 
           <button
             onClick={handleSave}
             disabled={isLoading('saveConfig')}
-            className={`px-4 py-2 rounded-lg transition-colors ${isLoading('saveConfig')
-              ? buttonStyles.disabled
-              : buttonStyles.success
-              }`}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              isLoading('saveConfig')
+                ? buttonStyles.disabled
+                : buttonStyles.success
+            }`}
           >
             {isLoading('saveConfig') ? '保存中…' : '保存'}
           </button>
@@ -3645,159 +4426,14 @@ const ConfigFileComponent = ({ config, refreshConfig }: { config: AdminConfig | 
   );
 };
 
-// 网盘配置组件
-const CloudDiskConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | null; refreshConfig: () => Promise<void> }) => {
-  const { alertModal, showAlert, hideAlert } = useAlertModal();
-  const { isLoading, withLoading } = useLoadingState();
-  const [cloudDiskSettings, setCloudDiskSettings] = useState({
-    enabled: false,
-    apiUrl: '',
-    name: '网盘',
-  });
-
-  // 初始化配置
-  useEffect(() => {
-    // CloudDiskConfig has been removed
-  }, [config]);
-
-  // 保存网盘配置
-  const handleSave = async () => {
-    await withLoading('saveCloudDiskConfig', async () => {
-      try {
-        const resp = await fetch('/api/admin/config', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...config,
-            CloudDiskConfig: cloudDiskSettings,
-          }),
-        });
-
-        if (!resp.ok) {
-          const errorData = await resp.json();
-          throw new Error(errorData.error || '保存失败');
-        }
-
-        showAlert({ type: 'success', title: '保存成功', message: '网盘配置已更新，页面将自动刷新' });
-        await refreshConfig();
-        // 延迟刷新页面，让用户看到成功提示
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      } catch (error) {
-        console.error('保存网盘配置失败:', error);
-        showAlert({ type: 'error', title: '保存失败', message: (error as Error).message });
-      }
-    });
-  };
-
-  return (
-    <div className='space-y-6'>
-      <div className='bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700'>
-        <h3 className='text-lg font-semibold text-gray-900 dark:text-white mb-6'>
-          网盘功能配置
-        </h3>
-
-        <div className='space-y-6'>
-          {/* 启用开关 */}
-          <div className='flex items-center justify-between'>
-            <div>
-              <label className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-                启用网盘功能
-              </label>
-              <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
-                启用后用户可以在底部导航栏的"更多"菜单中看到网盘入口
-              </p>
-            </div>
-            <button
-              type='button'
-              onClick={() => setCloudDiskSettings(prev => ({ ...prev, enabled: !prev.enabled }))}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${cloudDiskSettings.enabled ? buttonStyles.toggleOn : buttonStyles.toggleOff
-                }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${cloudDiskSettings.enabled ? buttonStyles.toggleThumbOn : buttonStyles.toggleThumbOff
-                  }`}
-              />
-            </button>
-          </div>
-
-          {/* API地址配置 */}
-          <div>
-            <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
-              网盘API地址
-            </label>
-            <input
-              type='url'
-              value={cloudDiskSettings.apiUrl}
-              onChange={(e) => setCloudDiskSettings(prev => ({ ...prev, apiUrl: e.target.value }))}
-              placeholder='https://so.252035.xyz'
-              className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
-            />
-            <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
-              网盘搜索API的部署：
-              <a
-                href="https://github.com/joyce677/pansou"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
-              >
-                https://github.com/joyce677/pansou
-              </a>
-            </p>
-          </div>
-
-          {/* 显示名称 */}
-          <div>
-            <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
-              显示名称
-            </label>
-            <input
-              type='text'
-              value={cloudDiskSettings.name}
-              onChange={(e) => setCloudDiskSettings(prev => ({ ...prev, name: e.target.value }))}
-              placeholder='网盘'
-              className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
-            />
-            <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
-              在导航栏中显示的名称
-            </p>
-          </div>
-        </div>
-
-        {/* 操作按钮 */}
-        <div className='flex justify-end mt-6'>
-          <button
-            onClick={handleSave}
-            disabled={isLoading('saveCloudDiskConfig')}
-            className={`px-4 py-2 ${isLoading('saveCloudDiskConfig')
-              ? buttonStyles.disabled
-              : buttonStyles.success
-              } rounded-lg transition-colors`}
-          >
-            {isLoading('saveCloudDiskConfig') ? '保存中…' : '保存'}
-          </button>
-        </div>
-      </div>
-
-      {/* 通用弹窗组件 */}
-      <AlertModal
-        isOpen={alertModal.isOpen}
-        onClose={hideAlert}
-        type={alertModal.type}
-        title={alertModal.title}
-        message={alertModal.message}
-        timer={alertModal.timer}
-        showConfirm={alertModal.showConfirm}
-      />
-    </div>
-  );
-};
-
-
-
 // 新增站点配置组件
-const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | null; refreshConfig: () => Promise<void> }) => {
+const SiteConfigComponent = ({
+  config,
+  refreshConfig,
+}: {
+  config: AdminConfig | null;
+  refreshConfig: () => Promise<void>;
+}) => {
   const { alertModal, showAlert, hideAlert } = useAlertModal();
   const { isLoading, withLoading } = useLoadingState();
   const [siteSettings, setSiteSettings] = useState<SiteConfig>({
@@ -3866,7 +4502,8 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
     if (config?.SiteConfig) {
       setSiteSettings({
         ...config.SiteConfig,
-        DoubanProxyType: config.SiteConfig.DoubanProxyType || 'cmliussss-cdn-tencent',
+        DoubanProxyType:
+          config.SiteConfig.DoubanProxyType || 'cmliussss-cdn-tencent',
         DoubanProxy: config.SiteConfig.DoubanProxy || '',
         DoubanImageProxyType:
           config.SiteConfig.DoubanImageProxyType || 'cmliussss-cdn-tencent',
@@ -3964,9 +4601,7 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
     <div className='space-y-6'>
       {/* 站点名称 */}
       <div>
-        <label
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-        >
+        <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
           站点名称
         </label>
         <input
@@ -3975,15 +4610,13 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
           onChange={(e) =>
             setSiteSettings((prev) => ({ ...prev, SiteName: e.target.value }))
           }
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
         />
       </div>
 
       {/* 站点公告 */}
       <div>
-        <label
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-        >
+        <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
           站点公告
         </label>
         <textarea
@@ -3995,16 +4628,14 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
             }))
           }
           rows={3}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
         />
       </div>
 
       {/* 豆瓣数据源设置 */}
       <div className='space-y-3'>
         <div>
-          <label
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-          >
+          <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
             豆瓣数据代理
           </label>
           <div className='relative' data-dropdown='douban-datasource'>
@@ -4012,7 +4643,7 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
             <button
               type='button'
               onClick={() => setIsDoubanDropdownOpen(!isDoubanDropdownOpen)}
-              className="w-full px-3 py-2.5 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm hover:border-gray-400 dark:hover:border-gray-500 text-left"
+              className='w-full px-3 py-2.5 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm hover:border-gray-400 dark:hover:border-gray-500 text-left'
             >
               {
                 doubanDataSourceOptions.find(
@@ -4024,8 +4655,9 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
             {/* 下拉箭头 */}
             <div className='absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none'>
               <ChevronDown
-                className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform duration-200 ${isDoubanDropdownOpen ? 'rotate-180' : ''
-                  }`}
+                className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform duration-200 ${
+                  isDoubanDropdownOpen ? 'rotate-180' : ''
+                }`}
               />
             </div>
 
@@ -4040,10 +4672,11 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
                       handleDoubanDataSourceChange(option.value);
                       setIsDoubanDropdownOpen(false);
                     }}
-                    className={`w-full px-3 py-2.5 text-left text-sm transition-colors duration-150 flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700 ${siteSettings.DoubanProxyType === option.value
-                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                      : 'text-gray-900 dark:text-gray-100'
-                      }`}
+                    className={`w-full px-3 py-2.5 text-left text-sm transition-colors duration-150 flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                      siteSettings.DoubanProxyType === option.value
+                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                        : 'text-gray-900 dark:text-gray-100'
+                    }`}
                   >
                     <span className='truncate'>{option.label}</span>
                     {siteSettings.DoubanProxyType === option.value && (
@@ -4083,9 +4716,7 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
         {/* 豆瓣代理地址设置 - 仅在选择自定义代理时显示 */}
         {siteSettings.DoubanProxyType === 'custom' && (
           <div>
-            <label
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-            >
+            <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
               豆瓣代理地址
             </label>
             <input
@@ -4098,7 +4729,7 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
                   DoubanProxy: e.target.value,
                 }))
               }
-              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 shadow-sm hover:border-gray-400 dark:hover:border-gray-500"
+              className='w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 shadow-sm hover:border-gray-400 dark:hover:border-gray-500'
             />
             <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
               自定义代理服务器地址
@@ -4110,9 +4741,7 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
       {/* 豆瓣图片代理设置 */}
       <div className='space-y-3'>
         <div>
-          <label
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-          >
+          <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
             豆瓣图片代理
           </label>
           <div className='relative' data-dropdown='douban-image-proxy'>
@@ -4124,7 +4753,7 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
                   !isDoubanImageProxyDropdownOpen
                 )
               }
-              className="w-full px-3 py-2.5 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm hover:border-gray-400 dark:hover:border-gray-500 text-left"
+              className='w-full px-3 py-2.5 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm hover:border-gray-400 dark:hover:border-gray-500 text-left'
             >
               {
                 doubanImageProxyTypeOptions.find(
@@ -4136,8 +4765,9 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
             {/* 下拉箭头 */}
             <div className='absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none'>
               <ChevronDown
-                className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform duration-200 ${isDoubanImageProxyDropdownOpen ? 'rotate-180' : ''
-                  }`}
+                className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform duration-200 ${
+                  isDoubanImageProxyDropdownOpen ? 'rotate-180' : ''
+                }`}
               />
             </div>
 
@@ -4152,10 +4782,11 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
                       handleDoubanImageProxyChange(option.value);
                       setIsDoubanImageProxyDropdownOpen(false);
                     }}
-                    className={`w-full px-3 py-2.5 text-left text-sm transition-colors duration-150 flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700 ${siteSettings.DoubanImageProxyType === option.value
-                      ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
-                      : 'text-gray-900 dark:text-gray-100'
-                      }`}
+                    className={`w-full px-3 py-2.5 text-left text-sm transition-colors duration-150 flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                      siteSettings.DoubanImageProxyType === option.value
+                        ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                        : 'text-gray-900 dark:text-gray-100'
+                    }`}
                   >
                     <span className='truncate'>{option.label}</span>
                     {siteSettings.DoubanImageProxyType === option.value && (
@@ -4195,9 +4826,7 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
         {/* 豆瓣代理地址设置 - 仅在选择自定义代理时显示 */}
         {siteSettings.DoubanImageProxyType === 'custom' && (
           <div>
-            <label
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-            >
+            <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
               豆瓣图片代理地址
             </label>
             <input
@@ -4210,7 +4839,7 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
                   DoubanImageProxy: e.target.value,
                 }))
               }
-              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 shadow-sm hover:border-gray-400 dark:hover:border-gray-500"
+              className='w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 shadow-sm hover:border-gray-400 dark:hover:border-gray-500'
             />
             <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
               自定义图片代理服务器地址
@@ -4260,9 +4889,7 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
       {/* 禁用黄色过滤器 */}
       <div>
         <div className='flex items-center justify-between'>
-          <label
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-          >
+          <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
             禁用黄色过滤器
           </label>
           <button
@@ -4273,16 +4900,20 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
                 DisableYellowFilter: !prev.DisableYellowFilter,
               }))
             }
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${siteSettings.DisableYellowFilter
-              ? buttonStyles.toggleOn
-              : buttonStyles.toggleOff
-              }`}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+              siteSettings.DisableYellowFilter
+                ? buttonStyles.toggleOn
+                : buttonStyles.toggleOff
+            }`}
           >
             <span
-              className={`inline-block h-4 w-4 transform rounded-full ${buttonStyles.toggleThumb} transition-transform ${siteSettings.DisableYellowFilter
-                ? buttonStyles.toggleThumbOn
-                : buttonStyles.toggleThumbOff
-                }`}
+              className={`inline-block h-4 w-4 transform rounded-full ${
+                buttonStyles.toggleThumb
+              } transition-transform ${
+                siteSettings.DisableYellowFilter
+                  ? buttonStyles.toggleThumbOn
+                  : buttonStyles.toggleThumbOff
+              }`}
             />
           </button>
         </div>
@@ -4294,9 +4925,7 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
       {/* 流式搜索 */}
       <div>
         <div className='flex items-center justify-between'>
-          <label
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-          >
+          <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
             启用流式搜索
           </label>
           <button
@@ -4307,16 +4936,20 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
                 FluidSearch: !prev.FluidSearch,
               }))
             }
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${siteSettings.FluidSearch
-              ? buttonStyles.toggleOn
-              : buttonStyles.toggleOff
-              }`}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+              siteSettings.FluidSearch
+                ? buttonStyles.toggleOn
+                : buttonStyles.toggleOff
+            }`}
           >
             <span
-              className={`inline-block h-4 w-4 transform rounded-full ${buttonStyles.toggleThumb} transition-transform ${siteSettings.FluidSearch
-                ? buttonStyles.toggleThumbOn
-                : buttonStyles.toggleThumbOff
-                }`}
+              className={`inline-block h-4 w-4 transform rounded-full ${
+                buttonStyles.toggleThumb
+              } transition-transform ${
+                siteSettings.FluidSearch
+                  ? buttonStyles.toggleThumbOn
+                  : buttonStyles.toggleThumbOff
+              }`}
             />
           </button>
         </div>
@@ -4325,16 +4958,16 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
         </p>
       </div>
 
-
       {/* 操作按钮 */}
       <div className='flex justify-end'>
         <button
           onClick={handleSave}
           disabled={isLoading('saveSiteConfig')}
-          className={`px-4 py-2 ${isLoading('saveSiteConfig')
-            ? buttonStyles.disabled
-            : buttonStyles.primary
-            } rounded-lg transition-colors`}
+          className={`px-4 py-2 ${
+            isLoading('saveSiteConfig')
+              ? buttonStyles.disabled
+              : buttonStyles.primary
+          } rounded-lg transition-colors`}
         >
           {isLoading('saveSiteConfig') ? '保存中…' : '保存'}
         </button>
@@ -4366,7 +4999,8 @@ const LiveSourceConfig = ({
   const { isLoading, withLoading } = useLoadingState();
   const [liveSources, setLiveSources] = useState<LiveDataSource[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editingLiveSource, setEditingLiveSource] = useState<LiveDataSource | null>(null);
+  const [editingLiveSource, setEditingLiveSource] =
+    useState<LiveDataSource | null>(null);
   const [orderChanged, setOrderChanged] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [newLiveSource, setNewLiveSource] = useState<LiveDataSource>({
@@ -4429,13 +5063,17 @@ const LiveSourceConfig = ({
     const target = liveSources.find((s) => s.key === key);
     if (!target) return;
     const action = target.disabled ? 'enable' : 'disable';
-    withLoading(`toggleLiveSource_${key}`, () => callLiveSourceApi({ action, key })).catch(() => {
+    withLoading(`toggleLiveSource_${key}`, () =>
+      callLiveSourceApi({ action, key })
+    ).catch(() => {
       console.error('操作失败', action, key);
     });
   };
 
   const handleDelete = (key: string) => {
-    withLoading(`deleteLiveSource_${key}`, () => callLiveSourceApi({ action: 'delete', key })).catch(() => {
+    withLoading(`deleteLiveSource_${key}`, () =>
+      callLiveSourceApi({ action: 'delete', key })
+    ).catch(() => {
       console.error('操作失败', 'delete', key);
     });
   };
@@ -4459,7 +5097,12 @@ const LiveSourceConfig = ({
 
         // 刷新成功后重新获取配置
         await refreshConfig();
-        showAlert({ type: 'success', title: '刷新成功', message: '直播源已刷新', timer: 2000 });
+        showAlert({
+          type: 'success',
+          title: '刷新成功',
+          message: '直播源已刷新',
+          timer: 2000,
+        });
       } catch (err) {
         showError(err instanceof Error ? err.message : '刷新失败', showAlert);
         throw err;
@@ -4496,7 +5139,8 @@ const LiveSourceConfig = ({
   };
 
   const handleEditLiveSource = () => {
-    if (!editingLiveSource || !editingLiveSource.name || !editingLiveSource.url) return;
+    if (!editingLiveSource || !editingLiveSource.name || !editingLiveSource.url)
+      return;
     withLoading('editLiveSource', async () => {
       await callLiveSourceApi({
         action: 'edit',
@@ -4527,7 +5171,9 @@ const LiveSourceConfig = ({
 
   const handleSaveOrder = () => {
     const order = liveSources.map((s) => s.key);
-    withLoading('saveLiveSourceOrder', () => callLiveSourceApi({ action: 'sort', order }))
+    withLoading('saveLiveSourceOrder', () =>
+      callLiveSourceApi({ action: 'sort', order })
+    )
       .then(() => {
         setOrderChanged(false);
       })
@@ -4585,14 +5231,17 @@ const LiveSourceConfig = ({
           {liveSource.ua || '-'}
         </td>
         <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 text-center'>
-          {liveSource.channelNumber && liveSource.channelNumber > 0 ? liveSource.channelNumber : '-'}
+          {liveSource.channelNumber && liveSource.channelNumber > 0
+            ? liveSource.channelNumber
+            : '-'}
         </td>
         <td className='px-6 py-4 whitespace-nowrap max-w-[1rem]'>
           <span
-            className={`px-2 py-1 text-xs rounded-full ${!liveSource.disabled
-              ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
-              : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300'
-              }`}
+            className={`px-2 py-1 text-xs rounded-full ${
+              !liveSource.disabled
+                ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
+                : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300'
+            }`}
           >
             {!liveSource.disabled ? '启用中' : '已禁用'}
           </span>
@@ -4601,10 +5250,15 @@ const LiveSourceConfig = ({
           <button
             onClick={() => handleToggleEnable(liveSource.key)}
             disabled={isLoading(`toggleLiveSource_${liveSource.key}`)}
-            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${!liveSource.disabled
-              ? buttonStyles.roundedDanger
-              : buttonStyles.roundedSuccess
-              } transition-colors ${isLoading(`toggleLiveSource_${liveSource.key}`) ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${
+              !liveSource.disabled
+                ? buttonStyles.roundedDanger
+                : buttonStyles.roundedSuccess
+            } transition-colors ${
+              isLoading(`toggleLiveSource_${liveSource.key}`)
+                ? 'opacity-50 cursor-not-allowed'
+                : ''
+            }`}
           >
             {!liveSource.disabled ? '禁用' : '启用'}
           </button>
@@ -4613,14 +5267,22 @@ const LiveSourceConfig = ({
               <button
                 onClick={() => setEditingLiveSource(liveSource)}
                 disabled={isLoading(`editLiveSource_${liveSource.key}`)}
-                className={`${buttonStyles.roundedPrimary} ${isLoading(`editLiveSource_${liveSource.key}`) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`${buttonStyles.roundedPrimary} ${
+                  isLoading(`editLiveSource_${liveSource.key}`)
+                    ? 'opacity-50 cursor-not-allowed'
+                    : ''
+                }`}
               >
                 编辑
               </button>
               <button
                 onClick={() => handleDelete(liveSource.key)}
                 disabled={isLoading(`deleteLiveSource_${liveSource.key}`)}
-                className={`${buttonStyles.roundedSecondary} ${isLoading(`deleteLiveSource_${liveSource.key}`) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`${buttonStyles.roundedSecondary} ${
+                  isLoading(`deleteLiveSource_${liveSource.key}`)
+                    ? 'opacity-50 cursor-not-allowed'
+                    : ''
+                }`}
               >
                 删除
               </button>
@@ -4650,16 +5312,23 @@ const LiveSourceConfig = ({
           <button
             onClick={handleRefreshLiveSources}
             disabled={isRefreshing || isLoading('refreshLiveSources')}
-            className={`px-3 py-1.5 text-sm font-medium flex items-center space-x-2 ${isRefreshing || isLoading('refreshLiveSources')
-              ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white rounded-lg'
-              : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg transition-colors'
-              }`}
+            className={`px-3 py-1.5 text-sm font-medium flex items-center space-x-2 ${
+              isRefreshing || isLoading('refreshLiveSources')
+                ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white rounded-lg'
+                : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg transition-colors'
+            }`}
           >
-            <span>{isRefreshing || isLoading('refreshLiveSources') ? '刷新中...' : '刷新直播源'}</span>
+            <span>
+              {isRefreshing || isLoading('refreshLiveSources')
+                ? '刷新中...'
+                : '刷新直播源'}
+            </span>
           </button>
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            className={showAddForm ? buttonStyles.secondary : buttonStyles.success}
+            className={
+              showAddForm ? buttonStyles.secondary : buttonStyles.success
+            }
           >
             {showAddForm ? '取消' : '添加直播源'}
           </button>
@@ -4714,13 +5383,24 @@ const LiveSourceConfig = ({
               }
               className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
             />
-
           </div>
           <div className='flex justify-end'>
             <button
               onClick={handleAddLiveSource}
-              disabled={!newLiveSource.name || !newLiveSource.key || !newLiveSource.url || isLoading('addLiveSource')}
-              className={`w-full sm:w-auto px-4 py-2 ${!newLiveSource.name || !newLiveSource.key || !newLiveSource.url || isLoading('addLiveSource') ? buttonStyles.disabled : buttonStyles.success}`}
+              disabled={
+                !newLiveSource.name ||
+                !newLiveSource.key ||
+                !newLiveSource.url ||
+                isLoading('addLiveSource')
+              }
+              className={`w-full sm:w-auto px-4 py-2 ${
+                !newLiveSource.name ||
+                !newLiveSource.key ||
+                !newLiveSource.url ||
+                isLoading('addLiveSource')
+                  ? buttonStyles.disabled
+                  : buttonStyles.success
+              }`}
             >
               {isLoading('addLiveSource') ? '添加中...' : '添加'}
             </button>
@@ -4751,7 +5431,9 @@ const LiveSourceConfig = ({
                 type='text'
                 value={editingLiveSource.name}
                 onChange={(e) =>
-                  setEditingLiveSource((prev) => prev ? ({ ...prev, name: e.target.value }) : null)
+                  setEditingLiveSource((prev) =>
+                    prev ? { ...prev, name: e.target.value } : null
+                  )
                 }
                 className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
               />
@@ -4775,7 +5457,9 @@ const LiveSourceConfig = ({
                 type='text'
                 value={editingLiveSource.url}
                 onChange={(e) =>
-                  setEditingLiveSource((prev) => prev ? ({ ...prev, url: e.target.value }) : null)
+                  setEditingLiveSource((prev) =>
+                    prev ? { ...prev, url: e.target.value } : null
+                  )
                 }
                 className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
               />
@@ -4788,7 +5472,9 @@ const LiveSourceConfig = ({
                 type='text'
                 value={editingLiveSource.epg}
                 onChange={(e) =>
-                  setEditingLiveSource((prev) => prev ? ({ ...prev, epg: e.target.value }) : null)
+                  setEditingLiveSource((prev) =>
+                    prev ? { ...prev, epg: e.target.value } : null
+                  )
                 }
                 className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
               />
@@ -4801,7 +5487,9 @@ const LiveSourceConfig = ({
                 type='text'
                 value={editingLiveSource.ua}
                 onChange={(e) =>
-                  setEditingLiveSource((prev) => prev ? ({ ...prev, ua: e.target.value }) : null)
+                  setEditingLiveSource((prev) =>
+                    prev ? { ...prev, ua: e.target.value } : null
+                  )
                 }
                 className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
               />
@@ -4816,8 +5504,18 @@ const LiveSourceConfig = ({
             </button>
             <button
               onClick={handleEditLiveSource}
-              disabled={!editingLiveSource.name || !editingLiveSource.url || isLoading('editLiveSource')}
-              className={`${!editingLiveSource.name || !editingLiveSource.url || isLoading('editLiveSource') ? buttonStyles.disabled : buttonStyles.success}`}
+              disabled={
+                !editingLiveSource.name ||
+                !editingLiveSource.url ||
+                isLoading('editLiveSource')
+              }
+              className={`${
+                !editingLiveSource.name ||
+                !editingLiveSource.url ||
+                isLoading('editLiveSource')
+                  ? buttonStyles.disabled
+                  : buttonStyles.success
+              }`}
             >
               {isLoading('editLiveSource') ? '保存中...' : '保存'}
             </button>
@@ -4826,7 +5524,10 @@ const LiveSourceConfig = ({
       )}
 
       {/* 直播源表格 */}
-      <div className='border border-gray-200 dark:border-gray-700 rounded-lg max-h-[28rem] overflow-y-auto overflow-x-auto relative' data-table="live-source-list">
+      <div
+        className='border border-gray-200 dark:border-gray-700 rounded-lg max-h-[28rem] overflow-y-auto overflow-x-auto relative'
+        data-table='live-source-list'
+      >
         <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
           <thead className='bg-gray-50 dark:bg-gray-900 sticky top-0 z-10'>
             <tr>
@@ -4884,565 +5585,16 @@ const LiveSourceConfig = ({
           <button
             onClick={handleSaveOrder}
             disabled={isLoading('saveLiveSourceOrder')}
-            className={`px-3 py-1.5 text-sm ${isLoading('saveLiveSourceOrder') ? buttonStyles.disabled : buttonStyles.primary}`}
+            className={`px-3 py-1.5 text-sm ${
+              isLoading('saveLiveSourceOrder')
+                ? buttonStyles.disabled
+                : buttonStyles.primary
+            }`}
           >
             {isLoading('saveLiveSourceOrder') ? '保存中...' : '保存排序'}
           </button>
         </div>
       )}
-
-      {/* 通用弹窗组件 */}
-      <AlertModal
-        isOpen={alertModal.isOpen}
-        onClose={hideAlert}
-        type={alertModal.type}
-        title={alertModal.title}
-        message={alertModal.message}
-        timer={alertModal.timer}
-        showConfirm={alertModal.showConfirm}
-      />
-
-
-    </div>
-  );
-};
-
-// 可拖拽的频道项组件
-const DraggableChannelItem = ({
-  channel,
-  onDelete,
-  isDeleting,
-}: {
-  channel: { id: string; name: string; channelId: string; addedAt: string; sortOrder: number };
-  onDelete: (id: string) => void;
-  isDeleting: boolean;
-}) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: channel.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className='flex items-center justify-between p-2 sm:p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg'
-    >
-      <div className='flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0'>
-        <div
-          {...attributes}
-          {...listeners}
-          style={{ touchAction: 'none' }}
-          className='cursor-grab active:cursor-grabbing p-2 sm:p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded'
-        >
-          <GripVertical className='w-5 h-5 sm:w-4 sm:h-4 text-gray-400' />
-        </div>
-        <Youtube className='w-5 h-5 text-red-500 flex-shrink-0' />
-        <div className='flex-1 min-w-0'>
-          <div className='text-sm font-medium text-gray-900 dark:text-gray-100 truncate'>
-            {channel.name}
-          </div>
-          <div className='text-xs text-gray-500 dark:text-gray-400 truncate'>
-            {channel.channelId}
-          </div>
-        </div>
-      </div>
-      <button
-        onClick={() => onDelete(channel.id)}
-        disabled={isDeleting}
-        className='text-red-600 hover:text-red-700 disabled:text-red-400 p-2 sm:p-1 ml-2 flex-shrink-0 touch-manipulation'
-        title='删除频道'
-      >
-        <Trash2 className='w-5 h-5 sm:w-4 sm:h-4' />
-      </button>
-    </div>
-  );
-};
-
-// YouTube频道配置组件
-const YouTubeChannelConfig = ({
-  config,
-  refreshConfig,
-}: {
-  config: AdminConfig | null;
-  refreshConfig: () => Promise<void>;
-}) => {
-  const { alertModal, showAlert, hideAlert } = useAlertModal();
-  const { isLoading, withLoading } = useLoadingState();
-  const [channels, setChannels] = useState<{ id: string; name: string; channelId: string; addedAt: string; sortOrder: number }[]>([]);
-  const [newChannelId, setNewChannelId] = useState('');
-  const [newChannelName, setNewChannelName] = useState('');
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [orderChanged, setOrderChanged] = useState(false);
-
-  // 拖拽传感器配置
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 200,
-        tolerance: 5,
-      },
-    })
-  );
-  const [parseResult, setParseResult] = useState<{
-    channelId: string;
-    playlistId: string;
-    channelInfo?: {
-      title: string;
-      description: string;
-      thumbnail: string;
-      subscriberCount: string;
-      videoCount: string;
-    };
-    latestVideos?: any[];
-  } | null>(null);
-
-  // 获取YouTube频道列表
-  const fetchChannels = useCallback(async () => {
-    try {
-      setIsRefreshing(true);
-      const response = await fetch('/api/youtube-channels');
-      if (!response.ok) {
-        throw new Error('获取频道列表失败');
-      }
-      const data = await response.json();
-      setChannels(data.channels || []);
-      setOrderChanged(false);
-    } catch (error) {
-      showAlert({
-        type: 'error',
-        title: '错误',
-        message: error instanceof Error ? error.message : '获取频道列表失败'
-      });
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, []);
-
-  // 解析频道信息
-  const handleParseChannel = async () => {
-    if (!newChannelId.trim()) {
-      showAlert({
-        type: 'warning',
-        title: '提示',
-        message: '请输入YouTube频道链接、@用户名或频道ID',
-        timer: 2000
-      });
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-      return;
-    }
-
-    await withLoading('parseChannel', async () => {
-      try {
-        const response = await fetch('/api/youtube-channel-parser', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            input: newChannelId.trim()
-          }),
-        });
-
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || '解析频道失败');
-        }
-
-        const result = await response.json();
-        if (result.success && result.data) {
-          // 保存解析结果
-          setParseResult(result.data);
-
-          // 自动填充解析到的频道ID
-          setNewChannelId(result.data.channelId);
-
-          // 如果获取到频道信息，自动填充频道名称
-          if (result.data.channelInfo && result.data.channelInfo.title) {
-            setNewChannelName(result.data.channelInfo.title);
-          }
-
-          let message = `已解析出频道ID: ${result.data.channelId}\n播放列表ID: ${result.data.playlistId}`;
-          if (result.data.channelInfo) {
-            message += `\n频道名称: ${result.data.channelInfo.title}`;
-            if (result.data.latestVideos && result.data.latestVideos.length > 0) {
-              message += `\n获取到 ${result.data.latestVideos.length} 个最新视频`;
-            }
-          }
-
-          showAlert({
-            type: 'success',
-            title: '解析成功',
-            message,
-            timer: 2000
-          });
-        } else {
-          throw new Error('解析结果无效');
-        }
-      } catch (error) {
-        showAlert({
-          type: 'error',
-          title: '解析失败',
-          message: error instanceof Error ? error.message : '解析频道失败',
-          timer: 2000
-        });
-      }
-    });
-  };
-
-  // 添加频道
-  const handleAddChannel = async () => {
-    if (!newChannelId.trim()) {
-      showAlert({
-        type: 'warning',
-        title: '提示',
-        message: '请输入频道ID',
-        timer: 2000
-      });
-      // 2秒后自动刷新网页
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-      return;
-    }
-
-    if (!newChannelName.trim()) {
-      showAlert({
-        type: 'warning',
-        title: '提示',
-        message: '请输入频道名称',
-        timer: 2000
-      });
-      // 2秒后自动刷新网页
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-      return;
-    }
-
-    await withLoading('addChannel', async () => {
-      try {
-        const response = await fetch('/api/youtube-channels', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: newChannelName.trim(),
-            channelId: newChannelId.trim()
-          }),
-        });
-
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || '添加频道失败');
-        }
-
-        setNewChannelId('');
-        setNewChannelName('');
-        setParseResult(null); // 清除解析结果
-        await fetchChannels();
-        // 移除成功弹窗，直接刷新频道列表
-      } catch (error) {
-        showAlert({
-          type: 'error',
-          title: '错误',
-          message: error instanceof Error ? error.message : '添加频道失败'
-        });
-      }
-    });
-  };
-
-  // 删除频道
-  const handleDeleteChannel = async (channelId: string) => {
-    await withLoading('deleteChannel', async () => {
-      try {
-        const response = await fetch(`/api/youtube-channels?id=${channelId}`, {
-          method: 'DELETE',
-        });
-
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || '删除频道失败');
-        }
-
-        await fetchChannels();
-        // 移除成功弹窗，直接刷新频道列表
-      } catch (error) {
-        showAlert({
-          type: 'error',
-          title: '错误',
-          message: error instanceof Error ? error.message : '删除频道失败'
-        });
-      }
-    });
-  };
-
-  // 初始化加载
-  // 拖动排序处理
-  const handleDragEnd = (event: any) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = channels.findIndex((c) => c.id === active.id);
-    const newIndex = channels.findIndex((c) => c.id === over.id);
-
-    const newChannels = arrayMove(channels, oldIndex, newIndex);
-    // 更新sortOrder
-    const updatedChannels = newChannels.map((channel, index) => ({
-      ...channel,
-      sortOrder: index
-    }));
-
-    setChannels(updatedChannels);
-    setOrderChanged(true);
-  };
-
-  // 保存排序
-  const handleSaveOrder = async () => {
-    await withLoading('saveChannelOrder', async () => {
-      try {
-        const response = await fetch('/api/youtube-channels', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            channels: channels
-          }),
-        });
-
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || '保存排序失败');
-        }
-
-        setOrderChanged(false);
-        showAlert({
-          type: 'success',
-          title: '成功',
-          message: '频道排序已保存',
-          timer: 2000
-        });
-      } catch (error) {
-        showAlert({
-          type: 'error',
-          title: '错误',
-          message: error instanceof Error ? error.message : '保存排序失败'
-        });
-      }
-    });
-  };
-
-  useEffect(() => {
-    fetchChannels();
-  }, [fetchChannels]);
-
-  return (
-    <div className='space-y-4'>
-      {/* 添加频道表单 */}
-      <div className='bg-gray-50 dark:bg-gray-800 p-4 rounded-lg'>
-        <h3 className='text-sm font-medium text-gray-900 dark:text-gray-100 mb-3'>
-          添加YouTube频道
-        </h3>
-        <div className='space-y-3'>
-          <div className='flex gap-2'>
-            <input
-              type='text'
-              value={newChannelName}
-              onChange={(e) => setNewChannelName(e.target.value)}
-              placeholder='输入频道名称'
-              className='flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400'
-            />
-          </div>
-          <div className='space-y-2'>
-            <div className='flex flex-col sm:flex-row gap-2'>
-              <input
-                type='text'
-                value={newChannelId}
-                onChange={(e) => {
-                  setNewChannelId(e.target.value);
-                  // 当输入内容改变时清除解析结果
-                  if (parseResult) {
-                    setParseResult(null);
-                  }
-                }}
-                placeholder='输入YouTube频道链接、@用户名或频道ID'
-                className='flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400'
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleParseChannel();
-                  }
-                }}
-              />
-              <button
-                onClick={handleParseChannel}
-                disabled={isLoading('parseChannel')}
-                className='w-full sm:w-auto px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg transition-colors whitespace-nowrap'
-              >
-                {isLoading('parseChannel') ? '解析中...' : '解析频道'}
-              </button>
-            </div>
-            <div className='text-xs text-gray-500 dark:text-gray-400'>
-              使用UC频道ID可以直接添加，如果使用频道主页链接或者频道主ID需要先解析为UC ID
-            </div>
-            <div className='flex flex-col sm:flex-row gap-2'>
-              <button
-                onClick={handleAddChannel}
-                disabled={isLoading('addChannel') || !newChannelId.trim() || !newChannelName.trim()}
-                className='w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors whitespace-nowrap'
-              >
-                {isLoading('addChannel') ? '添加中...' : '添加频道'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 解析结果显示 */}
-      {parseResult && (
-        <div className='bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800'>
-          <h3 className='text-sm font-medium text-blue-900 dark:text-blue-100 mb-3'>
-            解析结果预览
-          </h3>
-          <div className='space-y-3'>
-            {/* 频道基本信息 */}
-            {parseResult.channelInfo && (
-              <div className='flex items-start gap-3'>
-                {parseResult.channelInfo.thumbnail && (
-                  <img
-                    src={parseResult.channelInfo.thumbnail}
-                    alt={parseResult.channelInfo.title}
-                    className='w-16 h-16 rounded-full object-cover'
-                  />
-                )}
-                <div className='flex-1 min-w-0'>
-                  <h4 className='font-medium text-gray-900 dark:text-gray-100 truncate'>
-                    {parseResult.channelInfo.title}
-                  </h4>
-                  <div className='text-sm text-gray-600 dark:text-gray-400 space-y-1'>
-                    <div>频道ID: {parseResult.channelId}</div>
-                    <div>播放列表ID: {parseResult.playlistId}</div>
-                    {parseResult.channelInfo.subscriberCount && (
-                      <div>订阅者: {parseInt(parseResult.channelInfo.subscriberCount).toLocaleString()}</div>
-                    )}
-                    {parseResult.channelInfo.videoCount && (
-                      <div>视频数量: {parseInt(parseResult.channelInfo.videoCount).toLocaleString()}</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 最新视频 */}
-            {parseResult.latestVideos && parseResult.latestVideos.length > 0 && (
-              <div>
-                <h5 className='text-sm font-medium text-gray-900 dark:text-gray-100 mb-2'>
-                  最新视频 ({parseResult.latestVideos.length})
-                </h5>
-                <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3'>
-                  {parseResult.latestVideos.map((video, index) => (
-                    <div key={index} className='bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700'>
-                      {video.snippet.thumbnails?.medium?.url && (
-                        <img
-                          src={video.snippet.thumbnails.medium.url}
-                          alt={video.snippet.title}
-                          className='w-full h-20 object-cover rounded mb-2'
-                        />
-                      )}
-                      <h6 className='text-xs font-medium text-gray-900 dark:text-gray-100 line-clamp-2 mb-1'>
-                        {video.snippet.title}
-                      </h6>
-                      <p className='text-xs text-gray-600 dark:text-gray-400'>
-                        {new Date(video.snippet.publishedAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className='flex gap-2 pt-2'>
-              <button
-                onClick={() => setParseResult(null)}
-                className='px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors'
-              >
-                清除预览
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 频道列表 */}
-      <div className='space-y-2'>
-        <div className='flex items-center justify-between'>
-          <h3 className='text-sm font-medium text-gray-900 dark:text-gray-100'>
-            已配置频道 ({channels.length})
-          </h3>
-          <div className='flex items-center gap-2'>
-            {orderChanged && (
-              <button
-                onClick={handleSaveOrder}
-                disabled={isLoading('saveChannelOrder')}
-                className='px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded transition-colors'
-              >
-                {isLoading('saveChannelOrder') ? '保存中...' : '保存排序'}
-              </button>
-            )}
-            <button
-              onClick={fetchChannels}
-              disabled={isRefreshing}
-              className='text-sm text-blue-600 hover:text-blue-700 disabled:text-blue-400'
-            >
-              {isRefreshing ? '刷新中...' : '刷新'}
-            </button>
-          </div>
-        </div>
-
-        {channels.length === 0 ? (
-          <div className='text-center py-8 text-gray-500 dark:text-gray-400'>
-            暂无配置的YouTube频道
-          </div>
-        ) : (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-            modifiers={[restrictToVerticalAxis, restrictToParentElement]}
-          >
-            <SortableContext items={channels.map(c => c.id)} strategy={verticalListSortingStrategy}>
-              <div className='space-y-2'>
-                {channels.map((channel) => (
-                  <DraggableChannelItem
-                    key={channel.id}
-                    channel={channel}
-                    onDelete={handleDeleteChannel}
-                    isDeleting={isLoading('deleteChannel')}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-        )}
-      </div>
 
       {/* 通用弹窗组件 */}
       <AlertModal
@@ -5599,7 +5751,10 @@ function AdminPageClient() {
               isExpanded={expandedTabs.configFile}
               onToggle={() => toggleTab('configFile')}
             >
-              <ConfigFileComponent config={config} refreshConfig={fetchConfig} />
+              <ConfigFileComponent
+                config={config}
+                refreshConfig={fetchConfig}
+              />
             </CollapsibleTab>
           )}
 
@@ -5616,21 +5771,6 @@ function AdminPageClient() {
             onToggle={() => toggleTab('siteConfig')}
           >
             <SiteConfigComponent config={config} refreshConfig={fetchConfig} />
-          </CollapsibleTab>
-
-
-          <CollapsibleTab
-            title='AI推荐配置'
-            icon={
-              <Bot
-                size={20}
-                className='text-gray-600 dark:text-gray-400'
-              />
-            }
-            isExpanded={expandedTabs.aiConfig}
-            onToggle={() => toggleTab('aiConfig')}
-          >
-
           </CollapsibleTab>
 
           <div className='space-y-4'>
@@ -5690,36 +5830,6 @@ function AdminPageClient() {
               <CategoryConfig config={config} refreshConfig={fetchConfig} />
             </CollapsibleTab>
 
-            {/* 网盘配置标签 */}
-            <CollapsibleTab
-              title='网盘配置'
-              icon={
-                <Cloud
-                  size={20}
-                  className='text-gray-600 dark:text-gray-400'
-                />
-              }
-              isExpanded={expandedTabs.cloudDiskConfig}
-              onToggle={() => toggleTab('cloudDiskConfig')}
-            >
-              <CloudDiskConfigComponent config={config} refreshConfig={fetchConfig} />
-            </CollapsibleTab>
-
-            {/* YouTube频道配置标签 */}
-            <CollapsibleTab
-              title='YouTube频道配置'
-              icon={
-                <Youtube
-                  size={20}
-                  className='text-gray-600 dark:text-gray-400'
-                />
-              }
-              isExpanded={expandedTabs.youtubeChannels}
-              onToggle={() => toggleTab('youtubeChannels')}
-            >
-              <YouTubeChannelConfig config={config} refreshConfig={fetchConfig} />
-            </CollapsibleTab>
-
             {/* 数据迁移标签 - 仅站长可见 */}
             {role === 'owner' && (
               <CollapsibleTab
@@ -5752,61 +5862,92 @@ function AdminPageClient() {
       />
 
       {/* 重置配置确认弹窗 */}
-      {showResetConfigModal && createPortal(
-        <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4' onClick={() => setShowResetConfigModal(false)}>
-          <div className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full' onClick={(e) => e.stopPropagation()}>
-            <div className='p-6'>
-              <div className='flex items-center justify-between mb-6'>
-                <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
-                  确认重置配置
-                </h3>
-                <button
-                  onClick={() => setShowResetConfigModal(false)}
-                  className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
-                >
-                  <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
-                  </svg>
-                </button>
-              </div>
-
-              <div className='mb-6'>
-                <div className='bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4'>
-                  <div className='flex items-center space-x-2 mb-2'>
-                    <svg className='w-5 h-5 text-yellow-600 dark:text-yellow-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' />
+      {showResetConfigModal &&
+        createPortal(
+          <div
+            className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4'
+            onClick={() => setShowResetConfigModal(false)}
+          >
+            <div
+              className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full'
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className='p-6'>
+                <div className='flex items-center justify-between mb-6'>
+                  <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
+                    确认重置配置
+                  </h3>
+                  <button
+                    onClick={() => setShowResetConfigModal(false)}
+                    className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
+                  >
+                    <svg
+                      className='w-6 h-6'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M6 18L18 6M6 6l12 12'
+                      />
                     </svg>
-                    <span className='text-sm font-medium text-yellow-800 dark:text-yellow-300'>
-                      ⚠️ 危险操作警告
-                    </span>
+                  </button>
+                </div>
+
+                <div className='mb-6'>
+                  <div className='bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4'>
+                    <div className='flex items-center space-x-2 mb-2'>
+                      <svg
+                        className='w-5 h-5 text-yellow-600 dark:text-yellow-400'
+                        fill='none'
+                        stroke='currentColor'
+                        viewBox='0 0 24 24'
+                      >
+                        <path
+                          strokeLinecap='round'
+                          strokeLinejoin='round'
+                          strokeWidth={2}
+                          d='M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                        />
+                      </svg>
+                      <span className='text-sm font-medium text-yellow-800 dark:text-yellow-300'>
+                        ⚠️ 危险操作警告
+                      </span>
+                    </div>
+                    <p className='text-sm text-yellow-700 dark:text-yellow-400'>
+                      此操作将重置用户封禁和管理员设置、自定义视频源，站点配置将重置为默认值，是否继续？
+                    </p>
                   </div>
-                  <p className='text-sm text-yellow-700 dark:text-yellow-400'>
-                    此操作将重置用户封禁和管理员设置、自定义视频源，站点配置将重置为默认值，是否继续？
-                  </p>
+                </div>
+
+                {/* 操作按钮 */}
+                <div className='flex justify-end space-x-3'>
+                  <button
+                    onClick={() => setShowResetConfigModal(false)}
+                    className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={handleConfirmResetConfig}
+                    disabled={isLoading('resetConfig')}
+                    className={`px-6 py-2.5 text-sm font-medium ${
+                      isLoading('resetConfig')
+                        ? buttonStyles.disabled
+                        : buttonStyles.danger
+                    }`}
+                  >
+                    {isLoading('resetConfig') ? '重置中...' : '确认重置'}
+                  </button>
                 </div>
               </div>
-
-              {/* 操作按钮 */}
-              <div className='flex justify-end space-x-3'>
-                <button
-                  onClick={() => setShowResetConfigModal(false)}
-                  className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
-                >
-                  取消
-                </button>
-                <button
-                  onClick={handleConfirmResetConfig}
-                  disabled={isLoading('resetConfig')}
-                  className={`px-6 py-2.5 text-sm font-medium ${isLoading('resetConfig') ? buttonStyles.disabled : buttonStyles.danger}`}
-                >
-                  {isLoading('resetConfig') ? '重置中...' : '确认重置'}
-                </button>
-              </div>
             </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body
+        )}
     </PageLayout>
   );
 }
