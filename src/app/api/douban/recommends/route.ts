@@ -78,11 +78,12 @@ export async function GET(request: NextRequest) {
     tags.push(platform);
   }
 
-  // 使用正确的search_subjects API
+  // 使用正确的API URL获取数据
   let target = '';
   if (category === '动画') {
-    // 热门动漫使用search_subjects API
-    target = `https://movie.douban.com/j/search_subjects?type=tv&tag=动画&sort=recommend&page_limit=${pageLimit}&page_start=${pageStart}`;
+    // 热门动漫使用search_subjects API，支持多种类型
+    const animeSort = sort === 'U' ? 'recommend' : sort; // 转换sort参数
+    target = `https://movie.douban.com/j/search_subjects?type=tv&tag=动画&sort=${animeSort}&page_limit=${pageLimit}&page_start=${pageStart}`;
   } else {
     // 其他类型继续使用原来的API
     const baseUrl = `https://m.douban.com/rexxar/api/v2/${kind}/recommend`;
@@ -100,19 +101,20 @@ export async function GET(request: NextRequest) {
     target = `${baseUrl}?${params.toString()}`;
   }
   
-  console.log(target);
+  console.log(`Fetching anime data from: ${target}`);
   try {
     let list = [];
     
     if (category === '动画') {
       // 处理search_subjects API响应
       const doubanData = await fetchDoubanData<{ subjects: any[] }>(target);
+      console.log(`Anime data received: ${doubanData.subjects.length} items`);
       list = doubanData.subjects.map((item) => ({
         id: item.id,
         title: item.title,
         poster: item.cover,
         rate: item.rate,
-        year: item.title.match(/(\d{4})/)?.[1] || '',
+        year: item.year || item.title.match(/(\d{4})/)?.[1] || '', // 优先使用item.year，fallback到标题提取
       }));
     } else {
       // 处理原来的recommend API响应

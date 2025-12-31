@@ -523,7 +523,7 @@ const VideoCard = memo(forwardRef<VideoCardHandle, VideoCardProps>(function Vide
   });
 
   const config = useMemo(() => {
-    const configs = {
+    const baseConfigs = {
       playrecord: {
         showSourceName: true,
         showProgress: true,
@@ -548,9 +548,9 @@ const VideoCard = memo(forwardRef<VideoCardHandle, VideoCardProps>(function Vide
         showSourceName: true,
         showProgress: false,
         showPlayButton: true,
-        showHeart: true, // 移动端菜单中需要显示收藏选项
+        showHeart: true,
         showCheckCircle: false,
-        showDoubanLink: true, // 移动端菜单中显示豆瓣链接
+        showDoubanLink: true,
         showRating: false,
         showYear: true,
       },
@@ -565,8 +565,8 @@ const VideoCard = memo(forwardRef<VideoCardHandle, VideoCardProps>(function Vide
         showYear: false,
       },
     };
-    return configs[from] || configs.search;
-  }, [from, isAggregate, douban_id, rate]);
+    return baseConfigs[from] || baseConfigs.search;
+  }, [from, rate]);
 
   // 移动端操作菜单配置
   const mobileActions = useMemo(() => {
@@ -750,23 +750,29 @@ const VideoCard = memo(forwardRef<VideoCardHandle, VideoCardProps>(function Vide
           }}
         >
           {/* 骨架屏 */}
-          {!isLoading && <ImagePlaceholder aspectRatio='aspect-[2/3]' />}
+          {!isLoading && <ImagePlaceholder aspectRatio='aspect-[2/3]' className="animate-pulse" />}
           {/* 图片 */}
           <Image
             src={processImageUrl(actualPoster)}
             alt={actualTitle}
             fill
-            className={origin === 'live' ? 'object-contain' : 'object-cover'}
+            className={`${origin === 'live' ? 'object-contain' : 'object-cover'} transition-all duration-500 ease-in-out ${isLoading ? 'opacity-100' : 'opacity-0'}`}
             referrerPolicy='no-referrer'
             loading='lazy'
             onLoadingComplete={() => setIsLoading(true)}
             onError={(e) => {
-              // 图片加载失败时的重试机制
+              // 图片加载失败时的处理
               const img = e.target as HTMLImageElement;
               if (!img.dataset.retried) {
                 img.dataset.retried = 'true';
                 setTimeout(() => {
-                  img.src = processImageUrl(actualPoster);
+                  // 重试加载失败后显示默认占位图
+                  try {
+                    img.src = '/icons/icon-192x192.png';
+                    setIsLoading(true);
+                  } catch (err) {
+                    console.error('图片加载失败:', err);
+                  }
                 }, 2000);
               }
             }}
@@ -802,85 +808,85 @@ const VideoCard = memo(forwardRef<VideoCardHandle, VideoCardProps>(function Vide
           />
 
           {/* 播放按钮 */}
-          {config.showPlayButton && (
-            <div
-              data-button="true"
-              className='absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-300 ease-in-out delay-75 group-hover:opacity-100 group-hover:scale-100'
-              style={{
-                WebkitUserSelect: 'none',
-                userSelect: 'none',
-                WebkitTouchCallout: 'none',
-              } as React.CSSProperties}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                return false;
-              }}
-            >
-              {isLoading ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-                </div>
-              ) : from === 'playrecord' && progress !== undefined ? (
-                // 观看记录显示百分比进度
-                <div className="flex flex-col items-center justify-center text-white">
-                  <div className="relative w-16 h-16 mb-2">
-                    {/* 圆形进度环 */}
-                    <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
-                      {/* 背景圆环 */}
-                      <circle
-                        cx="32"
-                        cy="32"
-                        r="28"
-                        stroke="rgba(255,255,255,0.2)"
-                        strokeWidth="4"
-                        fill="none"
-                      />
-                      {/* 进度圆环 */}
-                      <circle
-                        cx="32"
-                        cy="32"
-                        r="28"
-                        stroke="white"
-                        strokeWidth="4"
-                        fill="none"
-                        strokeDasharray={`${2 * Math.PI * 28}`}
-                        strokeDashoffset={`${2 * Math.PI * 28 * (1 - progress / 100)}`}
-                        className="transition-all duration-500 ease-out"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    {/* 中心播放图标 */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <PlayCircleIcon
-                        size={24}
-                        strokeWidth={1}
-                        className='text-white fill-transparent'
-                      />
-                    </div>
-                  </div>
-                  {/* 百分比文字 */}
-                  <div className="text-sm font-semibold bg-black/50 px-2 py-1 rounded-full">
-                    {Math.round(progress)}%
+        {config.showPlayButton && (
+          <div
+            data-button="true"
+            className='absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-300 ease-in-out delay-75 group-hover:opacity-100 group-hover:scale-100'
+            style={{
+              WebkitUserSelect: 'none',
+              userSelect: 'none',
+              WebkitTouchCallout: 'none',
+            } as React.CSSProperties}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              return false;
+            }}
+          >
+            {isLoading ? (
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+              </div>
+            ) : from === 'playrecord' && progress !== undefined ? (
+              // 观看记录显示百分比进度
+              <div className="flex flex-col items-center justify-center text-white">
+                <div className="relative w-16 h-16 mb-2">
+                  {/* 圆形进度环 */}
+                  <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
+                    {/* 背景圆环 */}
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke="rgba(255,255,255,0.2)"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    {/* 进度圆环 */}
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke="white"
+                      strokeWidth="4"
+                      fill="none"
+                      strokeDasharray={`${2 * Math.PI * 28}`}
+                      strokeDashoffset={`${2 * Math.PI * 28 * (1 - progress / 100)}`}
+                      className="transition-all duration-500 ease-out"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  {/* 中心播放图标 */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <PlayCircleIcon
+                      size={24}
+                      strokeWidth={1}
+                      className='text-white fill-transparent hover:fill-blue-400 transition-all duration-200'
+                    />
                   </div>
                 </div>
-              ) : (
-                <PlayCircleIcon
-                  size={50}
-                  strokeWidth={0.8}
-                  className='text-white fill-transparent transition-all duration-300 ease-out hover:fill-blue-500 hover:scale-[1.1]'
-                  style={{
-                    WebkitUserSelect: 'none',
-                    userSelect: 'none',
-                    WebkitTouchCallout: 'none',
-                  } as React.CSSProperties}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    return false;
-                  }}
-                />
-              )}
-            </div>
-          )}
+                {/* 百分比文字 */}
+                <div className="text-sm font-semibold bg-black/50 px-2 py-1 rounded-full backdrop-blur-sm">
+                  {Math.round(progress)}%
+                </div>
+              </div>
+            ) : (
+              <PlayCircleIcon
+                size={50}
+                strokeWidth={0.8}
+                className='text-white fill-transparent transition-all duration-300 ease-out hover:fill-blue-500 hover:scale-[1.1] active:scale-[0.95]'
+                style={{
+                  WebkitUserSelect: 'none',
+                  userSelect: 'none',
+                  WebkitTouchCallout: 'none',
+                } as React.CSSProperties}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  return false;
+                }}
+              />
+            )}
+          </div>
+        )}
 
           {/* 操作按钮 */}
           {(config.showHeart || config.showCheckCircle) && (

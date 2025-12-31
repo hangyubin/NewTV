@@ -545,29 +545,43 @@ export async function getDoubanRecommends(
   const { proxyType, proxyUrl } = getDoubanProxyConfig();
   let result: DoubanResult;
   
-  switch (proxyType) {
-    case 'cors-proxy-zwei':
-      result = await fetchDoubanRecommends(params, 'https://ciao-cors.is-an.org/');
-      break;
-    case 'cmliussss-cdn-tencent':
-      result = await fetchDoubanRecommends(params, '', true, false);
-      break;
-    case 'cmliussss-cdn-ali':
-      result = await fetchDoubanRecommends(params, '', false, true);
-      break;
-    case 'cors-anywhere':
-      result = await fetchDoubanRecommends(params, 'https://cors-anywhere.com/');
-      break;
-    case 'custom':
-      result = await fetchDoubanRecommends(params, proxyUrl);
-      break;
-    case 'direct':
-    default:
-      const response = await fetch(
-        `/api/douban/recommends?kind=${kind}&limit=${pageLimit}&start=${pageStart}&category=${category}&format=${format}&region=${region}&year=${year}&platform=${platform}&sort=${sort}&label=${label}`
-      );
-      result = await response.json();
-      break;
+  try {
+    // 尝试使用当前配置的代理类型
+    switch (proxyType) {
+      case 'cors-proxy-zwei':
+        result = await fetchDoubanRecommends(params, 'https://ciao-cors.is-an.org/');
+        break;
+      case 'cmliussss-cdn-tencent':
+        result = await fetchDoubanRecommends(params, '', true, false);
+        break;
+      case 'cmliussss-cdn-ali':
+        result = await fetchDoubanRecommends(params, '', false, true);
+        break;
+      case 'cors-anywhere':
+        result = await fetchDoubanRecommends(params, 'https://cors-anywhere.com/');
+        break;
+      case 'custom':
+        result = await fetchDoubanRecommends(params, proxyUrl);
+        break;
+      case 'direct':
+      default:
+        // 先尝试直接请求
+        const response = await fetch(
+          `/api/douban/recommends?kind=${kind}&limit=${pageLimit}&start=${pageStart}&category=${category}&format=${format}&region=${region}&year=${year}&platform=${platform}&sort=${sort}&label=${label}`
+        );
+        result = await response.json();
+        
+        // 如果直接请求失败，尝试使用CDN代理
+        if (result.code !== 200 || !result.list || result.list.length === 0) {
+          console.log('Direct request failed, trying CDN proxy...');
+          result = await fetchDoubanRecommends(params, '', true, false);
+        }
+        break;
+    }
+  } catch (error) {
+    // 如果请求失败，尝试使用备用CDN代理
+    console.error(`Failed with ${proxyType} proxy, trying backup CDN proxy...`, error);
+    result = await fetchDoubanRecommends(params, '', true, false);
   }
   
   // 保存到缓存

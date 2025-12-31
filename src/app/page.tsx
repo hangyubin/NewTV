@@ -230,12 +230,12 @@ function HomeClient() {
             // 收藏夹视图
             <section className='mb-8'>
               <div className='mb-4 flex items-center justify-between'>
-                <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
+                <h2 className='text-lg md:text-xl font-bold text-gray-800 dark:text-gray-200'>
                   我的收藏
                 </h2>
                 {favoriteItems.length > 0 && (
                   <button
-                    className='text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                    className='text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors duration-200'
                     onClick={async () => {
                       await clearAllFavorites();
                       setFavoriteItems([]);
@@ -245,7 +245,7 @@ function HomeClient() {
                   </button>
                 )}
               </div>
-              <div className='justify-start grid grid-cols-2 gap-x-4 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8'>
+              <div className='justify-start grid grid-cols-2 gap-x-3 gap-y-10 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-14 md:grid-cols-4 md:gap-x-6 lg:grid-cols-5 lg:gap-x-8 px-0 sm:px-2'>
                 {favoriteItems.map((item) => (
                   <div key={item.id + item.source} className='w-full'>
                     <VideoCard
@@ -269,12 +269,12 @@ function HomeClient() {
               {/* 热门电影 */}
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
-                  <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
+                  <h2 className='text-lg md:text-xl font-bold text-gray-800 dark:text-gray-200'>
                     热门电影
                   </h2>
                   <Link
                     href='/douban?type=movie'
-                    className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                    className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors duration-200'
                   >
                     查看更多
                     <ChevronRight className='w-4 h-4 ml-1' />
@@ -286,7 +286,7 @@ function HomeClient() {
                     Array.from({ length: 8 }).map((_, index) => (
                       <div
                         key={index}
-                        className='min-w-[115px] w-[115px] sm:min-w-[180px] sm:w-44'
+                        className='min-w-[100px] w-[100px] sm:min-w-[140px] sm:w-[140px] md:min-w-[180px] md:w-44'
                       >
                         <div className='relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800'>
                           <div className='absolute inset-0 bg-gray-300 dark:bg-gray-700'></div>
@@ -298,7 +298,7 @@ function HomeClient() {
                     hotMovies.map((movie, index) => (
                       <div
                         key={index}
-                        className='min-w-[115px] w-[115px] sm:min-w-[180px] sm:w-44'
+                        className='min-w-[100px] w-[100px] sm:min-w-[140px] sm:w-[140px] md:min-w-[180px] md:w-44'
                       >
                         <VideoCard
                           from='douban'
