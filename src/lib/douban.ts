@@ -85,8 +85,15 @@ export async function fetchDoubanData<T>(url: string): Promise<T> {
     url.replace('movie.douban.com', 'movie.douban.cmliussss.com'), // 另一个CDN代理URL
   ];
 
-  // 去重备用URL
-  const uniqueUrls = [...new Set(alternativeUrls)];
+  // 去重备用URL（兼容ES5）
+  const uniqueUrls: string[] = [];
+  const seenUrls: Record<string, boolean> = {};
+  for (const url of alternativeUrls) {
+    if (!seenUrls[url]) {
+      seenUrls[url] = true;
+      uniqueUrls.push(url);
+    }
+  }
   
   for (let i = 0; i < uniqueUrls.length; i++) {
     const currentUrl = uniqueUrls[i];
