@@ -72,9 +72,9 @@ export async function fetchDoubanData<T>(url: string): Promise<T> {
       'Sec-Fetch-Site': 'cross-site',
     },
     // 添加重定向处理
-    redirect: 'follow',
+    redirect: 'follow' as RequestRedirect,
     // 添加缓存控制
-    cache: 'no-cache',
+    cache: 'no-cache' as RequestCache,
   };
 
   // 备用URL列表
