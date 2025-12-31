@@ -11,91 +11,13 @@ export enum UpdateStatus {
   FETCH_FAILED = 'fetch_failed', // 获取失败
 }
 
-// 远程版本检查URL配置
-const VERSION_CHECK_URLS = [
-  'https://raw.githubusercontent.com/joyce677/LunaTV/refs/heads/main/VERSION.txt',
-];
-
 /**
  * 检查是否有新版本可用
  * @returns Promise<UpdateStatus> - 返回版本检查状态
  */
 export async function checkForUpdates(): Promise<UpdateStatus> {
-  try {
-    // 依次尝试每个URL
-    for (const url of VERSION_CHECK_URLS) {
-      if (url) {
-        const version = await fetchVersionFromUrl(url);
-        if (version) {
-          return compareVersions(version);
-        }
-      }
-    }
-
-    // 如果所有URL都失败，返回获取失败状态
-    return UpdateStatus.FETCH_FAILED;
-  } catch (error) {
-    console.error('版本检查失败:', error);
-    return UpdateStatus.FETCH_FAILED;
-  }
-}
-
-/**
- * 从指定URL获取版本信息
- * @param url - 版本信息URL
- * @returns Promise<string | null> - 版本字符串或null
- */
-async function fetchVersionFromUrl(url: string): Promise<string | null> {
-  // 检查URL是否有效
-  if (!url || typeof url !== 'string') {
-    console.warn('无效的版本检查URL:', url);
-    return null;
-  }
-
-  const MAX_RETRIES = 3;
-  const TIMEOUT = 10000; // 增加超时时间到10秒
-
-  // 重试机制
-  for (let retry = 0; retry < MAX_RETRIES; retry++) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT);
-
-      // 添加时间戳参数以避免缓存
-      const timestamp = Date.now();
-      const urlWithTimestamp = url.includes('?')
-        ? `${url}&_t=${timestamp}`
-        : `${url}?_t=${timestamp}`;
-
-      const response = await fetch(urlWithTimestamp, {
-        method: 'GET',
-        signal: controller.signal,
-        headers: {
-          'Content-Type': 'text/plain',
-        },
-        cache: 'no-cache',
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const version = await response.text();
-      return version.trim();
-    } catch (error) {
-      console.warn(`从 ${url} 获取版本信息失败 (重试 ${retry + 1}/${MAX_RETRIES}):`, error);
-      // 如果是最后一次重试，返回null
-      if (retry === MAX_RETRIES - 1) {
-        return null;
-      }
-      // 否则，等待一段时间后重试
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-  }
-
-  return null;
+  // 禁用远程版本检查，直接返回无更新状态
+  return UpdateStatus.NO_UPDATE;
 }
 
 /**
