@@ -2,7 +2,7 @@
 
 'use client';
 
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Film, Tv, BookOpen, Music, Video } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 
@@ -269,8 +269,11 @@ function HomeClient() {
               {/* 热门电影 */}
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
-                  <h2 className='text-lg md:text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    热门电影
+                  <h2 className='text-lg md:text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-200'>
+                    <Film className='w-6 h-6 text-red-500 animate-pulse' />
+                    <span className='bg-clip-text text-transparent bg-gradient-to-r from-red-500 to-orange-500 font-bold'>
+                      热门电影
+                    </span>
                   </h2>
                   <Link
                     href='/douban?type=movie'
@@ -317,8 +320,11 @@ function HomeClient() {
               {/* 热门剧集 */}
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
-                  <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    热门剧集
+                  <h2 className='text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-200'>
+                    <Tv className='w-6 h-6 text-blue-500 animate-pulse' />
+                    <span className='bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-cyan-500 font-bold'>
+                      热门剧集
+                    </span>
                   </h2>
                   <Link
                     href='/douban?type=tv'
@@ -364,8 +370,11 @@ function HomeClient() {
               {/* 热门动漫 */}
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
-                  <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    热门动漫
+                  <h2 className='text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-200'>
+                    <BookOpen className='w-6 h-6 text-purple-500 animate-pulse' />
+                    <span className='bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-pink-500 font-bold'>
+                      热门动漫
+                    </span>
                   </h2>
                   <Link
                     href='/douban?type=anime'
@@ -411,8 +420,11 @@ function HomeClient() {
               {/* 热门综艺 */}
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
-                  <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    热门综艺
+                  <h2 className='text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-200'>
+                    <Music className='w-6 h-6 text-green-500 animate-pulse' />
+                    <span className='bg-clip-text text-transparent bg-gradient-to-r from-green-500 to-emerald-500 font-bold'>
+                      热门综艺
+                    </span>
                   </h2>
                   <Link
                     href='/douban?type=show'
@@ -458,8 +470,11 @@ function HomeClient() {
               {/* 热门短剧 */}
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
-                  <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    热门短剧
+                  <h2 className='text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-200'>
+                    <Video className='w-6 h-6 text-amber-500 animate-pulse' />
+                    <span className='bg-clip-text text-transparent bg-gradient-to-r from-amber-500 to-yellow-500 font-bold'>
+                      热门短剧
+                    </span>
                   </h2>
                   <Link
                     href='/douban?type=anime'
