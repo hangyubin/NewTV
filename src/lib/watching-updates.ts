@@ -1,6 +1,6 @@
 'use client';
 
-import { getAllPlayRecords, PlayRecord, generateStorageKey } from './db.client';
+import { generateStorageKey,getAllPlayRecords, PlayRecord } from './db.client';
 
 // 缓存键
 const WATCHING_UPDATES_CACHE_KEY = 'watching_updates_cache';

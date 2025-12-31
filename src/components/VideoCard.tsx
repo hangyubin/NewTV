@@ -22,16 +22,16 @@ import {
   saveFavorite,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
+import { getDoubanDetails } from '@/lib/douban.client';
+import { DoubanDetail,SearchResult } from '@/lib/types';
 import { processImageUrl } from '@/lib/utils';
 import { useLongPress } from '@/hooks/useLongPress';
 
-import { getDoubanDetails } from '@/lib/douban.client';
 import { ImagePlaceholder } from '@/components/ImagePlaceholder';
 import MobileActionSheet from '@/components/MobileActionSheet';
-import CombinedDetailModal from './CombinedDetailModal';
 import VideoDetailPreview from '@/components/VideoDetailPreview';
 
-import { SearchResult, DoubanDetail } from '@/lib/types';
+import CombinedDetailModal from './CombinedDetailModal';
 
 export interface VideoCardProps {
   id?: string;

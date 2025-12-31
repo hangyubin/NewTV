@@ -1,7 +1,7 @@
 /* eslint-disable no-console, @typescript-eslint/no-explicit-any */
 
-import { RedisStorage } from './redis.db';
 import { KvrocksStorage } from './kvrocks.db';
+import { RedisStorage } from './redis.db';
 import { UpstashRedisStorage } from './upstash.db';
 
 // 缓存接口

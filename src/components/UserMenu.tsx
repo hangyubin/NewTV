@@ -6,13 +6,13 @@ import {
   Check,
   ChevronDown,
   ExternalLink,
+  Eye,
   KeyRound,
   LogOut,
   Settings,
   Shield,
   User,
   X,
-  Eye,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -22,12 +22,11 @@ import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import { CURRENT_VERSION } from '@/lib/version';
 import { checkForUpdates, UpdateStatus } from '@/lib/version_check';
 import {
-  getCachedWatchingUpdates,
-  clearWatchingUpdates,
-  subscribeToWatchingUpdates,
   checkWatchingUpdates,
-  setupPeriodicUpdateCheck
-} from '@/lib/watching-updates';
+  clearWatchingUpdates,
+  getCachedWatchingUpdates,
+  setupPeriodicUpdateCheck,
+  subscribeToWatchingUpdates} from '@/lib/watching-updates';
 
 import { VersionPanel } from './VersionPanel';
 

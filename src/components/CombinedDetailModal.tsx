@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import Image from 'next/image';
 import { X } from 'lucide-react';
+import Image from 'next/image';
 import { useTheme } from 'next-themes';
+import React, { useEffect, useMemo, useRef,useState } from 'react';
+
 import { DoubanDetail, SearchResult } from '@/lib/types';
-import { processImageUrl } from '@/lib/utils';
 
 interface CombinedDetailModalProps {
   isOpen: boolean;

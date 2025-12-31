@@ -852,6 +852,268 @@ const UserConfig = ({
     });
   };
 
+  // 导出视频源配置
+  const handleExportSources = () => {
+    if (!config?.SourceConfig) {
+      showAlert({
+        type: 'error',
+        title: '导出失败',
+        message: '没有可导出的视频源配置',
+      });
+      return;
+    }
+
+    const sourcesJson = JSON.stringify(config.SourceConfig, null, 2);
+    const blob = new Blob([sourcesJson], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `video-sources-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showAlert({
+      type: 'success',
+      title: '导出成功',
+      message: '视频源配置已成功导出',
+      timer: 2000,
+    });
+  };
+
+  // 处理文件选择
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImportFile(file);
+    }
+  };
+
+  // 解析导入的JSON文件
+  const parseImportFile = async (file: File): Promise<any[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const content = e.target?.result as string;
+          const data = JSON.parse(content);
+          if (!Array.isArray(data)) {
+            reject(new Error('导入的文件必须是JSON数组'));
+            return;
+          }
+          // 验证每个视频源是否包含必要字段
+          for (const source of data) {
+            if (!source.key || !source.name || !source.api) {
+              reject(new Error('导入的视频源缺少必要字段（key、name或api）'));
+              return;
+            }
+          }
+          resolve(data);
+        } catch (err) {
+          reject(new Error('无法解析JSON文件'));
+        }
+      };
+      reader.onerror = () => reject(new Error('读取文件失败'));
+      reader.readAsText(file);
+    });
+  };
+
+  // 导入视频源配置
+  const handleImportSources = async () => {
+    if (!importFile) {
+      showAlert({
+        type: 'warning',
+        title: '请选择文件',
+        message: '请选择要导入的JSON文件',
+      });
+      return;
+    }
+
+    try {
+      const sourcesToImport = await parseImportFile(importFile);
+      // 显示确认导入弹窗
+      setImportConfirmModal({
+        isOpen: true,
+        sourcesToImport,
+      });
+    } catch (err) {
+      showAlert({
+        type: 'error',
+        title: '导入失败',
+        message: err instanceof Error ? err.message : '导入文件解析失败',
+      });
+    }
+  };
+
+  // 确认导入视频源
+  const handleConfirmImport = async () => {
+    try {
+      await withLoading('importSources', async () => {
+        const res = await fetch('/api/admin/source', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'batch',
+            sources: importConfirmModal.sourcesToImport,
+          }),
+        });
+
+        if (!res.ok) {
+          throw new Error('导入失败');
+        }
+
+        await refreshConfig();
+        showAlert({
+          type: 'success',
+          title: '导入成功',
+          message: `成功导入 ${importConfirmModal.sourcesToImport.length} 个视频源`,
+          timer: 2000,
+        });
+        // 重置状态
+        setShowImportModal(false);
+        setImportFile(null);
+        setImportConfirmModal(prev => ({ ...prev, isOpen: false }));
+      });
+    } catch (err) {
+      showAlert({
+        type: 'error',
+        title: '导入失败',
+        message: err instanceof Error ? err.message : '导入失败',
+      });
+    }
+  };
+
+  // 导出视频源配置
+  const handleExportSources = () => {
+    if (!config?.SourceConfig) {
+      showAlert({
+        type: 'error',
+        title: '导出失败',
+        message: '没有可导出的视频源配置',
+      });
+      return;
+    }
+
+    const sourcesJson = JSON.stringify(config.SourceConfig, null, 2);
+    const blob = new Blob([sourcesJson], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `video-sources-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showAlert({
+      type: 'success',
+      title: '导出成功',
+      message: '视频源配置已成功导出',
+      timer: 2000,
+    });
+  };
+
+  // 处理文件选择
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImportFile(file);
+    }
+  };
+
+  // 解析导入的JSON文件
+  const parseImportFile = async (file: File): Promise<any[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const content = e.target?.result as string;
+          const data = JSON.parse(content);
+          if (!Array.isArray(data)) {
+            reject(new Error('导入的文件必须是JSON数组'));
+            return;
+          }
+          // 验证每个视频源是否包含必要字段
+          for (const source of data) {
+            if (!source.key || !source.name || !source.api) {
+              reject(new Error('导入的视频源缺少必要字段（key、name或api）'));
+              return;
+            }
+          }
+          resolve(data);
+        } catch (err) {
+          reject(new Error('无法解析JSON文件'));
+        }
+      };
+      reader.onerror = () => reject(new Error('读取文件失败'));
+      reader.readAsText(file);
+    });
+  };
+
+  // 导入视频源配置
+  const handleImportSources = async () => {
+    if (!importFile) {
+      showAlert({
+        type: 'warning',
+        title: '请选择文件',
+        message: '请选择要导入的JSON文件',
+      });
+      return;
+    }
+
+    try {
+      const sourcesToImport = await parseImportFile(importFile);
+      // 显示确认导入弹窗
+      setImportConfirmModal({
+        isOpen: true,
+        sourcesToImport,
+      });
+    } catch (err) {
+      showAlert({
+        type: 'error',
+        title: '导入失败',
+        message: err instanceof Error ? err.message : '导入文件解析失败',
+      });
+    }
+  };
+
+  // 确认导入视频源
+  const handleConfirmImport = async () => {
+    try {
+      await withLoading('importSources', async () => {
+        const res = await fetch('/api/admin/source', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'batch',
+            sources: importConfirmModal.sourcesToImport,
+          }),
+        });
+
+        if (!res.ok) {
+          throw new Error('导入失败');
+        }
+
+        await refreshConfig();
+        showAlert({
+          type: 'success',
+          title: '导入成功',
+          message: `成功导入 ${importConfirmModal.sourcesToImport.length} 个视频源`,
+          timer: 2000,
+        });
+        // 重置状态
+        setShowImportModal(false);
+        setImportFile(null);
+        setImportConfirmModal(prev => ({ ...prev, isOpen: false }));
+      });
+    } catch (err) {
+      showAlert({
+        type: 'error',
+        title: '导入失败',
+        message: err instanceof Error ? err.message : '导入失败',
+      });
+    }
+  };
+
   if (!config) {
     return (
       <div className='text-center text-gray-500 dark:text-gray-400'>
@@ -2865,6 +3127,17 @@ const VideoSourceConfig = ({
     from: 'config',
   });
 
+  // 导入导出相关状态
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importConfirmModal, setImportConfirmModal] = useState<{
+    isOpen: boolean;
+    sourcesToImport: any[];
+  }>({
+    isOpen: false,
+    sourcesToImport: [],
+  });
+
   // 批量操作相关状态
   const [selectedSources, setSelectedSources] = useState<Set<string>>(
     new Set()
@@ -2903,6 +3176,17 @@ const VideoSourceConfig = ({
       resultCount: number;
     }>
   >([]);
+
+  // 导入导出相关状态
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importConfirmModal, setImportConfirmModal] = useState<{
+    isOpen: boolean;
+    sourcesToImport: any[];
+  }>({
+    isOpen: false,
+    sourcesToImport: [],
+  });
 
   // dnd-kit 传感器
   const sensors = useSensors(
@@ -3485,6 +3769,18 @@ const VideoSourceConfig = ({
             </>
           )}
           <div className='flex items-center gap-2 order-1 sm:order-2'>
+            <button
+              onClick={handleExportSources}
+              className={buttonStyles.secondary}
+            >
+              导出视频源
+            </button>
+            <button
+              onClick={() => setShowImportModal(true)}
+              className={buttonStyles.primary}
+            >
+              导入视频源
+            </button>
             <button
               onClick={() => setShowValidationModal(true)}
               disabled={isValidating}

@@ -3,7 +3,7 @@
  * 用于确保多设备间的数据同步
  */
 
-import { getUserStats, clearUserStats, recalculateUserStatsFromHistory, UserStats } from './db.client';
+import { clearUserStats, getUserStats, recalculateUserStatsFromHistory, UserStats } from './db.client';
 
 /**
  * 强制同步用户统计数据

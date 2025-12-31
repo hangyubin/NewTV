@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Cat, Clover, Clapperboard, Cloud, Film, Home, Menu, Radio, Search, Star, Tv } from 'lucide-react';
+import { Cat, Clapperboard, Cloud, Clover, Film, Home, Menu, Radio, Search, Star, Tv } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {

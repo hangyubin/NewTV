@@ -2,7 +2,7 @@
 
 'use client';
 
-import { ChevronRight, Film, Tv, BookOpen, Music, Video } from 'lucide-react';
+import { BookOpen, ChevronRight, Film, Music, Tv, Video } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 
@@ -115,16 +115,16 @@ function HomeClient() {
         }
 
         // 处理短剧数据
-        if (shortDramaData && shortDramaData.results) {
-          const shortDramaList = shortDramaData.results.map((item: any) => ({
-            id: item.id,
-            title: item.title,
-            poster: item.poster,
-            rate: '', // 短剧通常没有豆瓣评分
-            year: item.year || '',
-          }));
-          setHotShortDramas(shortDramaList);
-        }
+          if (shortDramaData && shortDramaData.results) {
+            const shortDramaList = shortDramaData.results.map((item: any) => ({
+              id: item.id,
+              title: item.title,
+              poster: item.poster,
+              rate: '', // 短剧通常没有豆瓣评分
+              year: item.year || '',
+            }));
+            setHotShortDramas(shortDramaList);
+          }
       } catch (error) {
         console.error('获取推荐数据失败:', error);
       } finally {
@@ -377,7 +377,7 @@ function HomeClient() {
                     </span>
                   </h2>
                   <Link
-                    href='/douban?type=anime'
+                    href='/shortdrama'
                     className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   >
                     查看更多
@@ -477,7 +477,7 @@ function HomeClient() {
                     </span>
                   </h2>
                   <Link
-                    href='/douban?type=anime'
+                    href='/shortdrama'
                     className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   >
                     查看更多
