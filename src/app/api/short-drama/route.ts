@@ -37,8 +37,8 @@ export async function GET(request: NextRequest) {
   const apiSites = await getAvailableApiSites(authInfo.username);
 
   try {
-    // 简化短剧相关的搜索关键词，只使用"短剧"这一个词
-    const shortDramaKeywords = ['短剧'];
+    // 增加更多短剧相关的搜索关键词，提高搜索结果数量
+    const shortDramaKeywords = ['短剧', '微剧', '竖屏短剧', '网络短剧', '小剧场', '微电影'];
 
     let allResults: SearchResult[] = [];
 
@@ -53,45 +53,52 @@ export async function GET(request: NextRequest) {
             ),
           ]) as SearchResult[];
 
-          // 过滤出真正的短剧内容
+          // 过滤出真正的短剧内容，增加容错处理
           return results.filter((result) => {
-            // 1. 检查是否为短剧
-            if (!isShortDrama(result.type_name, result.title)) {
-              return false;
-            }
-
-            // 2. 过滤黄色内容
-            if (!config.SiteConfig.DisableYellowFilter) {
-              const typeName = result.type_name || '';
-              if (yellowWords.some((word: string) => typeName.includes(word))) {
+            try {
+              // 1. 检查是否为短剧
+              if (!isShortDrama(result.type_name, result.title)) {
                 return false;
               }
-            }
 
-            // 3. 类型筛选
-            if (type !== 'all') {
-              const resultType = getShortDramaType(result.type_name, result.title);
-              if (resultType !== type) {
-                return false;
+              // 2. 过滤黄色内容
+              if (!config.SiteConfig.DisableYellowFilter) {
+                const typeName = result.type_name || '';
+                if (yellowWords.some((word: string) => typeName.includes(word))) {
+                  return false;
+                }
               }
-            }
 
-            // 4. 地区筛选
-            if (region !== 'all') {
-              const resultRegion = getContentRegion(result.title, result.desc);
-              if (resultRegion !== region && region !== 'chinese' && resultRegion !== 'mainland_china') {
-                return false;
+              // 3. 类型筛选 - 增加容错处理，允许更多类型通过
+              if (type !== 'all') {
+                const resultType = getShortDramaType(result.type_name, result.title);
+                if (resultType !== type && resultType !== 'all') {
+                  return false;
+                }
               }
-            }
 
-            // 5. 年份筛选
-            if (year !== 'all' && result.year) {
-              if (!matchYear(result.year, year)) {
-                return false;
+              // 4. 地区筛选 - 简化地区筛选逻辑，允许更多地区通过
+              if (region !== 'all') {
+                const resultRegion = getContentRegion(result.title, result.desc);
+                // 允许"全部"、匹配的地区或华语内容通过
+                if (resultRegion !== region && resultRegion !== 'all' && !(region === 'chinese' && (resultRegion === 'mainland_china' || resultRegion === 'chinese'))) {
+                  return false;
+                }
               }
-            }
 
-            return true;
+              // 5. 年份筛选 - 增加容错处理，允许没有年份的内容通过
+              if (year !== 'all' && result.year) {
+                if (!matchYear(result.year, year)) {
+                  return false;
+                }
+              }
+
+              return true;
+            } catch (error) {
+              // 容错处理，允许解析错误的内容通过
+              console.warn('短剧过滤出错，允许内容通过:', error);
+              return true;
+            }
           });
         } catch (error) {
           console.warn(`搜索短剧失败 ${site.name} - ${keyword}:`, error);
