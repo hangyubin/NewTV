@@ -2844,6 +2844,7 @@ const UserConfig = ({
 };
 
 // 视频源配置组件
+// 视频源配置组件
 const VideoSourceConfig = ({
   config,
   refreshConfig,
@@ -2881,26 +2882,6 @@ const VideoSourceConfig = ({
     new Set()
   );
 
-  // 使用 useMemo 计算全选状态，避免每次渲染都重新计算
-  const selectAll = useMemo(() => {
-    return selectedSources.size === sources.length && selectedSources.size > 0;
-  }, [selectedSources.size, sources.length]);
-
-  // 确认弹窗状态
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
-    onCancel: () => void;
-  }>({
-    isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: () => {},
-    onCancel: () => {},
-  });
-
   // 有效性检测相关状态
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -2915,6 +2896,10 @@ const VideoSourceConfig = ({
     }>
   >([]);
 
+  // 使用 useMemo 计算全选状态，避免每次渲染都重新计算
+  const selectAll = useMemo(() => {
+    return selectedSources.size === sources.length && selectedSources.size > 0;
+  }, [selectedSources.size, sources.length]);
 
   // dnd-kit 传感器
   const sensors = useSensors(
@@ -3057,6 +3042,154 @@ const VideoSourceConfig = ({
       title: '导出成功',
       message: `成功导出 ${sourcesToExport.length} 个视频源配置`,
       timer: 2000,
+    });
+  };
+
+  // 文件上传处理函数
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // 验证文件类型
+    if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+      showAlert({
+        type: 'error',
+        title: '文件格式错误',
+        message: '请选择 JSON 格式的文件',
+        showConfirm: true,
+      });
+      return;
+    }
+
+    // 验证文件大小（限制为 2MB）
+    if (file.size > 2 * 1024 * 1024) {
+      showAlert({
+        type: 'error',
+        title: '文件过大',
+        message: '文件大小不能超过 2MB',
+        showConfirm: true,
+      });
+      return;
+    }
+
+    setImportFile(file);
+  };
+
+  // 处理拖拽上传
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+
+    // 验证文件类型
+    if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+      showAlert({
+        type: 'error',
+        title: '文件格式错误',
+        message: '请选择 JSON 格式的文件',
+        showConfirm: true,
+      });
+      return;
+    }
+
+    // 验证文件大小（限制为 2MB）
+    if (file.size > 2 * 1024 * 1024) {
+      showAlert({
+        type: 'error',
+        title: '文件过大',
+        message: '文件大小不能超过 2MB',
+        showConfirm: true,
+      });
+      return;
+    }
+
+    setImportFile(file);
+  };
+
+  const handleImportSources = async () => {
+    if (!importFile) return;
+
+    await withLoading('importSources', async () => {
+      try {
+        // 读取文件内容
+        const fileContent = await importFile.text();
+        
+        // 解析 JSON
+        let parsedSources;
+        try {
+          parsedSources = JSON.parse(fileContent);
+        } catch (parseError) {
+          throw new Error('JSON 解析失败，请检查文件格式');
+        }
+
+        // 验证数据结构
+        if (!Array.isArray(parsedSources)) {
+          throw new Error('导入文件格式不正确，应为视频源数组');
+        }
+
+        // 验证每个视频源的基本字段
+        const validSources = parsedSources.filter((source: any) => {
+          return source && 
+                 typeof source.name === 'string' &&
+                 typeof source.key === 'string' &&
+                 typeof source.api === 'string';
+        });
+
+        if (validSources.length === 0) {
+          throw new Error('未找到有效的视频源数据');
+        }
+
+        // 显示确认弹窗
+        setImportConfirmModal({
+          isOpen: true,
+          sourcesToImport: validSources,
+        });
+
+      } catch (err) {
+        showError(err instanceof Error ? err.message : '导入失败', showAlert);
+        throw err;
+      }
+    });
+  };
+
+  const handleConfirmImport = async () => {
+    await withLoading('confirmImport', async () => {
+      try {
+        const res = await fetch('/api/admin/source', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'import',
+            sources: importConfirmModal.sourcesToImport,
+          }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || `导入失败: ${res.status}`);
+        }
+
+        // 成功后刷新配置
+        await refreshConfig();
+        setImportConfirmModal({ isOpen: false, sourcesToImport: [] });
+        setShowImportModal(false);
+        setImportFile(null);
+        
+        showSuccess(
+          `成功导入 ${importConfirmModal.sourcesToImport.length} 个视频源`,
+          showAlert
+        );
+      } catch (err) {
+        showError(err instanceof Error ? err.message : '导入失败', showAlert);
+        throw err;
+      }
     });
   };
 
@@ -3380,6 +3513,21 @@ const VideoSourceConfig = ({
       return newSelected;
     });
   }, []);
+
+  // 确认弹窗状态
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    onCancel: () => {},
+  });
 
   // 批量操作
   const handleBatchOperation = async (
@@ -3709,6 +3857,261 @@ const VideoSourceConfig = ({
           </button>
         </div>
       )}
+
+      {/* 导入视频源弹窗 */}
+      {showImportModal &&
+        createPortal(
+          <div
+            className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4'
+            onClick={() => setShowImportModal(false)}
+          >
+            <div
+              className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full'
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className='p-6'>
+                <div className='flex items-center justify-between mb-6'>
+                  <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
+                    导入视频源
+                  </h3>
+                  <button
+                    onClick={() => setShowImportModal(false)}
+                    className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
+                  >
+                    <svg
+                      className='w-6 h-6'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M6 18L18 6M6 6l12 12'
+                      />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className='space-y-6'>
+                  <div className='bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4'>
+                    <div className='flex items-center space-x-2 mb-2'>
+                      <FileText className='w-5 h-5 text-blue-600 dark:text-blue-400' />
+                      <span className='text-sm font-medium text-blue-800 dark:text-blue-300'>
+                        导入说明
+                      </span>
+                    </div>
+                    <p className='text-sm text-blue-700 dark:text-blue-400'>
+                      请选择要导入的视频源配置文件（JSON格式）。导入后会覆盖现有的自定义视频源。
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
+                      选择文件
+                    </label>
+                    <div 
+                      className='mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors'
+                      onDragOver={handleDragOver}
+                      onDrop={handleDrop}
+                      onClick={() => document.getElementById('file-upload')?.click()}
+                    >
+                      <div className='space-y-1 text-center'>
+                        <svg
+                          className='mx-auto h-12 w-12 text-gray-400'
+                          stroke='currentColor'
+                          fill='none'
+                          viewBox='0 0 48 48'
+                        >
+                          <path
+                            d='M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02'
+                            strokeWidth={2}
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
+                          />
+                        </svg>
+                        <div className='flex text-sm text-gray-600 dark:text-gray-400 justify-center'>
+                          <label className='relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 focus-within:outline-none'>
+                            <span>点击上传</span>
+                            <input
+                              id='file-upload'
+                              type='file'
+                              accept='.json'
+                              onChange={handleFileUpload}
+                              className='sr-only'
+                            />
+                          </label>
+                          <p className='pl-1'>或拖拽文件到这里</p>
+                        </div>
+                        <p className='text-xs text-gray-500 dark:text-gray-400'>
+                          JSON 文件，最大 2MB
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {importFile && (
+                      <div className='mt-3 flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg'>
+                        <div className='flex items-center space-x-3'>
+                          <FileText className='w-5 h-5 text-green-600 dark:text-green-400' />
+                          <div>
+                            <p className='text-sm font-medium text-green-800 dark:text-green-300'>
+                              {importFile.name}
+                            </p>
+                            <p className='text-xs text-green-700 dark:text-green-400'>
+                              {(importFile.size / 1024).toFixed(2)} KB
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setImportFile(null);
+                          }}
+                          className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                        >
+                          <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                            <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 操作按钮 */}
+                <div className='flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700'>
+                  <button
+                    onClick={() => {
+                      setShowImportModal(false);
+                      setImportFile(null);
+                    }}
+                    className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={handleImportSources}
+                    disabled={!importFile || isLoading('importSources')}
+                    className={`px-6 py-2.5 text-sm font-medium ${
+                      !importFile || isLoading('importSources')
+                        ? buttonStyles.disabled
+                        : buttonStyles.primary
+                    }`}
+                  >
+                    {isLoading('importSources') ? '导入中...' : '导入视频源'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* 导入确认弹窗 */}
+      {importConfirmModal.isOpen &&
+        createPortal(
+          <div
+            className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4'
+            onClick={() => setImportConfirmModal({ isOpen: false, sourcesToImport: [] })}
+          >
+            <div
+              className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full'
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className='p-6'>
+                <div className='flex items-center justify-between mb-6'>
+                  <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
+                    确认导入视频源
+                  </h3>
+                  <button
+                    onClick={() => setImportConfirmModal({ isOpen: false, sourcesToImport: [] })}
+                    className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
+                  >
+                    <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className='mb-6'>
+                  <div className='bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4'>
+                    <div className='flex items-center space-x-2 mb-2'>
+                      <AlertTriangle className='w-5 h-5 text-yellow-600 dark:text-yellow-400' />
+                      <span className='text-sm font-medium text-yellow-800 dark:text-yellow-300'>
+                        导入提示
+                      </span>
+                    </div>
+                    <p className='text-sm text-yellow-700 dark:text-yellow-400'>
+                      即将导入 {importConfirmModal.sourcesToImport.length} 个视频源，导入后会覆盖现有的自定义视频源。
+                    </p>
+                  </div>
+
+                  {/* 视频源预览列表 */}
+                  <div className='max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg'>
+                    <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
+                      <thead className='bg-gray-50 dark:bg-gray-800'>
+                        <tr>
+                          <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            名称
+                          </th>
+                          <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            Key
+                          </th>
+                          <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                            API 地址
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
+                        {importConfirmModal.sourcesToImport.slice(0, 5).map((source, index) => (
+                          <tr key={index} className='hover:bg-gray-50 dark:hover:bg-gray-800'>
+                            <td className='px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100'>
+                              {source.name}
+                            </td>
+                            <td className='px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100'>
+                              {source.key}
+                            </td>
+                            <td className='px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 truncate max-w-[200px]'>
+                              {source.api}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {importConfirmModal.sourcesToImport.length > 5 && (
+                      <div className='px-4 py-2 text-center text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800'>
+                        还有 {importConfirmModal.sourcesToImport.length - 5} 个视频源...
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 操作按钮 */}
+                <div className='flex justify-end space-x-3'>
+                  <button
+                    onClick={() => setImportConfirmModal({ isOpen: false, sourcesToImport: [] })}
+                    className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={handleConfirmImport}
+                    disabled={isLoading('confirmImport')}
+                    className={`px-6 py-2.5 text-sm font-medium ${
+                      isLoading('confirmImport')
+                        ? buttonStyles.disabled
+                        : buttonStyles.primary
+                    }`}
+                  >
+                    {isLoading('confirmImport') ? '导入中...' : '确认导入'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* 有效性检测弹窗 */}
       {showValidationModal &&
