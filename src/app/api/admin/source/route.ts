@@ -99,6 +99,10 @@ export async function POST(request: NextRequest) {
           cache_time?: number;
         };
         
+        // 忽略未使用的 cache_time 变量
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const _cache_time = cache_time;
+        
         // 转换格式：从对象转换为数组
         let sources: any[] = [];
         
@@ -147,7 +151,8 @@ export async function POST(request: NextRequest) {
         const duplicateKeys = new Map<string, number>(); // 记录重复的键和出现次数
         const processedKeys = new Set<string>(); // 已处理的键名
         
-        for (const [index, source] of sources.entries()) {
+        for (let index = 0; index < sources.length; index++) {
+          const source = sources[index];
           // 基本字段验证
           if (
             !source ||
