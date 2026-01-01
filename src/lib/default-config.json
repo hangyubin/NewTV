@@ -1,0 +1,13 @@
+{
+  "api_site": {
+    "example": {
+      "key": "example",
+      "name": "示例API",
+      "api": "https://api.example.com",
+      "detail": "示例API站点"
+    }
+  },
+  "cache_time": 7200,
+  "custom_category": [],
+  "lives": {}
+}

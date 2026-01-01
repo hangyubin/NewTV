@@ -34,90 +34,100 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get('limit') || '25');
 
   const config = await getConfig();
-  const apiSites = await getAvailableApiSites(authInfo.username);
+  let apiSites = await getAvailableApiSites(authInfo.username);
+  
+  // 检查是否有可用的API站点
+  const hasAvailableSites = apiSites && apiSites.length > 0;
 
   try {
-    // 增加更多短剧相关的搜索关键词，提高搜索结果数量
-    const shortDramaKeywords = ['短剧', '微剧', '竖屏短剧', '网络短剧', '小剧场', '微电影'];
-
     let allResults: SearchResult[] = [];
+    
+    // 只有在有可用API站点时才进行搜索
+    if (hasAvailableSites) {
+      // 增加更多短剧相关的搜索关键词，提高搜索结果数量
+      const shortDramaKeywords = ['短剧', '微剧', '竖屏短剧', '网络短剧', '小剧场', '微电影'];
 
-    // 并行搜索多个关键词
-    const searchPromises = shortDramaKeywords.map(async (keyword) => {
-      const sitePromises = apiSites.map(async (site) => {
-        try {
-          const results = await Promise.race([
-            searchFromApi(site, keyword),
-            new Promise((_, reject) =>
-              setTimeout(() => reject(new Error(`${site.name} timeout`)), 15000)
-            ),
-          ]) as SearchResult[];
+      // 并行搜索多个关键词
+      const searchPromises = shortDramaKeywords.map(async (keyword) => {
+        const sitePromises = apiSites.map(async (site) => {
+          try {
+            const results = await Promise.race([
+              searchFromApi(site, keyword),
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error(`${site.name} timeout`)), 15000)
+              ),
+            ]) as SearchResult[];
 
-          // 过滤出真正的短剧内容，增加容错处理
-          return results.filter((result) => {
-            try {
-              // 1. 检查是否为短剧
-              if (!isShortDrama(result.type_name, result.title)) {
-                return false;
-              }
-
-              // 2. 过滤黄色内容
-              if (!config.SiteConfig.DisableYellowFilter) {
-                const typeName = result.type_name || '';
-                if (yellowWords.some((word: string) => typeName.includes(word))) {
+            // 过滤出真正的短剧内容，增加容错处理
+            return results.filter((result) => {
+              try {
+                // 1. 检查是否为短剧
+                if (!isShortDrama(result.type_name, result.title)) {
                   return false;
                 }
-              }
 
-              // 3. 类型筛选 - 增加容错处理，允许更多类型通过
-              if (type !== 'all') {
-                const resultType = getShortDramaType(result.type_name, result.title);
-                if (resultType !== type && resultType !== 'all') {
-                  return false;
+                // 2. 过滤黄色内容
+                if (!config.SiteConfig.DisableYellowFilter) {
+                  const typeName = result.type_name || '';
+                  if (yellowWords.some((word: string) => typeName.includes(word))) {
+                    return false;
+                  }
                 }
-              }
 
-              // 4. 地区筛选 - 简化地区筛选逻辑，允许更多地区通过
-              if (region !== 'all') {
-                const resultRegion = getContentRegion(result.title, result.desc);
-                // 允许"全部"、匹配的地区或华语内容通过
-                if (resultRegion !== region && resultRegion !== 'all' && !(region === 'chinese' && (resultRegion === 'mainland_china' || resultRegion === 'chinese'))) {
-                  return false;
+                // 3. 类型筛选 - 增加容错处理，允许更多类型通过
+                if (type !== 'all') {
+                  const resultType = getShortDramaType(result.type_name, result.title);
+                  if (resultType !== type && resultType !== 'all') {
+                    return false;
+                  }
                 }
-              }
 
-              // 5. 年份筛选 - 增加容错处理，允许没有年份的内容通过
-              if (year !== 'all' && result.year) {
-                if (!matchYear(result.year, year)) {
-                  return false;
+                // 4. 地区筛选 - 简化地区筛选逻辑，允许更多地区通过
+                if (region !== 'all') {
+                  const resultRegion = getContentRegion(result.title, result.desc);
+                  // 允许"全部"、匹配的地区或华语内容通过
+                  if (resultRegion !== region && resultRegion !== 'all' && !(region === 'chinese' && (resultRegion === 'mainland_china' || resultRegion === 'chinese'))) {
+                    return false;
+                  }
                 }
-              }
 
-              return true;
-            } catch (error) {
-              // 容错处理，允许解析错误的内容通过
-              console.warn('短剧过滤出错，允许内容通过:', error);
-              return true;
-            }
-          });
-        } catch (error) {
-          console.warn(`搜索短剧失败 ${site.name} - ${keyword}:`, error);
-          return [];
-        }
+                // 5. 年份筛选 - 增加容错处理，允许没有年份的内容通过
+                if (year !== 'all' && result.year) {
+                  if (!matchYear(result.year, year)) {
+                    return false;
+                  }
+                }
+
+                return true;
+              } catch (error) {
+                // 容错处理，允许解析错误的内容通过
+                console.warn('短剧过滤出错，允许内容通过:', error);
+                return true;
+              }
+            });
+          } catch (error) {
+            console.warn(`搜索短剧失败 ${site.name} - ${keyword}:`, error);
+            return [];
+          }
+        });
+
+        const siteResults = await Promise.allSettled(sitePromises);
+        return siteResults
+          .filter((result) => result.status === 'fulfilled')
+          .map((result) => (result as PromiseFulfilledResult<SearchResult[]>).value)
+          .flat();
       });
 
-      const siteResults = await Promise.allSettled(sitePromises);
-      return siteResults
+      const keywordResults = await Promise.allSettled(searchPromises);
+      allResults = keywordResults
         .filter((result) => result.status === 'fulfilled')
         .map((result) => (result as PromiseFulfilledResult<SearchResult[]>).value)
         .flat();
-    });
-
-    const keywordResults = await Promise.allSettled(searchPromises);
-    allResults = keywordResults
-      .filter((result) => result.status === 'fulfilled')
-      .map((result) => (result as PromiseFulfilledResult<SearchResult[]>).value)
-      .flat();
+    } else {
+      console.warn('没有可用的API站点，返回空结果');
+      // 没有可用API站点，返回空结果
+      allResults = [];
+    }
 
     // 改进去重机制，使用更高效的Set方式去重
     const seenTitles = new Set<string>();

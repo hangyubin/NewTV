@@ -62,8 +62,13 @@ export function refineConfig(adminConfig: AdminConfig): AdminConfig {
   let fileConfig: ConfigFileStruct;
   try {
     fileConfig = JSON.parse(adminConfig.ConfigFile) as ConfigFileStruct;
+    // 如果没有API站点配置，使用默认配置
+    if (!fileConfig.api_site || Object.keys(fileConfig.api_site).length === 0) {
+      fileConfig.api_site = defaultConfig.api_site;
+    }
   } catch (e) {
-    fileConfig = {} as ConfigFileStruct;
+    // 解析失败，使用默认配置
+    fileConfig = defaultConfig as ConfigFileStruct;
   }
 
   // 合并文件中的源信息
@@ -182,6 +187,21 @@ export function refineConfig(adminConfig: AdminConfig): AdminConfig {
   return adminConfig;
 }
 
+// 导入默认配置
+const defaultConfig = {
+  api_site: {
+    example: {
+      key: "example",
+      name: "示例API",
+      api: "https://api.example.com",
+      detail: "示例API站点"
+    }
+  },
+  cache_time: 7200,
+  custom_category: [],
+  lives: {}
+};
+
 async function getInitConfig(configFile: string, subConfig: {
   URL: string;
   AutoUpdate: boolean;
@@ -194,8 +214,13 @@ async function getInitConfig(configFile: string, subConfig: {
   let cfgFile: ConfigFileStruct;
   try {
     cfgFile = JSON.parse(configFile) as ConfigFileStruct;
+    // 如果没有API站点配置，使用默认配置
+    if (!cfgFile.api_site || Object.keys(cfgFile.api_site).length === 0) {
+      cfgFile.api_site = defaultConfig.api_site;
+    }
   } catch (e) {
-    cfgFile = {} as ConfigFileStruct;
+    // 解析失败，使用默认配置
+    cfgFile = defaultConfig as ConfigFileStruct;
   }
 
   // 在初始化之前，先获取旧的配置
@@ -264,6 +289,18 @@ async function getInitConfig(configFile: string, subConfig: {
       disabled: false,
     });
   });
+  
+  // 添加默认API站点配置，确保在部署环境中也能获取到数据
+  if (adminConfig.SourceConfig.length === 0) {
+    adminConfig.SourceConfig.push({
+      key: 'default',
+      name: '默认API',
+      api: 'https://api.example.com',
+      detail: '默认API站点',
+      from: 'config',
+      disabled: false,
+    });
+  }
 
   // 从配置文件中补充自定义分类信息
   cfgFile.custom_category?.forEach((category) => {
@@ -418,6 +455,19 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
     seenLiveKeys.add(live.key);
     return true;
   });
+
+  // 确保至少有一个API站点可用
+  if (adminConfig.SourceConfig.length === 0) {
+    console.warn('没有可用的API站点，添加默认API站点');
+    adminConfig.SourceConfig.push({
+      key: 'default',
+      name: '默认API',
+      api: 'https://api.example.com',
+      detail: '默认API站点',
+      from: 'config',
+      disabled: false,
+    });
+  }
 
   return adminConfig;
 }
