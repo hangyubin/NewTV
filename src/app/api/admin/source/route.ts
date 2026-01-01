@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
             name: source.name,
             api: source.api,
             detail: source.detail,
-            from: 'custom',
+            from: 'custom' as const,
             disabled: source.disabled || false,
           });
           addedCount++;
@@ -104,7 +104,14 @@ export async function POST(request: NextRequest) {
         }
         
         // 验证每个视频源的基本字段
-        const validSources = [];
+        const validSources: Array<{
+          key: string;
+          name: string;
+          api: string;
+          detail: string;
+          from: 'custom';
+          disabled: boolean;
+        }> = [];
         const invalidSources = [];
         const duplicateKeys = new Set();
         
@@ -162,7 +169,7 @@ export async function POST(request: NextRequest) {
             name: trimmedName,
             api: trimmedApi,
             detail: trimmedDetail,
-            from: 'custom',
+            from: 'custom' as const,
             disabled: source.disabled || false,
           });
         }
@@ -243,7 +250,7 @@ export async function POST(request: NextRequest) {
           name,
           api,
           detail,
-          from: 'custom',
+          from: 'custom' as const,
           disabled: false,
         });
         break;
