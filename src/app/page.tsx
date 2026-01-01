@@ -377,7 +377,7 @@ function HomeClient() {
                     </span>
                   </h2>
                   <Link
-                    href='/shortdrama'
+                    href='/douban?type=anime'
                     className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   >
                     查看更多
@@ -477,7 +477,7 @@ function HomeClient() {
                     </span>
                   </h2>
                   <Link
-                    href='/shortdrama'
+                    href='/douban?type=short-drama'
                     className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   >
                     查看更多
