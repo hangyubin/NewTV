@@ -42,11 +42,17 @@ export async function GET(request: NextRequest) {
   try {
     let allResults: SearchResult[] = [];
     
+    // 增加更多短剧相关的搜索关键词，提高搜索结果数量
+    const shortDramaKeywords = [
+      '短剧', '微剧', '竖屏短剧', '网络短剧', '小剧场', '微电影',
+      'mini drama', 'micro drama', 'short drama', 'short film',
+      '竖屏', '短视频剧', '网络剧', '迷你剧', '短剧集', '短剧精选',
+      '热门短剧', '短剧推荐', '短剧剧场', '短剧专区', '微短剧',
+      '短剧热播', '短剧合集', '短剧在线', '短剧免费', '短剧大全'
+    ];
+
     // 只有在有可用API站点时才进行搜索
     if (hasAvailableSites) {
-      // 增加更多短剧相关的搜索关键词，提高搜索结果数量
-      const shortDramaKeywords = ['短剧', '微剧', '竖屏短剧', '网络短剧', '小剧场', '微电影'];
-
       // 并行搜索多个关键词
       const searchPromises = shortDramaKeywords.map(async (keyword) => {
         const sitePromises = apiSites.map(async (site) => {
@@ -61,9 +67,17 @@ export async function GET(request: NextRequest) {
             // 过滤出真正的短剧内容，增加容错处理
             return results.filter((result) => {
               try {
-                // 1. 检查是否为短剧
-                if (!isShortDrama(result.type_name, result.title)) {
-                  return false;
+                // 1. 检查是否为短剧 - 放宽条件，允许更多内容通过
+                const isShortDramaResult = isShortDrama(result.type_name, result.title);
+                if (!isShortDramaResult) {
+                  // 放宽条件：如果标题包含短剧相关关键词，也允许通过
+                  const titleLower = result.title.toLowerCase();
+                  const hasShortDramaKeyword = shortDramaKeywords.some(keyword => 
+                    titleLower.includes(keyword)
+                  );
+                  if (!hasShortDramaKeyword) {
+                    return false;
+                  }
                 }
 
                 // 2. 过滤黄色内容

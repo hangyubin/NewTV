@@ -3031,7 +3031,7 @@ const VideoSourceConfig = ({
 
   // 导出视频源配置
   const handleExportSources = () => {
-    if (!config?.SourceConfig) {
+    if (!config?.SourceConfig || config.SourceConfig.length === 0) {
       showAlert({
         type: 'error',
         title: '导出失败',
@@ -3040,7 +3040,9 @@ const VideoSourceConfig = ({
       return;
     }
 
-    const sourcesJson = JSON.stringify(config.SourceConfig, null, 2);
+    // 确保导出的是视频源数组
+    const sourcesToExport = config.SourceConfig;
+    const sourcesJson = JSON.stringify(sourcesToExport, null, 2);
     const blob = new Blob([sourcesJson], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -3053,7 +3055,7 @@ const VideoSourceConfig = ({
     showAlert({
       type: 'success',
       title: '导出成功',
-      message: '视频源配置已成功导出',
+      message: `成功导出 ${sourcesToExport.length} 个视频源配置`,
       timer: 2000,
     });
   };

@@ -9,7 +9,7 @@ import { db } from '@/lib/db';
 export const runtime = 'nodejs';
 
 // 支持的操作类型
-type Action = 'add' | 'disable' | 'enable' | 'delete' | 'sort' | 'batch_disable' | 'batch_enable' | 'batch_delete';
+type Action = 'add' | 'disable' | 'enable' | 'delete' | 'sort' | 'batch_disable' | 'batch_enable' | 'batch_delete' | 'batch';
 
 interface BaseBody {
   action?: Action;
@@ -56,6 +56,41 @@ export async function POST(request: NextRequest) {
     }
 
     switch (action) {
+      case 'batch': {
+        const { sources } = body as { sources?: any[] };
+        if (!Array.isArray(sources) || sources.length === 0) {
+          return NextResponse.json({ error: '缺少 sources 参数或为空数组' }, { status: 400 });
+        }
+        
+        // 批量添加视频源
+        let addedCount = 0;
+        let existingCount = 0;
+        
+        for (const source of sources) {
+          if (!source.key || !source.name || !source.api) {
+            continue; // 跳过缺少必要参数的源
+          }
+          
+          // 检查是否已存在
+          if (adminConfig.SourceConfig.some((s) => s.key === source.key)) {
+            existingCount++;
+            continue;
+          }
+          
+          // 添加新源
+          adminConfig.SourceConfig.push({
+            key: source.key,
+            name: source.name,
+            api: source.api,
+            detail: source.detail,
+            from: 'custom',
+            disabled: source.disabled || false,
+          });
+          addedCount++;
+        }
+        
+        break;
+      }
       case 'add': {
         const { key, name, api, detail } = body as {
           key?: string;
