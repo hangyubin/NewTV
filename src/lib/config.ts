@@ -223,8 +223,8 @@ async function getInitConfig(configFile: string, subConfig: {
     cfgFile = defaultConfig as ConfigFileStruct;
   }
 
-  // 在初始化之前，先获取旧的配置
-  const oldConfig = await db.getAdminConfig();
+  // 在初始化之前，先获取旧的配置（目前未使用，保留以备后续扩展）
+  // const oldConfig = await db.getAdminConfig();
 
   const adminConfig: AdminConfig = {
     ConfigFile: configFile,

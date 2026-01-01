@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get('limit') || '25');
 
   const config = await getConfig();
-  let apiSites = await getAvailableApiSites(authInfo.username);
+  const apiSites = await getAvailableApiSites(authInfo.username);
   
   // 检查是否有可用的API站点
   const hasAvailableSites = apiSites && apiSites.length > 0;
