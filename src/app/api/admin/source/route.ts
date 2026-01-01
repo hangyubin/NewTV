@@ -93,15 +93,46 @@ export async function POST(request: NextRequest) {
       }
       
       case 'import': {
-        const { sources } = body as { sources?: any[] };
+        const { api_site, sources: bodySources, cache_time } = body as {
+          api_site?: Record<string, any>;
+          sources?: any[];
+          cache_time?: number;
+        };
         
-        // 验证数据
-        if (!Array.isArray(sources) || sources.length === 0) {
+        // 转换格式：从对象转换为数组
+        let sources: any[] = [];
+        
+        if (api_site && typeof api_site === 'object') {
+          // 转换格式：对象转数组
+          sources = Object.entries(api_site).map(([key, value]) => {
+            // 有些 key 可能以特殊字符开头，需要清理
+            const cleanKey = key.replace(/^[./]+/, ''); // 移除开头的 . 或 /
+            return {
+              key: cleanKey,
+              name: value.name || key,
+              api: value.api || '',
+              detail: value.detail || '',
+              disabled: false
+            };
+          });
+        } else if (Array.isArray(bodySources)) {
+          sources = bodySources;
+        } else {
           return NextResponse.json(
-            { error: '缺少 sources 参数或为空数组' },
+            { error: '数据格式错误：需要 api_site 对象或 sources 数组' },
             { status: 400 }
           );
         }
+        
+        // 验证数据
+        if (sources.length === 0) {
+          return NextResponse.json(
+            { error: '没有找到可导入的视频源数据' },
+            { status: 400 }
+          );
+        }
+        
+        console.log(`开始导入 ${sources.length} 个视频源`);
         
         // 验证每个视频源的基本字段
         const validSources: Array<{
@@ -112,10 +143,11 @@ export async function POST(request: NextRequest) {
           from: 'custom';
           disabled: boolean;
         }> = [];
-        const invalidSources = [];
-        const duplicateKeys = new Set();
+        const invalidSources: Array<{key?: string, name?: string, reason: string}> = [];
+        const duplicateKeys = new Map<string, number>(); // 记录重复的键和出现次数
+        const processedKeys = new Set<string>(); // 已处理的键名
         
-        for (const source of sources) {
+        for (const [index, source] of sources.entries()) {
           // 基本字段验证
           if (
             !source ||
@@ -124,7 +156,8 @@ export async function POST(request: NextRequest) {
             typeof source.api !== 'string' || !source.api.trim()
           ) {
             invalidSources.push({
-              ...source,
+              key: source?.key,
+              name: source?.name,
               reason: '缺少必要字段 (name, key, api) 或字段格式不正确'
             });
             continue;
@@ -135,37 +168,102 @@ export async function POST(request: NextRequest) {
           const trimmedApi = source.api.trim();
           const trimmedDetail = source.detail ? String(source.detail).trim() : '';
           
+          // 特殊处理：如果 key 包含斜杠，取最后一部分
+          const finalKey = trimmedKey.includes('/') 
+            ? trimmedKey.split('/').pop() || trimmedKey
+            : trimmedKey;
+          
+          // 检查是否已处理过相同的键
+          if (processedKeys.has(finalKey)) {
+            const count = duplicateKeys.get(finalKey) || 0;
+            duplicateKeys.set(finalKey, count + 1);
+            invalidSources.push({
+              key: finalKey,
+              name: trimmedName,
+              reason: `Key "${finalKey}" 在导入列表中重复`
+            });
+            continue;
+          }
+          
+          processedKeys.add(finalKey);
+          
           // 检查是否已存在（包括内置源和自定义源）
-          const existingSource = adminConfig.SourceConfig.find(s => s.key === trimmedKey);
+          const existingSource = adminConfig.SourceConfig.find(s => s.key === finalKey);
           if (existingSource) {
-            duplicateKeys.add(trimmedKey);
+            const count = duplicateKeys.get(finalKey) || 0;
+            duplicateKeys.set(finalKey, count + 1);
             invalidSources.push({
-              ...source,
-              reason: `Key "${trimmedKey}" 已存在`
+              key: finalKey,
+              name: trimmedName,
+              reason: `Key "${finalKey}" 在系统中已存在`
             });
             continue;
           }
           
-          // 验证 key 是否只包含字母、数字、下划线和连字符
-          if (!/^[a-zA-Z0-9_-]+$/.test(trimmedKey)) {
+          // 验证 key 是否只包含字母、数字、下划线、连字符和点号
+          if (!/^[a-zA-Z0-9._-]+$/.test(finalKey)) {
             invalidSources.push({
-              ...source,
-              reason: 'Key 只能包含字母、数字、下划线和连字符'
+              key: finalKey,
+              name: trimmedName,
+              reason: `Key "${finalKey}" 包含非法字符，只能包含字母、数字、点号、下划线和连字符`
             });
             continue;
           }
           
-          // 验证 API 地址格式
+          // 验证 API 地址格式（放宽要求）
+          let isValidApi = false;
+          let apiWarning = '';
+          
           try {
-            new URL(trimmedApi);
-          } catch {
-            // 如果不是有效的 URL，只记录警告但允许继续
-            console.warn(`API 地址 "${trimmedApi}" 不是标准 URL 格式`);
+            // 尝试解析为 URL
+            if (trimmedApi.includes('://')) {
+              new URL(trimmedApi);
+              isValidApi = true;
+            } else {
+              // 如果没有协议，尝试添加 https:// 后解析
+              try {
+                new URL(`https://${trimmedApi}`);
+                isValidApi = true;
+                apiWarning = `API 地址 "${trimmedApi}" 缺少协议，已自动添加 https://`;
+              } catch {
+                // 如果仍然失败，检查是否为相对路径或简写形式
+                if (trimmedApi.startsWith('/') || 
+                    trimmedApi.startsWith('./') || 
+                    trimmedApi.startsWith('../') ||
+                    trimmedApi.includes('/api.php/provide/vod') ||
+                    trimmedApi.includes('/api/json') ||
+                    trimmedApi.includes('/inc/') ||
+                    trimmedApi.includes('feifei')) {
+                  isValidApi = true;
+                  apiWarning = `API 地址 "${trimmedApi}" 可能是相对路径或简写形式`;
+                }
+              }
+            }
+          } catch (error) {
+            // 最后尝试宽松验证
+            if (trimmedApi.length > 5 && 
+                (trimmedApi.includes('/') || trimmedApi.includes('.'))) {
+              isValidApi = true;
+              apiWarning = `API 地址 "${trimmedApi}" 格式非常规但被接受`;
+            }
+          }
+          
+          if (!isValidApi) {
+            invalidSources.push({
+              key: finalKey,
+              name: trimmedName,
+              reason: `API 地址格式无效: "${trimmedApi}"`
+            });
+            continue;
+          }
+          
+          if (apiWarning) {
+            console.warn(`[源 ${index + 1}/${sources.length}] ${apiWarning} (key: ${finalKey})`);
           }
           
           // 添加有效的源
           validSources.push({
-            key: trimmedKey,
+            key: finalKey,
             name: trimmedName,
             api: trimmedApi,
             detail: trimmedDetail,
@@ -173,6 +271,8 @@ export async function POST(request: NextRequest) {
             disabled: source.disabled || false,
           });
         }
+        
+        console.log(`验证完成: ${validSources.length} 个有效, ${invalidSources.length} 个无效`);
         
         if (validSources.length === 0) {
           return NextResponse.json(
@@ -182,8 +282,9 @@ export async function POST(request: NextRequest) {
                 total: sources.length,
                 valid: 0,
                 invalid: invalidSources.length,
-                duplicates: Array.from(duplicateKeys),
-                invalidItems: invalidSources.slice(0, 10) // 只返回前10个无效项
+                duplicates: Array.from(duplicateKeys.keys()),
+                duplicateCounts: Object.fromEntries(duplicateKeys),
+                invalidItems: invalidSources.slice(0, 20) // 返回前20个无效项以便调试
               }
             },
             { status: 400 }
@@ -192,7 +293,6 @@ export async function POST(request: NextRequest) {
         
         // 分离内置源和自定义源，保留内置源
         const builtInSources = adminConfig.SourceConfig.filter(s => s.from === 'config');
-        const existingCustomSources = adminConfig.SourceConfig.filter(s => s.from === 'custom');
         
         // 创建新的源集合：内置源 + 导入的自定义源
         // 注意：import 动作会完全替换现有的自定义源
@@ -204,23 +304,25 @@ export async function POST(request: NextRequest) {
         // 返回详细结果
         const responseData = {
           success: true,
-          message: `成功导入 ${validSources.length} 个视频源`,
+          message: `成功导入 ${validSources.length} 个视频源，跳过 ${invalidSources.length} 个无效源`,
           details: {
             totalSources: sources.length,
             imported: validSources.length,
             invalid: invalidSources.length,
             duplicates: duplicateKeys.size,
-            importedItems: validSources.map(s => ({ key: s.key, name: s.name })),
-            skippedItems: invalidSources.map(s => ({
+            sampleImported: validSources.slice(0, 5).map(s => ({ key: s.key, name: s.name })),
+            sampleSkipped: invalidSources.slice(0, 5).map(s => ({
               key: s.key,
               name: s.name,
               reason: s.reason
-            })).slice(0, 10) // 只返回前10个跳过项
+            }))
           }
         };
         
         // 持久化到存储
         await db.saveAdminConfig(adminConfig);
+        
+        console.log(`导入完成: 总共 ${adminConfig.SourceConfig.length} 个源 (${builtInSources.length} 内置 + ${validSources.length} 自定义)`);
         
         return NextResponse.json(
           responseData,
