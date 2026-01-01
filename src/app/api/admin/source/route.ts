@@ -9,7 +9,7 @@ import { db } from '@/lib/db';
 export const runtime = 'nodejs';
 
 // 支持的操作类型
-type Action = 'add' | 'disable' | 'enable' | 'delete' | 'sort' | 'batch_disable' | 'batch_enable' | 'batch_delete' | 'batch';
+type Action = 'add' | 'disable' | 'enable' | 'delete' | 'sort' | 'batch_disable' | 'batch_enable' | 'batch_delete' | 'batch' | 'import';
 
 interface BaseBody {
   action?: Action;
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     const username = authInfo.username;
 
     // 基础校验
-    const ACTIONS: Action[] = ['add', 'disable', 'enable', 'delete', 'sort', 'batch_disable', 'batch_enable', 'batch_delete'];
+    const ACTIONS: Action[] = ['add', 'disable', 'enable', 'delete', 'sort', 'batch_disable', 'batch_enable', 'batch_delete', 'batch', 'import'];
     if (!username || !action || !ACTIONS.includes(action)) {
       return NextResponse.json({ error: '参数格式错误' }, { status: 400 });
     }
@@ -91,6 +91,140 @@ export async function POST(request: NextRequest) {
         
         break;
       }
+      
+      case 'import': {
+        const { sources } = body as { sources?: any[] };
+        
+        // 验证数据
+        if (!Array.isArray(sources) || sources.length === 0) {
+          return NextResponse.json(
+            { error: '缺少 sources 参数或为空数组' },
+            { status: 400 }
+          );
+        }
+        
+        // 验证每个视频源的基本字段
+        const validSources = [];
+        const invalidSources = [];
+        const duplicateKeys = new Set();
+        
+        for (const source of sources) {
+          // 基本字段验证
+          if (
+            !source ||
+            typeof source.name !== 'string' || !source.name.trim() ||
+            typeof source.key !== 'string' || !source.key.trim() ||
+            typeof source.api !== 'string' || !source.api.trim()
+          ) {
+            invalidSources.push({
+              ...source,
+              reason: '缺少必要字段 (name, key, api) 或字段格式不正确'
+            });
+            continue;
+          }
+          
+          const trimmedKey = source.key.trim();
+          const trimmedName = source.name.trim();
+          const trimmedApi = source.api.trim();
+          const trimmedDetail = source.detail ? String(source.detail).trim() : '';
+          
+          // 检查是否已存在（包括内置源和自定义源）
+          const existingSource = adminConfig.SourceConfig.find(s => s.key === trimmedKey);
+          if (existingSource) {
+            duplicateKeys.add(trimmedKey);
+            invalidSources.push({
+              ...source,
+              reason: `Key "${trimmedKey}" 已存在`
+            });
+            continue;
+          }
+          
+          // 验证 key 是否只包含字母、数字、下划线和连字符
+          if (!/^[a-zA-Z0-9_-]+$/.test(trimmedKey)) {
+            invalidSources.push({
+              ...source,
+              reason: 'Key 只能包含字母、数字、下划线和连字符'
+            });
+            continue;
+          }
+          
+          // 验证 API 地址格式
+          try {
+            new URL(trimmedApi);
+          } catch {
+            // 如果不是有效的 URL，只记录警告但允许继续
+            console.warn(`API 地址 "${trimmedApi}" 不是标准 URL 格式`);
+          }
+          
+          // 添加有效的源
+          validSources.push({
+            key: trimmedKey,
+            name: trimmedName,
+            api: trimmedApi,
+            detail: trimmedDetail,
+            from: 'custom',
+            disabled: source.disabled || false,
+          });
+        }
+        
+        if (validSources.length === 0) {
+          return NextResponse.json(
+            { 
+              error: '未找到有效的视频源数据',
+              details: {
+                total: sources.length,
+                valid: 0,
+                invalid: invalidSources.length,
+                duplicates: Array.from(duplicateKeys),
+                invalidItems: invalidSources.slice(0, 10) // 只返回前10个无效项
+              }
+            },
+            { status: 400 }
+          );
+        }
+        
+        // 分离内置源和自定义源，保留内置源
+        const builtInSources = adminConfig.SourceConfig.filter(s => s.from === 'config');
+        const existingCustomSources = adminConfig.SourceConfig.filter(s => s.from === 'custom');
+        
+        // 创建新的源集合：内置源 + 导入的自定义源
+        // 注意：import 动作会完全替换现有的自定义源
+        adminConfig.SourceConfig = [
+          ...builtInSources,
+          ...validSources
+        ];
+        
+        // 返回详细结果
+        const responseData = {
+          success: true,
+          message: `成功导入 ${validSources.length} 个视频源`,
+          details: {
+            totalSources: sources.length,
+            imported: validSources.length,
+            invalid: invalidSources.length,
+            duplicates: duplicateKeys.size,
+            importedItems: validSources.map(s => ({ key: s.key, name: s.name })),
+            skippedItems: invalidSources.map(s => ({
+              key: s.key,
+              name: s.name,
+              reason: s.reason
+            })).slice(0, 10) // 只返回前10个跳过项
+          }
+        };
+        
+        // 持久化到存储
+        await db.saveAdminConfig(adminConfig);
+        
+        return NextResponse.json(
+          responseData,
+          {
+            headers: {
+              'Cache-Control': 'no-store',
+            },
+          }
+        );
+      }
+      
       case 'add': {
         const { key, name, api, detail } = body as {
           key?: string;
