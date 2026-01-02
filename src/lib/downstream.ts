@@ -120,14 +120,15 @@ async function searchWithCache(
     // 对于短剧，允许集数为 0 的结果
     let results = allResults.filter((result: SearchResult) => {
       // 检查是否为短剧
-      const isShortDramaResult = result.type_name?.toLowerCase().includes('短剧') || 
-                                 result.title?.toLowerCase().includes('短剧') ||
-                                 result.title?.toLowerCase().includes('竖屏') ||
-                                 result.title?.toLowerCase().includes('微电影') ||
-                                 result.title?.toLowerCase().includes('小剧场') ||
-                                 result.title?.toLowerCase().includes('微') ||
-                                 result.title?.toLowerCase().includes('短');
-      
+      const isShortDramaResult =
+        result.type_name?.toLowerCase().includes('短剧') ||
+        result.title?.toLowerCase().includes('短剧') ||
+        result.title?.toLowerCase().includes('竖屏') ||
+        result.title?.toLowerCase().includes('微电影') ||
+        result.title?.toLowerCase().includes('小剧场') ||
+        result.title?.toLowerCase().includes('微') ||
+        result.title?.toLowerCase().includes('短');
+
       // 短剧允许集数为 0，非短剧需要集数 > 0
       return isShortDramaResult || result.episodes.length > 0;
     });
@@ -153,7 +154,10 @@ async function searchWithCache(
   } catch (error: any) {
     clearTimeout(timeoutId);
     // 识别被 AbortController 中止（超时）
-    const aborted = error?.name === 'AbortError' || error?.code === 20 || error?.message?.includes('aborted');
+    const aborted =
+      error?.name === 'AbortError' ||
+      error?.code === 20 ||
+      error?.message?.includes('aborted');
     if (aborted) {
       setCachedSearchPage(apiSite.key, query, page, 'timeout', []);
     }
@@ -178,16 +182,22 @@ export async function searchFromApi(
 
     for (let i = 0; i < searchVariants.length; i++) {
       const variant = searchVariants[i];
-      const apiUrl = 
+      const apiUrl =
         apiBaseUrl + API_CONFIG.search.path + encodeURIComponent(variant);
 
       try {
         // 使用新的缓存搜索函数处理第一页
-        const firstPageResult = await searchWithCache(apiSite, variant, 1, apiUrl, 8000);
+        const firstPageResult = await searchWithCache(
+          apiSite,
+          variant,
+          1,
+          apiUrl,
+          8000
+        );
 
         if (firstPageResult.results.length > 0) {
           // 去重添加结果
-          firstPageResult.results.forEach(result => {
+          firstPageResult.results.forEach((result) => {
             const uniqueKey = `${result.source}_${result.id}`;
             if (!seenIds.has(uniqueKey)) {
               seenIds.add(uniqueKey);
@@ -217,7 +227,7 @@ export async function searchFromApi(
 
     // 使用原始查询进行后续分页
     query = searchVariants[0];
-    
+
     const config = await getConfig();
     const MAX_SEARCH_PAGES: number = config.SiteConfig.SearchDownstreamMaxPage;
 
@@ -231,15 +241,21 @@ export async function searchFromApi(
       const additionalPagePromises = [];
 
       for (let page = 2; page <= pagesToFetch + 1; page++) {
-        const pageUrl = 
-          apiBaseUrl + 
+        const pageUrl =
+          apiBaseUrl +
           API_CONFIG.search.pagePath
             .replace('{query}', encodeURIComponent(query))
             .replace('{page}', page.toString());
 
         const pagePromise = (async () => {
           // 使用新的缓存搜索函数处理分页
-          const pageResult = await searchWithCache(apiSite, query, page, pageUrl, 8000);
+          const pageResult = await searchWithCache(
+            apiSite,
+            query,
+            page,
+            pageUrl,
+            8000
+          );
           return pageResult.results;
         })();
 
@@ -252,7 +268,7 @@ export async function searchFromApi(
       // 合并所有页的结果
       additionalResults.forEach((pageResults) => {
         if (pageResults.length > 0) {
-          pageResults.forEach(result => {
+          pageResults.forEach((result) => {
             const uniqueKey = `${result.source}_${result.id}`;
             if (!seenIds.has(uniqueKey)) {
               seenIds.add(uniqueKey);
@@ -284,8 +300,9 @@ function generateSearchVariants(originalQuery: string): string[] {
   variants.push(trimmed);
 
   // 2. 处理中文标点符号变体
-  const chinesePunctuationVariants = generateChinesePunctuationVariants(trimmed);
-  chinesePunctuationVariants.forEach(variant => {
+  const chinesePunctuationVariants =
+    generateChinesePunctuationVariants(trimmed);
+  chinesePunctuationVariants.forEach((variant) => {
     if (!variants.includes(variant)) {
       variants.push(variant);
     }
@@ -333,10 +350,26 @@ function generateSearchVariants(originalQuery: string): string[] {
       }
 
       // 仅使用主关键词搜索（过滤无意义的词）
-      const meaninglessWords = ['the', 'a', 'an', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for', 'with', 'by'];
-      if (!variants.includes(mainKeyword) &&
-          !meaninglessWords.includes(mainKeyword.toLowerCase()) &&
-          mainKeyword.length > 2) {
+      const meaninglessWords = [
+        'the',
+        'a',
+        'an',
+        'and',
+        'or',
+        'of',
+        'in',
+        'on',
+        'at',
+        'to',
+        'for',
+        'with',
+        'by',
+      ];
+      if (
+        !variants.includes(mainKeyword) &&
+        !meaninglessWords.includes(mainKeyword.toLowerCase()) &&
+        mainKeyword.length > 2
+      ) {
         variants.push(mainKeyword);
       }
     }
@@ -412,7 +445,10 @@ function generateChinesePunctuationVariants(query: string): string[] {
   }
 
   // 完全去除所有标点符号
-  const noPunctuation = query.replace(/[：；，。！？、""''（）【】《》:;,.!?"'()[]<>]/g, '');
+  const noPunctuation = query.replace(
+    /[：；，。！？、""''（）【】《》:;,.!?"'()[]<>]/g,
+    ''
+  );
   if (noPunctuation !== query && noPunctuation.trim()) {
     variants.push(noPunctuation);
   }

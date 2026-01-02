@@ -201,47 +201,47 @@ function parseSourceData(data: any): {
     }
 
     // 检查包装格式
-            const possibleArrayFields = ['sources', 'data', 'items', 'list', 'sites'];
-            for (const field of possibleArrayFields) {
-              if (Array.isArray(data[field])) {
-                const arrayData = data[field];
-                const validSources: VideoSource[] = [];
+    const possibleArrayFields = ['sources', 'data', 'items', 'list', 'sites'];
+    for (const field of possibleArrayFields) {
+      if (Array.isArray(data[field])) {
+        const arrayData = data[field];
+        const validSources: VideoSource[] = [];
 
-                for (const item of arrayData) {
-                  if (item && typeof item === 'object') {
-                    if (item.key && item.name && item.api) {
-                      validSources.push({
-                        key: item.key,
-                        name: item.name,
-                        api: item.api,
-                        detail: item.detail || '',
-                        from: 'config', // 导入的数据标记为 config，与配置文件源相同
-                        disabled: item.disabled || false,
-                        originalKey: item.originalKey || item.key,
-                      });
-                    } else if (item.name && item.api) {
-                      const key = generateSafeKey(item.key || item.name);
-                      validSources.push({
-                        key,
-                        name: item.name,
-                        api: item.api,
-                        detail: item.detail || '',
-                        from: 'config', // 导入的数据标记为 config，与配置文件源相同
-                        disabled: false,
-                        originalKey: item.name,
-                      });
-                    }
-                  }
-                }
-
-                if (validSources.length > 0) {
-                  return {
-                    sources: validSources,
-                    format: 'array',
-                  };
-                }
-              }
+        for (const item of arrayData) {
+          if (item && typeof item === 'object') {
+            if (item.key && item.name && item.api) {
+              validSources.push({
+                key: item.key,
+                name: item.name,
+                api: item.api,
+                detail: item.detail || '',
+                from: 'config', // 导入的数据标记为 config，与配置文件源相同
+                disabled: item.disabled || false,
+                originalKey: item.originalKey || item.key,
+              });
+            } else if (item.name && item.api) {
+              const key = generateSafeKey(item.key || item.name);
+              validSources.push({
+                key,
+                name: item.name,
+                api: item.api,
+                detail: item.detail || '',
+                from: 'config', // 导入的数据标记为 config，与配置文件源相同
+                disabled: false,
+                originalKey: item.name,
+              });
             }
+          }
+        }
+
+        if (validSources.length > 0) {
+          return {
+            sources: validSources,
+            format: 'array',
+          };
+        }
+      }
+    }
 
     // 单个对象
     if (data.key && data.name && data.api) {
@@ -299,59 +299,67 @@ function sanitizeKey(key: string): string {
     .toLowerCase();
 }
 
+// 导入Zod库
+import { z } from 'zod';
+
+// 定义视频源Zod schema
+const VideoSourceSchema = z.object({
+  key: z
+    .string()
+    .optional()
+    .transform((val) => sanitizeKey(val || '')),
+  name: z.string().trim().min(1, 'name 不能为空'),
+  api: z
+    .string()
+    .trim()
+    .min(1, 'api 不能为空')
+    .refine((val) => isValidUrl(val), 'API URL格式无效'),
+  detail: z
+    .string()
+    .optional()
+    .transform((val) => val?.trim() || ''),
+  from: z.enum(['config', 'custom']).optional().default('config'),
+  disabled: z.boolean().optional().default(false),
+  originalKey: z.string().optional(),
+});
+
 // 验证视频源对象
 function validateVideoSource(source: any): {
   valid: boolean;
   errors?: string[];
   normalizedSource?: VideoSource;
 } {
-  const errors: string[] = [];
+  try {
+    const parsed = VideoSourceSchema.safeParse(source);
 
-  if (!source.name && !source.api) {
-    errors.push('缺少必要的字段: name, api');
-    return { valid: false, errors };
+    if (!parsed.success) {
+      const errors = parsed.error.issues.map((issue) => issue.message);
+      return { valid: false, errors };
+    }
+
+    const data = parsed.data;
+
+    // 生成key（如果没有提供）
+    const key = data.key || sanitizeKey(data.name);
+
+    return {
+      valid: true,
+      normalizedSource: {
+        key,
+        name: data.name,
+        api: data.api,
+        detail: data.detail,
+        from: data.from,
+        disabled: data.disabled,
+        originalKey: data.originalKey || data.key || data.name,
+      },
+    };
+  } catch (error) {
+    return {
+      valid: false,
+      errors: ['验证过程中发生错误'],
+    };
   }
-
-  const key = sanitizeKey(source.key || source.name || '');
-  const name = (source.name || '').trim();
-  const api = (source.api || '').trim();
-
-  if (!name) errors.push('name 不能为空');
-  if (!api) errors.push('api 不能为空');
-
-  if (errors.length > 0) {
-    return { valid: false, errors };
-  }
-
-  if (!key) {
-    errors.push('无法生成有效的 key');
-    return { valid: false, errors };
-  }
-
-  if (!/^[a-zA-Z0-9-_]+$/.test(key)) {
-    errors.push('key只能包含字母、数字、连字符(-)和下划线(_)');
-  }
-
-  if (api && !isValidUrl(api)) {
-    errors.push('API URL格式可能无效');
-  }
-
-  if (errors.length > 0) {
-    return { valid: false, errors };
-  }
-
-  return {
-    valid: true,
-    normalizedSource: {
-      key,
-      name,
-      api,
-      detail: (source.detail || '').trim(),
-      from: source.from || 'config', // 导入的数据标记为 config，与配置文件源相同
-      disabled: !!source.disabled,
-      originalKey: source.originalKey || source.key || source.name,
-    },
-  };
 }
 
 export async function POST(request: NextRequest) {
@@ -699,14 +707,14 @@ export async function POST(request: NextRequest) {
           sources.forEach((source) => {
             const validation = validateVideoSource(source);
             const normalizedSource = validation.normalizedSource || {
-            key: sanitizeKey(source.key || source.name || ''),
-            name: source.name || '',
-            api: source.api || '',
-            detail: source.detail || '',
-            from: source.from || 'config', // 保留原始from字段，如果没有则默认为config
-            disabled: false,
-            originalKey: source.originalKey || source.key || source.name,
-          };
+              key: sanitizeKey(source.key || source.name || ''),
+              name: source.name || '',
+              api: source.api || '',
+              detail: source.detail || '',
+              from: source.from || 'config', // 保留原始from字段，如果没有则默认为config
+              disabled: false,
+              originalKey: source.originalKey || source.key || source.name,
+            };
 
             const existing = existingSources.get(normalizedSource.key);
 
@@ -838,44 +846,21 @@ export async function POST(request: NextRequest) {
         });
 
         // 简化的删除逻辑：
-        // 1. 所有 from: 'custom' 的源都可以删除
-        // 2. from: 'config' 的默认示例API，如果有其他有效源，则可以删除
-        // 3. 其他 from: 'config' 的源不能删除
+        // 只有 from: 'custom' 的源可以删除
+        // from: 'config' 的源不能删除
 
         if (entry.from === 'custom') {
           // custom 来源都可以删除
           console.log('删除 custom 来源的源:', entry.key);
-        } else if (entry.from === 'config') {
-          // 检查是否是默认示例API
-          const isDefaultExample = isDefaultExampleSource(entry);
-
-          if (isDefaultExample) {
-            // 默认示例API：检查是否有其他有效源
-            const hasOtherValidSources = adminConfig.SourceConfig.some(
-              (source) => source.key !== entry.key && !source.disabled
-            );
-
-            if (!hasOtherValidSources) {
-              console.log('不能删除唯一的视频源');
-              return NextResponse.json(
-                {
-                  error: '这是唯一的视频源，请先添加其他视频源后再删除此示例源',
-                },
-                { status: 400 }
-              );
-            }
-
-            console.log('删除 config 来源的默认示例API:', entry.key);
-          } else {
-            // 其他 config 来源的源不能删除
-            console.log('不能删除系统配置源:', entry.key);
-            return NextResponse.json(
-              {
-                error: '该源为系统配置源，不可删除',
-              },
-              { status: 400 }
-            );
-          }
+        } else {
+          // from: 'config' 的源不能删除
+          console.log('不能删除系统配置源:', entry.key);
+          return NextResponse.json(
+            {
+              error: '该源为系统配置源，不可删除',
+            },
+            { status: 400 }
+          );
         }
 
         // 执行删除
@@ -1001,24 +986,11 @@ export async function POST(request: NextRequest) {
           const entry = adminConfig.SourceConfig.find((s) => s.key === key);
           if (!entry) return;
 
+          // 只有 from === 'custom' 的源才能被删除，from === 'config' 的源不能被删除
           if (entry.from === 'custom') {
             keysToDelete.push(key);
-          } else if (entry.from === 'config') {
-            const isDefaultExample = isDefaultExampleSource(entry);
-            if (isDefaultExample) {
-              // 默认示例API：检查是否有其他有效源
-              const hasOtherValidSources = adminConfig.SourceConfig.some(
-                (source) => source.key !== key && !source.disabled
-              );
-
-              if (hasOtherValidSources) {
-                keysToDelete.push(key);
-              } else {
-                cannotDeleteKeys.push(key);
-              }
-            } else {
-              cannotDeleteKeys.push(key);
-            }
+          } else {
+            cannotDeleteKeys.push(key);
           }
         });
 

@@ -2,7 +2,19 @@
 
 'use client';
 
-import { Cat, Clapperboard, Cloud, Clover, Film, Home, Menu, Radio, Search, Star, Tv } from 'lucide-react';
+import {
+  Cat,
+  Clapperboard,
+  Cloud,
+  Clover,
+  Film,
+  Home,
+  Menu,
+  Radio,
+  Search,
+  Star,
+  Tv,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -118,7 +130,9 @@ const Sidebar = ({ onToggle, defaultCollapsed }: SidebarProps) => {
   useEffect(() => {
     if (!isInitialized && pathname) {
       const queryString = searchParams.toString();
-      const initialActive = queryString ? `${pathname}?${queryString}` : pathname;
+      const initialActive = queryString
+        ? `${pathname}?${queryString}`
+        : pathname;
       setActive(initialActive);
       setIsInitialized(true);
     }
@@ -210,15 +224,17 @@ const Sidebar = ({ onToggle, defaultCollapsed }: SidebarProps) => {
       <div className='hidden md:flex'>
         <aside
           data-sidebar
-          className={`fixed top-0 left-0 h-screen glass-nav transition-all duration-300 z-10 ${isCollapsed ? 'w-16' : 'w-64'
-            }`}
+          className={`fixed top-0 left-0 h-screen glass-nav transition-all duration-300 z-10 ${
+            isCollapsed ? 'w-16' : 'w-64'
+          }`}
         >
           <div className='flex h-full flex-col'>
             {/* 顶部 Logo 区域 */}
             <div className='relative h-16'>
               <div
-                className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${isCollapsed ? 'opacity-0' : 'opacity-100'
-                  }`}
+                className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
+                  isCollapsed ? 'opacity-0' : 'opacity-100'
+                }`}
               >
                 <div className='w-[calc(100%-4rem)] flex justify-center'>
                   {!isCollapsed && <Logo />}
@@ -226,8 +242,9 @@ const Sidebar = ({ onToggle, defaultCollapsed }: SidebarProps) => {
               </div>
               <button
                 onClick={handleToggle}
-                className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 glass-button text-gray-600 hover:text-gray-800 z-10 dark:text-gray-300 dark:hover:text-gray-100 ${isCollapsed ? 'left-1/2 -translate-x-1/2' : 'right-2'
-                  }`}
+                className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 glass-button text-gray-600 hover:text-gray-800 z-10 dark:text-gray-300 dark:hover:text-gray-100 ${
+                  isCollapsed ? 'left-1/2 -translate-x-1/2' : 'right-2'
+                }`}
               >
                 <Menu className='h-4 w-4' />
               </button>
@@ -238,8 +255,9 @@ const Sidebar = ({ onToggle, defaultCollapsed }: SidebarProps) => {
               <Link
                 href='/'
                 data-active={isInitialized && active === '/'}
-                className={`group flex items-center rounded-apple-lg px-2 py-2 pl-4 text-gray-700 hover:bg-white/20 hover:text-blue-600 data-[active=true]:glass-button data-[active=true]:text-blue-700 font-medium transition-all duration-200 min-h-[40px] dark:text-gray-300 dark:hover:text-blue-400 dark:data-[active=true]:text-blue-400 ${isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
-                  } gap-3 justify-start`}
+                className={`group flex items-center rounded-apple-lg px-2 py-2 pl-4 text-gray-700 hover:bg-white/20 hover:text-blue-600 data-[active=true]:glass-button data-[active=true]:text-blue-700 font-medium transition-all duration-200 min-h-[40px] dark:text-gray-300 dark:hover:text-blue-400 dark:data-[active=true]:text-blue-400 ${
+                  isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
+                } gap-3 justify-start`}
               >
                 <div className='w-4 h-4 flex items-center justify-center'>
                   <Home className='h-4 w-4 text-gray-500 group-hover:text-blue-600 data-[active=true]:text-blue-700 dark:text-gray-400 dark:group-hover:text-blue-400 dark:data-[active=true]:text-blue-400' />
@@ -257,8 +275,9 @@ const Sidebar = ({ onToggle, defaultCollapsed }: SidebarProps) => {
                   handleSearchClick();
                 }}
                 data-active={isInitialized && active.startsWith('/search')}
-                className={`group flex items-center rounded-apple-lg px-2 py-2 pl-4 text-gray-700 hover:bg-white/20 hover:text-blue-600 data-[active=true]:glass-button data-[active=true]:text-blue-700 font-medium transition-all duration-200 min-h-[40px] dark:text-gray-300 dark:hover:text-blue-400 dark:data-[active=true]:text-blue-400 ${isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
-                  } gap-3 justify-start`}
+                className={`group flex items-center rounded-apple-lg px-2 py-2 pl-4 text-gray-700 hover:bg-white/20 hover:text-blue-600 data-[active=true]:glass-button data-[active=true]:text-blue-700 font-medium transition-all duration-200 min-h-[40px] dark:text-gray-300 dark:hover:text-blue-400 dark:data-[active=true]:text-blue-400 ${
+                  isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
+                } gap-3 justify-start`}
               >
                 <div className='w-4 h-4 flex items-center justify-center'>
                   <Search className='h-4 w-4 text-gray-500 group-hover:text-blue-600 data-[active=true]:text-blue-700 dark:text-gray-400 dark:group-hover:text-blue-400 dark:data-[active=true]:text-blue-400' />
@@ -282,17 +301,20 @@ const Sidebar = ({ onToggle, defaultCollapsed }: SidebarProps) => {
                   const decodedActive = decodeURIComponent(active);
                   const decodedItemHref = decodeURIComponent(item.href);
 
-                  const isActive = isInitialized && (item.href.startsWith('/douban')
-                    ? typeMatch && decodedActive.includes(`type=${typeMatch}`)
-                    : decodedActive === decodedItemHref);
+                  const isActive =
+                    isInitialized &&
+                    (item.href.startsWith('/douban')
+                      ? typeMatch && decodedActive.includes(`type=${typeMatch}`)
+                      : decodedActive === decodedItemHref);
                   const Icon = item.icon;
                   return (
                     <Link
                       key={item.label}
                       href={item.href}
                       data-active={isActive}
-                      className={`group flex items-center rounded-apple-lg px-2 py-2 pl-4 text-sm text-gray-700 hover:bg-white/20 hover:text-blue-600 data-[active=true]:glass-button data-[active=true]:text-blue-700 transition-all duration-200 min-h-[40px] dark:text-gray-300 dark:hover:text-blue-400 dark:data-[active=true]:text-blue-400 ${isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
-                        } gap-3 justify-start`}
+                      className={`group flex items-center rounded-apple-lg px-2 py-2 pl-4 text-sm text-gray-700 hover:bg-white/20 hover:text-blue-600 data-[active=true]:glass-button data-[active=true]:text-blue-700 transition-all duration-200 min-h-[40px] dark:text-gray-300 dark:hover:text-blue-400 dark:data-[active=true]:text-blue-400 ${
+                        isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
+                      } gap-3 justify-start`}
                     >
                       <div className='w-4 h-4 flex items-center justify-center'>
                         <Icon className='h-4 w-4 text-gray-500 group-hover:text-blue-600 data-[active=true]:text-blue-700 dark:text-gray-400 dark:group-hover:text-blue-400 dark:data-[active=true]:text-blue-400' />
@@ -310,8 +332,9 @@ const Sidebar = ({ onToggle, defaultCollapsed }: SidebarProps) => {
           </div>
         </aside>
         <div
-          className={`transition-all duration-300 sidebar-offset ${isCollapsed ? 'w-16' : 'w-64'
-            }`}
+          className={`transition-all duration-300 sidebar-offset ${
+            isCollapsed ? 'w-16' : 'w-64'
+          }`}
         ></div>
       </div>
     </SidebarContext.Provider>

@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   // if (!authInfo || !authInfo.username) {
   //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   // }
-  
+
   // 使用默认用户名获取API站点
   const authInfo = { username: 'default' };
 
@@ -35,176 +35,231 @@ export async function GET(request: NextRequest) {
 
   const config = await getConfig();
   const apiSites = await getAvailableApiSites(authInfo.username);
-  
+
   // 检查是否有可用的API站点
   const hasAvailableSites = apiSites && apiSites.length > 0;
 
   try {
     let allResults: SearchResult[] = [];
-    
+
     // 增加更多短剧相关的搜索关键词，提高搜索结果数量
     const shortDramaKeywords = [
-      '短剧', '微剧', '竖屏短剧', '网络短剧', '小剧场', '微电影',
-      'mini drama', 'micro drama', 'short drama', 'short film',
-      '竖屏', '短视频剧', '网络剧', '迷你剧', '短剧集', '短剧精选',
-      '热门短剧', '短剧推荐', '短剧剧场', '短剧专区', '微短剧',
-      '短剧热播', '短剧合集', '短剧在线', '短剧免费', '短剧大全'
+      '短剧',
+      '微剧',
+      '竖屏短剧',
+      '网络短剧',
+      '小剧场',
+      '微电影',
+      'mini drama',
+      'micro drama',
+      'short drama',
+      'short film',
+      '竖屏',
+      '短视频剧',
+      '网络剧',
+      '迷你剧',
+      '短剧集',
+      '短剧精选',
+      '热门短剧',
+      '短剧推荐',
+      '短剧剧场',
+      '短剧专区',
+      '微短剧',
+      '短剧热播',
+      '短剧合集',
+      '短剧在线',
+      '短剧免费',
+      '短剧大全',
     ];
 
     // 添加调试日志
-      console.log(`可用API站点数量: ${apiSites.length}`);
-      console.log(`API站点详情: ${JSON.stringify(apiSites)}`);
-      
-      // 不管是否有可用站点，都尝试返回一些示例短剧数据
-      if (hasAvailableSites) {
-        // 并行搜索多个关键词
-        const searchPromises = shortDramaKeywords.map(async (keyword) => {
-          const sitePromises = apiSites.map(async (site) => {
-            try {
-              console.log(`正在搜索站点 ${site.name}，关键词: ${keyword}`);
-              const results = await Promise.race([
-                searchFromApi(site, keyword),
-                new Promise((_, reject) =>
-                  setTimeout(() => reject(new Error(`${site.name} timeout`)), 15000)
-                ),
-              ]) as SearchResult[];
-              
-              console.log(`站点 ${site.name} 返回结果数量: ${results.length}`);
+    console.log(`可用API站点数量: ${apiSites.length}`);
+    console.log(`API站点详情: ${JSON.stringify(apiSites)}`);
 
-              // 过滤出真正的短剧内容，增加容错处理
-              return results.filter((result) => {
-                try {
-                  // 1. 检查是否为短剧 - 放宽条件，允许更多内容通过
-                  const isShortDramaResult = isShortDrama(result.type_name, result.title);
-                  if (!isShortDramaResult) {
-                    // 放宽条件：如果标题包含短剧相关关键词，也允许通过
-                    const titleLower = result.title.toLowerCase();
-                    const hasShortDramaKeyword = shortDramaKeywords.some(keyword => 
-                      titleLower.includes(keyword)
-                    );
-                    if (!hasShortDramaKeyword) {
-                      return false;
-                    }
+    // 不管是否有可用站点，都尝试返回一些示例短剧数据
+    if (hasAvailableSites) {
+      // 优化：限制同时搜索的关键词和站点数量，减少并行请求
+      // 只使用前5个最相关的关键词，减少搜索次数
+      const topKeywords = shortDramaKeywords.slice(0, 5);
+      // 限制同时请求的站点数量，使用最多5个站点
+      const topSites = apiSites.slice(0, 5);
+
+      console.log(`优化后使用的关键词数量: ${topKeywords.length}`);
+      console.log(`优化后使用的站点数量: ${topSites.length}`);
+
+      // 并行搜索多个关键词
+      const searchPromises = topKeywords.map(async (keyword) => {
+        // 优化：使用更高效的方式处理站点请求，限制并发数量
+        const siteResults: SearchResult[][] = [];
+
+        // 串行处理站点请求，避免太多并行请求
+        for (const site of topSites) {
+          try {
+            console.log(`正在搜索站点 ${site.name}，关键词: ${keyword}`);
+            const results = (await Promise.race([
+              searchFromApi(site, keyword),
+              new Promise((_, reject) =>
+                setTimeout(
+                  () => reject(new Error(`${site.name} timeout`)),
+                  15000
+                )
+              ),
+            ])) as SearchResult[];
+
+            console.log(`站点 ${site.name} 返回结果数量: ${results.length}`);
+
+            // 过滤出真正的短剧内容，增加容错处理
+            const filteredResults = results.filter((result) => {
+              try {
+                // 1. 检查是否为短剧 - 放宽条件，允许更多内容通过
+                const isShortDramaResult = isShortDrama(
+                  result.type_name,
+                  result.title
+                );
+                if (!isShortDramaResult) {
+                  // 放宽条件：如果标题包含短剧相关关键词，也允许通过
+                  const titleLower = result.title.toLowerCase();
+                  const hasShortDramaKeyword = shortDramaKeywords.some(
+                    (keyword) => titleLower.includes(keyword)
+                  );
+                  if (!hasShortDramaKeyword) {
+                    return false;
                   }
-
-                  // 2. 过滤黄色内容
-                  if (!config.SiteConfig.DisableYellowFilter) {
-                    const typeName = result.type_name || '';
-                    if (yellowWords.some((word: string) => typeName.includes(word))) {
-                      return false;
-                    }
-                  }
-
-                  // 3. 类型筛选 - 增加容错处理，允许更多类型通过
-                  if (type !== 'all') {
-                    const resultType = getShortDramaType(result.type_name, result.title);
-                    if (resultType !== type && resultType !== 'all') {
-                      return false;
-                    }
-                  }
-
-                  // 4. 地区筛选 - 简化地区筛选逻辑，允许更多地区通过
-                  if (region !== 'all') {
-                    const resultRegion = getContentRegion(result.title, result.desc);
-                    // 允许"全部"、匹配的地区或华语内容通过
-                    if (resultRegion !== region && resultRegion !== 'all' && !(region === 'chinese' && (resultRegion === 'mainland_china' || resultRegion === 'chinese'))) {
-                      return false;
-                    }
-                  }
-
-                  // 5. 年份筛选 - 增加容错处理，允许没有年份的内容通过
-                  if (year !== 'all' && result.year) {
-                    if (!matchYear(result.year, year)) {
-                      return false;
-                    }
-                  }
-
-                  return true;
-                } catch (error) {
-                  // 容错处理，允许解析错误的内容通过
-                  console.warn('短剧过滤出错，允许内容通过:', error);
-                  return true;
                 }
-              });
-            } catch (error) {
-              console.warn(`搜索短剧失败 ${site.name} - ${keyword}:`, error);
-              return [];
-            }
-          });
 
-          const siteResults = await Promise.allSettled(sitePromises);
-          const flatResults = siteResults
-            .filter((result) => result.status === 'fulfilled')
-            .map((result) => (result as PromiseFulfilledResult<SearchResult[]>).value)
-            .flat();
-          
-          console.log(`关键词 ${keyword} 搜索结果数量: ${flatResults.length}`);
-          return flatResults;
-        });
+                // 2. 过滤黄色内容
+                if (!config.SiteConfig.DisableYellowFilter) {
+                  const typeName = result.type_name || '';
+                  if (
+                    yellowWords.some((word: string) => typeName.includes(word))
+                  ) {
+                    return false;
+                  }
+                }
 
-        const keywordResults = await Promise.allSettled(searchPromises);
-        allResults = keywordResults
-          .filter((result) => result.status === 'fulfilled')
-          .map((result) => (result as PromiseFulfilledResult<SearchResult[]>).value)
-          .flat();
-          
-        console.log(`所有关键词搜索结果总数: ${allResults.length}`);
-      }
-      
-      // 如果API搜索没有结果，添加一些示例短剧数据
-      if (allResults.length === 0) {
-        console.warn('API搜索没有结果，使用示例短剧数据');
-        // 添加示例短剧数据，确保页面能显示内容
-        allResults = [
-          {
-            id: '1',
-            title: '示例短剧1',
-            poster: 'https://picsum.photos/seed/short1/300/450',
-            episodes: [],
-            episodes_titles: [],
-            source: 'demo',
-            source_name: '示例源',
-            class: '短剧',
-            year: '2025',
-            desc: '这是一个示例短剧',
-            type_name: '短剧',
-            douban_id: 0,
-          },
-          {
-            id: '2',
-            title: '示例短剧2',
-            poster: 'https://picsum.photos/seed/short2/300/450',
-            episodes: [],
-            episodes_titles: [],
-            source: 'demo',
-            source_name: '示例源',
-            class: '短剧',
-            year: '2025',
-            desc: '这是另一个示例短剧',
-            type_name: '短剧',
-            douban_id: 0,
-          },
-          {
-            id: '3',
-            title: '示例短剧3',
-            poster: 'https://picsum.photos/seed/short3/300/450',
-            episodes: [],
-            episodes_titles: [],
-            source: 'demo',
-            source_name: '示例源',
-            class: '短剧',
-            year: '2025',
-            desc: '这是第三个示例短剧',
-            type_name: '短剧',
-            douban_id: 0,
+                // 3. 类型筛选 - 增加容错处理，允许更多类型通过
+                if (type !== 'all') {
+                  const resultType = getShortDramaType(
+                    result.type_name,
+                    result.title
+                  );
+                  if (resultType !== type && resultType !== 'all') {
+                    return false;
+                  }
+                }
+
+                // 4. 地区筛选 - 简化地区筛选逻辑，允许更多地区通过
+                if (region !== 'all') {
+                  const resultRegion = getContentRegion(
+                    result.title,
+                    result.desc
+                  );
+                  // 允许"全部"、匹配的地区或华语内容通过
+                  if (
+                    resultRegion !== region &&
+                    resultRegion !== 'all' &&
+                    !(
+                      region === 'chinese' &&
+                      (resultRegion === 'mainland_china' ||
+                        resultRegion === 'chinese')
+                    )
+                  ) {
+                    return false;
+                  }
+                }
+
+                // 5. 年份筛选 - 增加容错处理，允许没有年份的内容通过
+                if (year !== 'all' && result.year) {
+                  if (!matchYear(result.year, year)) {
+                    return false;
+                  }
+                }
+
+                return true;
+              } catch (error) {
+                // 容错处理，允许解析错误的内容通过
+                console.warn('短剧过滤出错，允许内容通过:', error);
+                return true;
+              }
+            });
+
+            siteResults.push(filteredResults);
+          } catch (error) {
+            console.warn(`搜索短剧失败 ${site.name} - ${keyword}:`, error);
+            siteResults.push([]);
           }
-        ];
-      }
+        }
+
+        const flatResults = siteResults.flat();
+        console.log(`关键词 ${keyword} 搜索结果数量: ${flatResults.length}`);
+        return flatResults;
+      });
+
+      const keywordResults = await Promise.allSettled(searchPromises);
+      allResults = keywordResults
+        .filter((result) => result.status === 'fulfilled')
+        .map(
+          (result) => (result as PromiseFulfilledResult<SearchResult[]>).value
+        )
+        .flat();
+
+      console.log(`所有关键词搜索结果总数: ${allResults.length}`);
+    }
+
+    // 如果API搜索没有结果，添加一些示例短剧数据
+    if (allResults.length === 0) {
+      console.warn('API搜索没有结果，使用示例短剧数据');
+      // 添加示例短剧数据，确保页面能显示内容
+      allResults = [
+        {
+          id: '1',
+          title: '示例短剧1',
+          poster: 'https://picsum.photos/seed/short1/300/450',
+          episodes: [],
+          episodes_titles: [],
+          source: 'demo',
+          source_name: '示例源',
+          class: '短剧',
+          year: '2025',
+          desc: '这是一个示例短剧',
+          type_name: '短剧',
+          douban_id: 0,
+        },
+        {
+          id: '2',
+          title: '示例短剧2',
+          poster: 'https://picsum.photos/seed/short2/300/450',
+          episodes: [],
+          episodes_titles: [],
+          source: 'demo',
+          source_name: '示例源',
+          class: '短剧',
+          year: '2025',
+          desc: '这是另一个示例短剧',
+          type_name: '短剧',
+          douban_id: 0,
+        },
+        {
+          id: '3',
+          title: '示例短剧3',
+          poster: 'https://picsum.photos/seed/short3/300/450',
+          episodes: [],
+          episodes_titles: [],
+          source: 'demo',
+          source_name: '示例源',
+          class: '短剧',
+          year: '2025',
+          desc: '这是第三个示例短剧',
+          type_name: '短剧',
+          douban_id: 0,
+        },
+      ];
+    }
 
     // 改进去重机制，使用更高效的Set方式去重
     const seenTitles = new Set<string>();
     const uniqueResults: SearchResult[] = [];
-    
+
     for (const result of allResults) {
       // 使用标题作为唯一标识进行去重
       if (!seenTitles.has(result.title)) {
@@ -251,10 +306,7 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error('获取短剧数据失败:', error);
-    return NextResponse.json(
-      { error: '获取短剧数据失败' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: '获取短剧数据失败' }, { status: 500 });
   }
 }
 
@@ -271,9 +323,12 @@ function getShortDramaType(typeName?: string, title?: string): string {
   if (content.includes('现代') || content.includes('modern')) return 'modern';
   if (content.includes('都市') || content.includes('urban')) return 'urban';
   if (content.includes('古装') || content.includes('costume')) return 'costume';
-  if (content.includes('穿越') || content.includes('time')) return 'time_travel';
-  if (content.includes('商战') || content.includes('business')) return 'business';
-  if (content.includes('悬疑') || content.includes('suspense')) return 'suspense';
+  if (content.includes('穿越') || content.includes('time'))
+    return 'time_travel';
+  if (content.includes('商战') || content.includes('business'))
+    return 'business';
+  if (content.includes('悬疑') || content.includes('suspense'))
+    return 'suspense';
   if (content.includes('喜剧') || content.includes('comedy')) return 'comedy';
   if (content.includes('青春') || content.includes('youth')) return 'youth';
 
@@ -289,11 +344,17 @@ function getContentRegion(title?: string, desc?: string): string {
   const content = `${title || ''} ${desc || ''}`.toLowerCase();
 
   if (content.includes('韩国') || content.includes('korean')) return 'korean';
-  if (content.includes('日本') || content.includes('japanese')) return 'japanese';
+  if (content.includes('日本') || content.includes('japanese'))
+    return 'japanese';
   if (content.includes('美国') || content.includes('american')) return 'usa';
   if (content.includes('英国') || content.includes('british')) return 'uk';
   if (content.includes('泰国') || content.includes('thai')) return 'thailand';
-  if (content.includes('中国') || content.includes('chinese') || content.includes('国产')) return 'mainland_china';
+  if (
+    content.includes('中国') ||
+    content.includes('chinese') ||
+    content.includes('国产')
+  )
+    return 'mainland_china';
 
   return 'all';
 }

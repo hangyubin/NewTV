@@ -9,11 +9,11 @@ on:
         default: 'latest'
         type: string
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
   workflow_run:
-    workflows: ["Release by VERSION.txt"]
+    workflows: ['Release by VERSION.txt']
     types:
       - completed
 

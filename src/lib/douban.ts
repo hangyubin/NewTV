@@ -29,7 +29,7 @@ function getSmartDelay(url: string): { min: number; max: number } {
 function smartRandomDelay(url: string): Promise<void> {
   const { min, max } = getSmartDelay(url);
   const delay = Math.floor(Math.random() * (max - min + 1)) + min;
-  return new Promise(resolve => setTimeout(resolve, delay));
+  return new Promise((resolve) => setTimeout(resolve, delay));
 }
 
 /**
@@ -42,7 +42,7 @@ export async function fetchDoubanData<T>(url: string): Promise<T> {
   const now = Date.now();
   const timeSinceLastRequest = now - lastRequestTime;
   if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
-    await new Promise(resolve => 
+    await new Promise((resolve) =>
       setTimeout(resolve, MIN_REQUEST_INTERVAL - timeSinceLastRequest)
     );
   }
@@ -60,13 +60,13 @@ export async function fetchDoubanData<T>(url: string): Promise<T> {
     signal: controller.signal,
     headers: {
       'User-Agent': getRandomUserAgent(),
-      'Accept': 'application/json, text/plain, */*',
-      'Referer': 'https://movie.douban.com/',
-      'Origin': 'https://movie.douban.com', // 固定添加Origin，提高请求成功率
+      Accept: 'application/json, text/plain, */*',
+      Referer: 'https://movie.douban.com/',
+      Origin: 'https://movie.douban.com', // 固定添加Origin，提高请求成功率
       // 添加额外的 headers 以模拟真实浏览器请求
       'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-      'Connection': 'keep-alive',
-      'DNT': '1',
+      Connection: 'keep-alive',
+      DNT: '1',
       'Sec-Fetch-Dest': 'empty',
       'Sec-Fetch-Mode': 'cors',
       'Sec-Fetch-Site': 'cross-site',
@@ -94,67 +94,89 @@ export async function fetchDoubanData<T>(url: string): Promise<T> {
       uniqueUrls.push(url);
     }
   }
-  
+
   for (let i = 0; i < uniqueUrls.length; i++) {
     const currentUrl = uniqueUrls[i];
-    
+
     try {
-      console.log(`Attempt ${i + 1}/${uniqueUrls.length}: Fetching from URL: ${currentUrl}`);
+      console.log(
+        `Attempt ${i + 1}/${
+          uniqueUrls.length
+        }: Fetching from URL: ${currentUrl}`
+      );
       const response = await fetch(currentUrl, fetchOptions);
       clearTimeout(timeoutId);
 
       console.log(`Response status: ${response.status} for URL: ${currentUrl}`);
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log(`Successfully fetched data from: ${currentUrl}`);
-        
+
         // 验证返回的数据是否有效
         if (data && (data.items || data.subjects || data.total > 0)) {
           return data;
         } else {
-          console.warn(`Received empty or invalid data from ${currentUrl}, trying next URL...`);
+          console.warn(
+            `Received empty or invalid data from ${currentUrl}, trying next URL...`
+          );
           continue;
         }
       } else {
         // 处理HTTP错误
         const errorText = await response.text();
         console.error(`HTTP error details for ${currentUrl}: ${errorText}`);
-        
+
         // 如果不是最后一个URL，继续尝试下一个
         if (i < uniqueUrls.length - 1) {
           console.log(`Trying next URL for: ${currentUrl}`);
           continue;
         }
-        
+
         // 如果是最后一个URL，抛出错误
-        throw new Error(`HTTP error! Status: ${response.status}, Details: ${errorText}`);
+        throw new Error(
+          `HTTP error! Status: ${response.status}, Details: ${errorText}`
+        );
       }
     } catch (error) {
       clearTimeout(timeoutId);
-      
+
       // 如果不是最后一个URL，继续尝试下一个
       if (i < uniqueUrls.length - 1) {
-        console.error(`Error fetching data from ${currentUrl}, trying next URL...`, error);
+        console.error(
+          `Error fetching data from ${currentUrl}, trying next URL...`,
+          error
+        );
         continue;
       }
-      
+
       // 如果是最后一个URL，抛出错误
       console.error(`All attempts failed for URL: ${url}`, error);
-      
+
       // 对于特定错误，可以提供更详细的错误信息
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          throw new Error(`请求超时！尝试了 ${uniqueUrls.length} 个URL: ${uniqueUrls.join(', ')}`);
-        } else if (error.message.includes('NetworkError') || error.message.includes('fetch failed')) {
-          throw new Error(`网络错误！请检查网络连接。尝试了 ${uniqueUrls.length} 个URL: ${uniqueUrls.join(', ')}`);
+          throw new Error(
+            `请求超时！尝试了 ${uniqueUrls.length} 个URL: ${uniqueUrls.join(
+              ', '
+            )}`
+          );
+        } else if (
+          error.message.includes('NetworkError') ||
+          error.message.includes('fetch failed')
+        ) {
+          throw new Error(
+            `网络错误！请检查网络连接。尝试了 ${
+              uniqueUrls.length
+            } 个URL: ${uniqueUrls.join(', ')}`
+          );
         }
       }
-      
+
       throw error;
     }
   }
-  
+
   // 理论上不会到达这里，因为循环中要么返回数据，要么抛出错误
   throw new Error(`All attempts failed for URL: ${url}`);
 }

@@ -9,7 +9,7 @@ import Hls from 'hls.js';
  */
 export function isShortDrama(typeName?: string, title?: string): boolean {
   if (!typeName && !title) return false;
-  
+
   // 常见的短剧type_name标识
   const shortDramaTypes = [
     '短剧',
@@ -36,9 +36,9 @@ export function isShortDrama(typeName?: string, title?: string): boolean {
     '短剧合集',
     '短剧在线',
     '短剧免费',
-    '短剧大全'
+    '短剧大全',
   ];
-  
+
   // 标题中的关键词
   const shortDramaTitleKeywords = [
     '短剧',
@@ -51,25 +51,29 @@ export function isShortDrama(typeName?: string, title?: string): boolean {
     '微',
     '短',
     '短视频',
-    '短剧集'
+    '短剧集',
   ];
-  
+
   // 检查type_name
   if (typeName) {
     const typeNameLower = typeName.toLowerCase();
-    if (shortDramaTypes.some(type => typeNameLower.includes(type.toLowerCase()))) {
+    if (
+      shortDramaTypes.some((type) => typeNameLower.includes(type.toLowerCase()))
+    ) {
       return true;
     }
   }
-  
+
   // 检查标题
   if (title) {
     const titleLower = title.toLowerCase();
-    if (shortDramaTitleKeywords.some(keyword => titleLower.includes(keyword))) {
+    if (
+      shortDramaTitleKeywords.some((keyword) => titleLower.includes(keyword))
+    ) {
       return true;
     }
   }
-  
+
   // 放宽条件：如果没有type_name但有title，也可以认为是短剧
   // 这是为了兼容某些API返回的短剧数据可能没有明确的type_name
   if (title && !typeName) {
@@ -78,7 +82,7 @@ export function isShortDrama(typeName?: string, title?: string): boolean {
       return true;
     }
   }
-  
+
   // 再次放宽条件：只要包含短或微关键字，就认为是短剧
   if (title) {
     const titleLower = title.toLowerCase();
@@ -86,7 +90,7 @@ export function isShortDrama(typeName?: string, title?: string): boolean {
       return true;
     }
   }
-  
+
   return false;
 }
 
@@ -96,61 +100,79 @@ export function isShortDrama(typeName?: string, title?: string): boolean {
  * @param title 内容标题
  * @returns 'movie' | 'tv' | 'short-drama' | 'unknown'
  */
-export function getContentType(typeName?: string, title?: string): 'movie' | 'tv' | 'short-drama' | 'unknown' {
+export function getContentType(
+  typeName?: string,
+  title?: string
+): 'movie' | 'tv' | 'short-drama' | 'unknown' {
   // 首先检查是否为短剧
   if (isShortDrama(typeName, title)) {
     return 'short-drama';
   }
-  
+
   if (!typeName) return 'unknown';
-  
+
   const typeNameLower = typeName.toLowerCase();
-  
+
   // 电影类型
   if (typeNameLower.includes('电影') || typeNameLower.includes('movie')) {
     return 'movie';
   }
-  
+
   // 电视剧类型
-  if (typeNameLower.includes('电视剧') || 
-      typeNameLower.includes('连续剧') || 
-      typeNameLower.includes('tv') || 
-      typeNameLower.includes('剧集')) {
+  if (
+    typeNameLower.includes('电视剧') ||
+    typeNameLower.includes('连续剧') ||
+    typeNameLower.includes('tv') ||
+    typeNameLower.includes('剧集')
+  ) {
     return 'tv';
   }
-  
+
   return 'unknown';
 }
-
 
 // 使用ArtPlayer的兼容性检测函数
 // 参考: ArtPlayer-master/packages/artplayer/src/utils/compatibility.js
 const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
-const isIOS = /iPad|iPhone|iPod/i.test(userAgent) && !(window as any).MSStream;
-const isIOS13 = isIOS || (userAgent.includes('Macintosh') && navigator.maxTouchPoints >= 1);
-const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent) || isIOS13;
-const isSafari = /^(?:(?!chrome|android).)*safari/i.test(userAgent);
+const isIOS =
+  /iPad|iPhone|iPod/i.test(userAgent) &&
+  !(window as Window & typeof globalThis & { MSStream?: unknown }).MSStream;
+const isIOS13 =
+  isIOS || (userAgent.includes('Macintosh') && navigator.maxTouchPoints >= 1);
+const isMobile =
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    userAgent
+  ) || isIOS13;
+// isSafari变量未使用，注释掉
+// const isSafari = /^(?:(?!chrome|android).)*safari/i.test(userAgent);
+
+interface RuntimeConfig {
+  DOUBAN_IMAGE_PROXY_TYPE?: string;
+  DOUBAN_IMAGE_PROXY?: string;
+}
 
 function getDoubanImageProxyConfig(): {
   proxyType:
-  | 'direct'
-  | 'server'
-  | 'img3'
-  | 'cmliussss-cdn-tencent'
-  | 'cmliussss-cdn-ali'
-  | 'custom';
+    | 'direct'
+    | 'server'
+    | 'img3'
+    | 'cmliussss-cdn-tencent'
+    | 'cmliussss-cdn-ali'
+    | 'custom';
   proxyUrl: string;
 } {
   const doubanImageProxyType =
     localStorage.getItem('doubanImageProxyType') ||
-    (window as any).RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY_TYPE ||
+    (window as Window & typeof globalThis & { RUNTIME_CONFIG?: RuntimeConfig })
+      .RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY_TYPE ||
     'cmliussss-cdn-tencent';
   const doubanImageProxy =
     localStorage.getItem('doubanImageProxyUrl') ||
-    (window as any).RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY ||
+    (window as Window & typeof globalThis & { RUNTIME_CONFIG?: RuntimeConfig })
+      .RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY ||
     '';
   return {
-    proxyType: doubanImageProxyType,
+    proxyType: doubanImageProxyType as any,
     proxyUrl: doubanImageProxy,
   };
 }
@@ -203,40 +225,40 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
   try {
     // 检测是否为iPad（无论什么浏览器）
     const isIPad = /iPad/i.test(userAgent);
-    
+
     if (isIPad) {
       // iPad使用最简单的ping测试，不创建任何video或HLS实例
       console.log('iPad检测，使用简化测速避免崩溃');
-      
+
       const startTime = performance.now();
       try {
-        await fetch(m3u8Url, { 
-          method: 'HEAD', 
+        await fetch(m3u8Url, {
+          method: 'HEAD',
           mode: 'no-cors',
-          signal: AbortSignal.timeout(2000)
+          signal: AbortSignal.timeout(2000),
         });
         const pingTime = Math.round(performance.now() - startTime);
-        
+
         return {
           quality: '未知', // iPad不检测视频质量避免崩溃
           loadSpeed: '未知', // iPad不检测下载速度
-          pingTime
+          pingTime,
         };
       } catch (error) {
         return {
           quality: '未知',
           loadSpeed: '未知',
-          pingTime: 9999
+          pingTime: 9999,
         };
       }
     }
-    
+
     // 非iPad设备使用优化后的测速逻辑
     return new Promise((resolve, reject) => {
       const video = document.createElement('video');
       video.muted = true;
       video.preload = 'metadata';
-      
+
       // 移动设备使用更小的视频元素减少内存占用
       if (isMobile) {
         video.width = 32;
@@ -301,19 +323,28 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
       let fragmentStartTime = 0;
 
       const checkAndResolve = async () => {
-        if (hasMetadataLoaded && (hasSpeedCalculated || actualLoadSpeed !== '未知')) {
+        if (
+          hasMetadataLoaded &&
+          (hasSpeedCalculated || actualLoadSpeed !== '未知')
+        ) {
           await pingPromise;
-          
+
           const width = video.videoWidth;
           let quality = '未知';
-          
+
           if (width && width > 0) {
-            quality = width >= 3840 ? '4K'
-              : width >= 2560 ? '2K'
-              : width >= 1920 ? '1080p'
-              : width >= 1280 ? '720p'
-              : width >= 854 ? '480p'
-              : 'SD';
+            quality =
+              width >= 3840
+                ? '4K'
+                : width >= 2560
+                ? '2K'
+                : width >= 1920
+                ? '1080p'
+                : width >= 1280
+                ? '720p'
+                : width >= 854
+                ? '480p'
+                : 'SD';
           }
 
           cleanup();
@@ -332,21 +363,30 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
         }
       });
 
-      hls.on(Hls.Events.FRAG_LOADED, (event: any, data: any) => {
-        if (fragmentStartTime > 0 && data && data.payload && !hasSpeedCalculated) {
-          const loadTime = performance.now() - fragmentStartTime;
-          const size = data.payload.byteLength || 0;
+      hls.on(
+        Hls.Events.FRAG_LOADED,
+        (_event: unknown, data: { payload?: { byteLength: number } }) => {
+          if (
+            fragmentStartTime > 0 &&
+            data &&
+            data.payload &&
+            !hasSpeedCalculated
+          ) {
+            const loadTime = performance.now() - fragmentStartTime;
+            const size = data.payload.byteLength || 0;
 
-          if (loadTime > 0 && size > 0) {
-            const speedKBps = size / 1024 / (loadTime / 1000);
-            actualLoadSpeed = speedKBps >= 1024
-              ? `${(speedKBps / 1024).toFixed(2)} MB/s`
-              : `${speedKBps.toFixed(2)} KB/s`;
-            hasSpeedCalculated = true;
-            checkAndResolve();
+            if (loadTime > 0 && size > 0) {
+              const speedKBps = size / 1024 / (loadTime / 1000);
+              actualLoadSpeed =
+                speedKBps >= 1024
+                  ? `${(speedKBps / 1024).toFixed(2)} MB/s`
+                  : `${speedKBps.toFixed(2)} KB/s`;
+              hasSpeedCalculated = true;
+              checkAndResolve();
+            }
           }
         }
-      });
+      );
 
       // 监听视频元数据加载完成
       video.addEventListener('loadedmetadata', () => {
@@ -355,13 +395,19 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
       });
 
       // 监听HLS错误
-      hls.on(Hls.Events.ERROR, (event: any, data: any) => {
-        console.warn('HLS测速错误:', data);
-        if (data.fatal) {
-          cleanup();
-          reject(new Error(`HLS Error: ${data.type} - ${data.details}`));
+      hls.on(
+        Hls.Events.ERROR,
+        (
+          _event: unknown,
+          data: { fatal?: boolean; type?: string; details?: string }
+        ) => {
+          console.warn('HLS测速错误:', data);
+          if (data.fatal) {
+            cleanup();
+            reject(new Error(`HLS Error: ${data.type} - ${data.details}`));
+          }
         }
-      });
+      );
 
       // 加载m3u8
       try {

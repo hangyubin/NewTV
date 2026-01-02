@@ -34,10 +34,13 @@ export async function GET(request: NextRequest) {
         totalWatchTime: 0,
         totalMovies: 0,
         firstWatchDate: 0, // 初始化为0，将在第一次观看时设置为实际时间
-        lastUpdateTime: Date.now()
+        lastUpdateTime: Date.now(),
       };
 
-      console.log(`为新用户 ${authInfo.username} 提供默认统计数据:`, defaultStats);
+      console.log(
+        `为新用户 ${authInfo.username} 提供默认统计数据:`,
+        defaultStats
+      );
       return NextResponse.json(defaultStats);
     }
 
@@ -89,7 +92,12 @@ export async function POST(request: NextRequest) {
     console.log('正在解析请求体...');
     const body = await request.json();
     const { watchTime, movieKey, timestamp, isRecalculation } = body;
-    console.log('请求体数据:', { watchTime, movieKey, timestamp, isRecalculation });
+    console.log('请求体数据:', {
+      watchTime,
+      movieKey,
+      timestamp,
+      isRecalculation,
+    });
 
     if (typeof watchTime !== 'number' || !movieKey || !timestamp) {
       console.log('参数验证失败');
@@ -108,7 +116,7 @@ export async function POST(request: NextRequest) {
         totalWatchTime: watchTime,
         totalMovies: movieKey.split(',').filter((k: string) => k.trim()).length,
         firstWatchDate: timestamp,
-        lastUpdateTime: Date.now()
+        lastUpdateTime: Date.now(),
       };
 
       console.log('设置重新计算的统计数据:', recalculatedStats);
@@ -122,14 +130,14 @@ export async function POST(request: NextRequest) {
         watchTime: recalculatedStats.totalWatchTime,
         movieKey: movieKey,
         timestamp: recalculatedStats.firstWatchDate,
-        isFullReset: true
+        isFullReset: true,
       });
     } else {
       console.log('正在增量更新用户统计数据...');
       await db.updateUserStats(authInfo.username, {
         watchTime,
         movieKey,
-        timestamp
+        timestamp,
       });
     }
     console.log('用户统计数据更新成功');
@@ -141,7 +149,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      userStats: updatedStats || { totalWatchTime: 0, totalMovies: 0, firstWatchDate: 0, lastUpdateTime: 0 }
+      userStats: updatedStats || {
+        totalWatchTime: 0,
+        totalMovies: 0,
+        firstWatchDate: 0,
+        lastUpdateTime: 0,
+      },
     });
   } catch (error) {
     console.error('POST /api/user/stats - 详细错误信息:');
@@ -158,7 +171,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: '更新用户统计数据失败',
-        details: process.env.NODE_ENV === 'development' ? (error as Error)?.message : undefined
+        details:
+          process.env.NODE_ENV === 'development'
+            ? (error as Error)?.message
+            : undefined,
       },
       { status: 500 }
     );

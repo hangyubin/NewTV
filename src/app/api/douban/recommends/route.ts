@@ -33,7 +33,10 @@ export async function GET(request: NextRequest) {
   const pageLimit = parseInt(searchParams.get('limit') || '20');
   const pageStart = parseInt(searchParams.get('start') || '0');
   const category =
-    searchParams.get('category') === 'all' || searchParams.get('category') === null ? '' : searchParams.get('category');
+    searchParams.get('category') === 'all' ||
+    searchParams.get('category') === null
+      ? ''
+      : searchParams.get('category');
   const format =
     searchParams.get('format') === 'all' ? '' : searchParams.get('format');
   const region =
@@ -100,11 +103,11 @@ export async function GET(request: NextRequest) {
     }
     target = `${baseUrl}?${params.toString()}`;
   }
-  
+
   console.log(`Fetching anime data from: ${target}`);
   try {
     let list = [];
-    
+
     if (category === '动画') {
       // 处理search_subjects API响应
       const doubanData = await fetchDoubanData<{ subjects: any[] }>(target);
@@ -118,9 +121,14 @@ export async function GET(request: NextRequest) {
       }));
     } else {
       // 处理原来的recommend API响应
-      const doubanData = await fetchDoubanData<DoubanRecommendApiResponse>(target);
+      const doubanData = await fetchDoubanData<DoubanRecommendApiResponse>(
+        target
+      );
       list = doubanData.items
-        .filter((item) => item.type == 'movie' || item.type == 'tv' || item.type == 'anime')
+        .filter(
+          (item) =>
+            item.type == 'movie' || item.type == 'tv' || item.type == 'anime'
+        )
         .map((item) => ({
           id: item.id,
           title: item.title,
@@ -129,7 +137,7 @@ export async function GET(request: NextRequest) {
           year: item.year,
         }));
     }
-    
+
     const response: DoubanResult = {
       code: 200,
       message: '获取成功',

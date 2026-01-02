@@ -54,7 +54,7 @@
 
 :root {
   --foreground-rgb: 255, 255, 255;
-  
+
   /* Apple Design System Variables */
   /* Glass Morphism Effects */
   --glass-bg: rgba(255, 255, 255, 0.6);
@@ -63,7 +63,7 @@
   --glass-shadow: rgba(0, 0, 0, 0.1);
   --glass-blur: 20px;
   --glass-blur-strong: 40px;
-  
+
   /* Apple-style Border Radius */
   --radius-xs: 4px;
   --radius-sm: 8px;
@@ -72,14 +72,14 @@
   --radius-xl: 20px;
   --radius-2xl: 24px;
   --radius-3xl: 32px;
-  
+
   /* Apple-style Shadows */
   --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.12);
   --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.12);
   --shadow-floating: 0 12px 48px rgba(0, 0, 0, 0.18);
-  
+
   /* Apple-style Transitions */
-  --transition-smooth: cubic-bezier(0.4, 0.0, 0.2, 1);
+  --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
   --transition-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
   --duration-fast: 150ms;
   --duration-normal: 250ms;
@@ -266,8 +266,6 @@ div[data-media-provider] video {
   background-color: #000 !important; /* 其余区域填充为黑色 */
 }
 
-
-
 /* 隐藏移动端竖屏时的 pip 按钮 */
 @media (max-width: 768px) {
   .art-control-pip {
@@ -314,7 +312,7 @@ div[data-media-provider] video {
 
   /* 强制移除所有控制栏按钮的圆形背景 */
   .art-controls .art-control,
-  .art-controls [class*="art-control"],
+  .art-controls [class*='art-control'],
   .art-danmaku-toggle-button {
     background: transparent !important;
     border-radius: 0 !important;
@@ -346,8 +344,8 @@ div[data-media-provider] video {
 .apd-danmaku *,
 .art-danmaku,
 .art-danmaku *,
-[class*="danmaku"],
-[class*="danmu"] {
+[class*='danmaku'],
+[class*='danmu'] {
   z-index: 10 !important;
 }
 

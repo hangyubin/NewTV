@@ -1,11 +1,82 @@
+import crypto from 'crypto';
 import { NextRequest } from 'next/server';
+
+// JWT相关常量
+const JWT_SECRET =
+  process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+const JWT_EXPIRATION = 3600 * 24; // 24小时
+
+// JWT Payload接口
+export interface JWTPayload {
+  username: string;
+  role: 'owner' | 'admin' | 'user';
+  exp: number;
+  iat: number;
+}
+
+// 生成JWT令牌
+export function generateJWT(
+  username: string,
+  role: 'owner' | 'admin' | 'user'
+): string {
+  const iat = Math.floor(Date.now() / 1000);
+  const exp = iat + JWT_EXPIRATION;
+
+  const payload = {
+    username,
+    role,
+    exp,
+    iat,
+  };
+
+  // 简单的JWT实现，使用HS256算法
+  const header = Buffer.from(
+    JSON.stringify({ alg: 'HS256', typ: 'JWT' })
+  ).toString('base64url');
+  const payloadStr = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto
+    .createHmac('sha256', JWT_SECRET)
+    .update(`${header}.${payloadStr}`)
+    .digest('base64url');
+
+  return `${header}.${payloadStr}.${signature}`;
+}
+
+// 验证JWT令牌
+export function verifyJWT(token: string): JWTPayload | null {
+  try {
+    const [header, payloadStr, signature] = token.split('.');
+    const expectedSignature = crypto
+      .createHmac('sha256', JWT_SECRET)
+      .update(`${header}.${payloadStr}`)
+      .digest('base64url');
+
+    if (signature !== expectedSignature) {
+      return null;
+    }
+
+    const payload = JSON.parse(
+      Buffer.from(payloadStr, 'base64url').toString()
+    ) as JWTPayload;
+
+    // 检查令牌是否过期
+    if (payload.exp < Math.floor(Date.now() / 1000)) {
+      return null;
+    }
+
+    return payload;
+  } catch (error) {
+    return null;
+  }
+}
 
 // 从cookie获取认证信息 (服务端使用)
 export function getAuthInfoFromCookie(request: NextRequest): {
-  password?: string;
+  token?: string;
   username?: string;
+  role?: 'owner' | 'admin' | 'user';
+  password?: string;
   signature?: string;
-  timestamp?: number;
 } | null {
   const authCookie = request.cookies.get('auth');
 
@@ -16,6 +87,20 @@ export function getAuthInfoFromCookie(request: NextRequest): {
   try {
     const decoded = decodeURIComponent(authCookie.value);
     const authData = JSON.parse(decoded);
+
+    // 如果有token，验证并提取信息
+    if (authData.token) {
+      const payload = verifyJWT(authData.token);
+      if (payload) {
+        return {
+          token: authData.token,
+          username: payload.username,
+          role: payload.role,
+        };
+      }
+      return null;
+    }
+
     return authData;
   } catch (error) {
     return null;
@@ -24,11 +109,11 @@ export function getAuthInfoFromCookie(request: NextRequest): {
 
 // 从cookie获取认证信息 (客户端使用)
 export function getAuthInfoFromBrowserCookie(): {
-  password?: string;
+  token?: string;
   username?: string;
-  signature?: string;
-  timestamp?: number;
   role?: 'owner' | 'admin' | 'user';
+  password?: string;
+  signature?: string;
 } | null {
   if (typeof window === 'undefined') {
     return null;
@@ -65,6 +150,20 @@ export function getAuthInfoFromBrowserCookie(): {
     }
 
     const authData = JSON.parse(decoded);
+
+    // 如果有token，验证并提取信息
+    if (authData.token) {
+      const payload = verifyJWT(authData.token);
+      if (payload) {
+        return {
+          token: authData.token,
+          username: payload.username,
+          role: payload.role,
+        };
+      }
+      return null;
+    }
+
     return authData;
   } catch (error) {
     return null;

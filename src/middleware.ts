@@ -27,6 +27,12 @@ export async function middleware(request: NextRequest) {
     return handleAuthFailure(request, pathname);
   }
 
+  // 如果有token，已经在getAuthInfoFromCookie中验证过了
+  if (authInfo.token) {
+    return NextResponse.next();
+  }
+
+  // 兼容旧的认证方式
   // localstorage模式：在middleware中完成验证
   if (storageType === 'localstorage') {
     if (!authInfo.password || authInfo.password !== process.env.PASSWORD) {

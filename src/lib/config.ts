@@ -3,6 +3,7 @@
 import { db } from '@/lib/db';
 
 import { AdminConfig } from './admin.types';
+import { logger } from './logger';
 
 export interface ApiSite {
   key: string;
@@ -37,7 +38,8 @@ interface ConfigFileStruct {
   };
 }
 
-export const API_CONFIG = {
+// API配置
+const API_CONFIG = {
   search: {
     path: '?ac=videolist&wd=',
     pagePath: '?ac=videolist&wd={query}&pg={page}',
@@ -57,6 +59,104 @@ export const API_CONFIG = {
   },
 };
 
+export { API_CONFIG };
+
+// 集中管理所有配置，包括环境变量配置
+class ConfigManager {
+  // API配置
+  public static readonly API_CONFIG = API_CONFIG;
+
+  // 环境变量配置
+  public static readonly ENV_CONFIG = {
+    STORAGE_TYPE: process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage',
+    SITE_NAME: process.env.NEXT_PUBLIC_SITE_NAME || 'NewTV',
+    ANNOUNCEMENT:
+      process.env.ANNOUNCEMENT ||
+      '本网站仅提供影视信息搜索服务，所有内容均来自第三方网站。本站不存储任何视频资源，不对任何内容的准确性、合法性、完整性负责。',
+    SEARCH_MAX_PAGE: Number(process.env.NEXT_PUBLIC_SEARCH_MAX_PAGE) || 5,
+    DOUBAN_PROXY_TYPE:
+      process.env.NEXT_PUBLIC_DOUBAN_PROXY_TYPE || 'cmliussss-cdn-tencent',
+    DOUBAN_PROXY: process.env.NEXT_PUBLIC_DOUBAN_PROXY || '',
+    DOUBAN_IMAGE_PROXY_TYPE:
+      process.env.NEXT_PUBLIC_DOUBAN_IMAGE_PROXY_TYPE ||
+      'cmliussss-cdn-tencent',
+    DOUBAN_IMAGE_PROXY: process.env.NEXT_PUBLIC_DOUBAN_IMAGE_PROXY || '',
+    DISABLE_YELLOW_FILTER:
+      process.env.NEXT_PUBLIC_DISABLE_YELLOW_FILTER === 'true',
+    FLUID_SEARCH: process.env.NEXT_PUBLIC_FLUID_SEARCH !== 'false',
+    USERNAME: process.env.USERNAME || 'admin',
+    PASSWORD: process.env.PASSWORD || '',
+    JWT_SECRET: process.env.JWT_SECRET || '',
+    REDIS_URL: process.env.REDIS_URL || '',
+    KVROCKS_URL: process.env.KVROCKS_URL || '',
+    UPSTASH_URL: process.env.UPSTASH_URL || '',
+    UPSTASH_TOKEN: process.env.UPSTASH_TOKEN || '',
+  };
+
+  // 默认配置
+  public static readonly DEFAULT_CONFIG = {
+    api_site: {
+      dbzy_tv: {
+        name: 'DBZY TV',
+        api: 'https://api.r2afosne.dpdns.org',
+        detail: 'DBZY TV API',
+      },
+    },
+    cache_time: 7200,
+    custom_category: [],
+    lives: {},
+  };
+
+  // 获取环境变量配置
+  public static getEnvConfig() {
+    return this.ENV_CONFIG;
+  }
+
+  // 获取API配置
+  public static getApiConfig() {
+    return this.API_CONFIG;
+  }
+
+  // 获取默认配置
+  public static getDefaultConfig() {
+    return this.DEFAULT_CONFIG;
+  }
+
+  // 验证配置
+  public static validateConfig(config: any) {
+    const errors: string[] = [];
+
+    // 检查必要的配置项
+    if (!config.UserConfig) {
+      errors.push('缺少 UserConfig 配置');
+    } else {
+      if (!Array.isArray(config.UserConfig.Users)) {
+        errors.push('UserConfig.Users 必须是数组');
+      }
+    }
+
+    if (!Array.isArray(config.SourceConfig)) {
+      errors.push('SourceConfig 必须是数组');
+    }
+
+    if (!Array.isArray(config.CustomCategories)) {
+      errors.push('CustomCategories 必须是数组');
+    }
+
+    if (!Array.isArray(config.LiveConfig)) {
+      errors.push('LiveConfig 必须是数组');
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+    };
+  }
+}
+
+// 导出配置管理器
+export const configManager = ConfigManager;
+
 // 在模块加载时根据环境决定配置来源
 let cachedConfig: AdminConfig;
 
@@ -67,11 +167,11 @@ export function refineConfig(adminConfig: AdminConfig): AdminConfig {
     fileConfig = JSON.parse(adminConfig.ConfigFile) as ConfigFileStruct;
     // 如果没有API站点配置，使用默认配置
     if (!fileConfig.api_site || Object.keys(fileConfig.api_site).length === 0) {
-      fileConfig.api_site = defaultConfig.api_site;
+      fileConfig.api_site = ConfigManager.DEFAULT_CONFIG.api_site;
     }
   } catch (e) {
     // 解析失败，使用默认配置
-    fileConfig = defaultConfig as ConfigFileStruct;
+    fileConfig = ConfigManager.DEFAULT_CONFIG as ConfigFileStruct;
   }
 
   // 合并文件中的源信息
@@ -195,20 +295,6 @@ export function refineConfig(adminConfig: AdminConfig): AdminConfig {
   return adminConfig;
 }
 
-// 导入默认配置
-const defaultConfig = {
-  api_site: {
-    'dbzy_tv': {
-      name: 'DBZY TV',
-      api: 'https://api.r2afosne.dpdns.org',
-      detail: 'DBZY TV API'
-    }
-  },
-  cache_time: 7200,
-  custom_category: [],
-  lives: {},
-};
-
 async function getInitConfig(
   configFile: string,
   subConfig: {
@@ -226,11 +312,11 @@ async function getInitConfig(
     cfgFile = JSON.parse(configFile) as ConfigFileStruct;
     // 如果没有API站点配置，使用默认配置
     if (!cfgFile.api_site || Object.keys(cfgFile.api_site).length === 0) {
-      cfgFile.api_site = defaultConfig.api_site;
+      cfgFile.api_site = ConfigManager.DEFAULT_CONFIG.api_site;
     }
   } catch (e) {
     // 解析失败，使用默认配置
-    cfgFile = defaultConfig as ConfigFileStruct;
+    cfgFile = ConfigManager.DEFAULT_CONFIG as ConfigFileStruct;
   }
 
   // 在初始化之前，先获取旧的配置（目前未使用，保留以备后续扩展）
@@ -274,7 +360,7 @@ async function getInitConfig(
   try {
     userNames = await db.getAllUsers();
   } catch (e) {
-    console.error('获取用户列表失败:', e);
+    logger.error('获取用户列表失败:', e as Error);
   }
   const allUsers = userNames
     .filter((u) => u !== process.env.USERNAME)
@@ -356,7 +442,7 @@ export async function getConfig(): Promise<AdminConfig> {
   try {
     adminConfig = await db.getAdminConfig();
   } catch (e) {
-    console.error('获取管理员配置失败:', e);
+    logger.error('获取管理员配置失败:', e as Error);
   }
 
   // db 中无配置，执行一次初始化
@@ -487,7 +573,7 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
 
   // 确保至少有一个API站点可用
   if (adminConfig.SourceConfig.length === 0) {
-    console.warn('没有可用的API站点，添加默认API站点');
+    logger.warn('没有可用的API站点，添加默认API站点');
     adminConfig.SourceConfig.push({
       key: 'default',
       name: '默认API',
@@ -506,7 +592,7 @@ export async function resetConfig() {
   try {
     originConfig = await db.getAdminConfig();
   } catch (e) {
-    console.error('获取管理员配置失败:', e);
+    logger.error('获取管理员配置失败:', e as Error);
   }
   if (!originConfig) {
     originConfig = {} as AdminConfig;

@@ -15,34 +15,10 @@ const STORAGE_TYPE =
     | 'kvrocks'
     | undefined) || 'localstorage';
 
-// 生成签名
-async function generateSignature(
-  data: string,
-  secret: string
-): Promise<string> {
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(secret);
-  const messageData = encoder.encode(data);
+// 导入JWT生成函数
+import { generateJWT } from '@/lib/auth';
 
-  // 导入密钥
-  const key = await crypto.subtle.importKey(
-    'raw',
-    keyData,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-
-  // 生成签名
-  const signature = await crypto.subtle.sign('HMAC', key, messageData);
-
-  // 转换为十六进制字符串
-  return Array.from(new Uint8Array(signature))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-// 生成认证Cookie（带签名）
+// 生成认证Cookie（带JWT）
 async function generateAuthCookie(
   username?: string,
   password?: string,
@@ -51,17 +27,17 @@ async function generateAuthCookie(
 ): Promise<string> {
   const authData: any = { role: role || 'user' };
 
-  // 只在需要时包含 password
+  // 只在需要时包含 password（兼容旧模式）
   if (includePassword && password) {
     authData.password = password;
   }
 
-  if (username && process.env.PASSWORD) {
+  if (username) {
     authData.username = username;
-    // 使用密码作为密钥对用户名进行签名
-    const signature = await generateSignature(username, process.env.PASSWORD);
-    authData.signature = signature;
-    authData.timestamp = Date.now(); // 添加时间戳防重放攻击
+    // 使用JWT替代签名
+    const token = generateJWT(username, role || 'user');
+    authData.token = token;
+    authData.timestamp = Date.now(); // 添加时间戳
   }
 
   return encodeURIComponent(JSON.stringify(authData));
@@ -138,10 +114,14 @@ export async function POST(req: NextRequest) {
     // 先检查是否在待审核队列中
     const config = await getConfig();
     const pending = (config.UserConfig as any).PendingUsers?.find(
-      (u: any) => (u.username || '').trim().toLowerCase() === username.toLowerCase()
+      (u: any) =>
+        (u.username || '').trim().toLowerCase() === username.toLowerCase()
     );
     if (pending) {
-      return NextResponse.json({ error: '您的注册申请正在审核中，请耐心等待管理员审批' }, { status: 401 });
+      return NextResponse.json(
+        { error: '您的注册申请正在审核中，请耐心等待管理员审批' },
+        { status: 401 }
+      );
     }
 
     // 可能是站长，直接读环境变量
@@ -173,18 +153,19 @@ export async function POST(req: NextRequest) {
         const existingStats = await db.getUserStats(username);
 
         // 如果用户统计数据不存在或是默认值，则初始化
-        if (!existingStats || (
-          existingStats.totalWatchTime === 0 &&
-          existingStats.totalMovies === 0 &&
-          existingStats.firstWatchDate === 0
-        )) {
+        if (
+          !existingStats ||
+          (existingStats.totalWatchTime === 0 &&
+            existingStats.totalMovies === 0 &&
+            existingStats.firstWatchDate === 0)
+        ) {
           console.log(`为用户 ${username} 初始化统计数据`);
           // 使用正确的参数格式调用updateUserStats
           await db.updateUserStats(username, {
             watchTime: 0,
             movieKey: 'init',
             timestamp: Date.now(), // 设置为当前时间作为首次观看时间
-            isFullReset: true
+            isFullReset: true,
           });
         }
       } catch (error) {
@@ -236,18 +217,19 @@ export async function POST(req: NextRequest) {
         const existingStats = await db.getUserStats(username);
 
         // 如果用户统计数据不存在或是默认值，则初始化
-        if (!existingStats || (
-          existingStats.totalWatchTime === 0 &&
-          existingStats.totalMovies === 0 &&
-          existingStats.firstWatchDate === 0
-        )) {
+        if (
+          !existingStats ||
+          (existingStats.totalWatchTime === 0 &&
+            existingStats.totalMovies === 0 &&
+            existingStats.firstWatchDate === 0)
+        ) {
           console.log(`为用户 ${username} 初始化统计数据`);
           // 使用正确的参数格式调用updateUserStats
           await db.updateUserStats(username, {
             watchTime: 0,
             movieKey: 'init',
             timestamp: Date.now(), // 设置为当前时间作为首次观看时间
-            isFullReset: true
+            isFullReset: true,
           });
         }
       } catch (error) {
