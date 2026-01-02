@@ -2870,12 +2870,14 @@ const VideoSourceConfig = ({
   const [showImportModal, setShowImportModal] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importConfirmModal, setImportConfirmModal] = useState<{
-    isOpen: boolean;
-    sourcesToImport: any[];
-  }>({
-    isOpen: false,
-    sourcesToImport: [],
-  });
+  isOpen: boolean;
+  sourcesToImport: any[];
+  formatType?: 'auto' | 'array' | 'legacy' | 'single'; // 可选属性
+}>({
+  isOpen: false,
+  sourcesToImport: [],
+  formatType: 'auto',
+});
 
   // 批量操作相关状态
   const [selectedSources, setSelectedSources] = useState<Set<string>>(
@@ -3113,85 +3115,144 @@ const VideoSourceConfig = ({
     setImportFile(file);
   };
 
-  const handleImportSources = async () => {
-    if (!importFile) return;
+const handleImportSources = async () => {
+  if (!importFile) return;
 
-    await withLoading('importSources', async () => {
+  await withLoading('importSources', async () => {
+    try {
+      // 读取文件内容
+      const fileContent = await importFile.text();
+      
+      // 解析 JSON
+      let parsedData;
       try {
-        // 读取文件内容
-        const fileContent = await importFile.text();
-        
-        // 解析 JSON
-        let parsedSources;
-        try {
-          parsedSources = JSON.parse(fileContent);
-        } catch (parseError) {
-          throw new Error('JSON 解析失败，请检查文件格式');
-        }
-
-        // 验证数据结构
-        if (!Array.isArray(parsedSources)) {
-          throw new Error('导入文件格式不正确，应为视频源数组');
-        }
-
-        // 验证每个视频源的基本字段
-        const validSources = parsedSources.filter((source: any) => {
-          return source && 
-                 typeof source.name === 'string' &&
-                 typeof source.key === 'string' &&
-                 typeof source.api === 'string';
-        });
-
-        if (validSources.length === 0) {
-          throw new Error('未找到有效的视频源数据');
-        }
-
-        // 显示确认弹窗
-        setImportConfirmModal({
-          isOpen: true,
-          sourcesToImport: validSources,
-        });
-
-      } catch (err) {
-        showError(err instanceof Error ? err.message : '导入失败', showAlert);
-        throw err;
+        parsedData = JSON.parse(fileContent);
+      } catch (parseError) {
+        throw new Error('JSON 解析失败，请检查文件格式');
       }
-    });
-  };
 
-  const handleConfirmImport = async () => {
-    await withLoading('confirmImport', async () => {
-      try {
-        const res = await fetch('/api/admin/source', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'import',
-            sources: importConfirmModal.sourcesToImport,
-          }),
-        });
-
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || `导入失败: ${res.status}`);
+      // 验证数据结构 - 支持多种格式
+      let sourcesToImport: any[] = [];
+      let formatType: 'auto' | 'array' | 'legacy' | 'single' = 'auto';
+      
+      // 1. 如果是数组格式
+      if (Array.isArray(parsedData)) {
+        sourcesToImport = parsedData;
+        formatType = 'array';
+      } 
+      // 2. 如果是对象格式
+      else if (parsedData && typeof parsedData === 'object') {
+        // 检查是否是旧格式 (api_site)
+        if (parsedData.api_site) {
+          formatType = 'legacy';
+          sourcesToImport = [parsedData];
+        } 
+        // 检查是否包含数组字段
+        else {
+          const possibleArrayFields = ['sources', 'data', 'items', 'list', 'sites', 'videoSources'];
+          for (const field of possibleArrayFields) {
+            if (Array.isArray(parsedData[field])) {
+              sourcesToImport = parsedData[field];
+              formatType = 'array';
+              break;
+            }
+          }
+          
+          // 3. 如果没有找到数组字段，检查是否是单个视频源对象
+          if (sourcesToImport.length === 0) {
+            // 检查是否具有视频源的基本字段
+            if (parsedData.key && parsedData.name && parsedData.api) {
+              sourcesToImport = [parsedData];
+              formatType = 'single';
+            }
+            // 4. 检查是否有旧格式的其他变种
+            else if (parsedData.name && parsedData.api) {
+              // 可能是简化的格式，尝试从name生成key
+              const sanitizedKey = parsedData.name
+                .replace(/[^a-zA-Z0-9-_]/g, '_')
+                .replace(/_{2,}/g, '_')
+                .replace(/^_+|_+$/g, '')
+                .toLowerCase();
+              
+              sourcesToImport = [{
+                ...parsedData,
+                key: sanitizedKey
+              }];
+              formatType = 'single';
+            }
+          }
         }
-
-        // 成功后刷新配置
-        await refreshConfig();
-        setImportConfirmModal({ isOpen: false, sourcesToImport: [] });
-        setShowImportModal(false);
-        setImportFile(null);
-        
-        showSuccess(
-          `成功导入 ${importConfirmModal.sourcesToImport.length} 个视频源`,
-          showAlert
-        );
-      } catch (err) {
-        showError(err instanceof Error ? err.message : '导入失败', showAlert);
-        throw err;
       }
-    });
-  };
+      
+      if (sourcesToImport.length === 0 && (!parsedData || !parsedData.api_site)) {
+        throw new Error('未找到有效的视频源数据。支持格式：\n1. 数组格式: [{key: "...", name: "...", api: "..."}, ...]\n2. 旧格式: {api_site: {"site1": {api: "...", name: "...", detail: "..."}, ...}}\n3. 单个对象: {key: "...", name: "...", api: "..."}\n4. 包装格式: {sources: [...]} 或 {data: [...]}');
+      }
+
+      // 显示确认弹窗
+      setImportConfirmModal({
+        isOpen: true,
+        sourcesToImport: formatType === 'legacy' ? [parsedData] : sourcesToImport,
+        formatType,
+      });
+
+    } catch (err) {
+      showError(err instanceof Error ? err.message : '导入失败', showAlert);
+      throw err;
+    }
+  });
+};
+
+const handleConfirmImport = async () => {
+  await withLoading('confirmImport', async () => {
+    try {
+      // 准备请求数据
+      const requestBody: any = {
+        action: 'import',
+        strategy: 'skip', // 默认跳过重复项
+      };
+
+      // 根据格式类型发送不同的数据
+      if (importConfirmModal.formatType === 'legacy') {
+        // 旧格式：发送完整的对象
+        requestBody.data = importConfirmModal.sourcesToImport[0];
+      } else {
+        // 新格式：发送数组
+        requestBody.data = importConfirmModal.sourcesToImport;
+      }
+
+      const res = await fetch('/api/admin/source', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `导入失败: ${res.status}`);
+      }
+
+      const result = await res.json();
+      
+      // 成功后刷新配置
+      await refreshConfig();
+      setImportConfirmModal({
+        isOpen: false,
+        sourcesToImport: [],
+        formatType: 'auto',
+      });
+      setShowImportModal(false);
+      setImportFile(null);
+      
+      showSuccess(
+        `成功导入 ${result.sourcesImported || result.import?.imported || 0} 个视频源`,
+        showAlert
+      );
+    } catch (err) {
+      showError(err instanceof Error ? err.message : '导入失败', showAlert);
+      throw err;
+    }
+  });
+};
 
   // 有效性检测函数
   const handleValidateSources = async () => {
@@ -4008,13 +4069,16 @@ const VideoSourceConfig = ({
           document.body
         )}
 
-      {/* 导入确认弹窗 */}
 {/* 导入确认弹窗 */}
 {importConfirmModal.isOpen &&
   createPortal(
     <div
       className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4'
-      onClick={() => setImportConfirmModal({ isOpen: false, sourcesToImport: [], formatType: 'auto' })}
+      onClick={() => setImportConfirmModal({
+        isOpen: false,
+        sourcesToImport: [],
+        formatType: 'auto',
+      })}
     >
       <div
         className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto'
@@ -4026,7 +4090,11 @@ const VideoSourceConfig = ({
               确认导入视频源
             </h3>
             <button
-              onClick={() => setImportConfirmModal({ isOpen: false, sourcesToImport: [], formatType: 'auto' })}
+              onClick={() => setImportConfirmModal({
+                isOpen: false,
+                sourcesToImport: [],
+                formatType: 'auto',
+              })}
               className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
             >
               <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
@@ -4039,30 +4107,44 @@ const VideoSourceConfig = ({
             <div className={`p-4 mb-4 rounded-lg border ${
               importConfirmModal.formatType === 'legacy' 
                 ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                : importConfirmModal.formatType === 'array'
+                ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
             }`}>
               <div className='flex items-center space-x-2 mb-2'>
                 {importConfirmModal.formatType === 'legacy' ? (
                   <AlertTriangle className='w-5 h-5 text-blue-600 dark:text-blue-400' />
-                ) : (
+                ) : importConfirmModal.formatType === 'array' ? (
                   <AlertTriangle className='w-5 h-5 text-yellow-600 dark:text-yellow-400' />
+                ) : (
+                  <AlertTriangle className='w-5 h-5 text-green-600 dark:text-green-400' />
                 )}
                 <span className={`text-sm font-medium ${
                   importConfirmModal.formatType === 'legacy'
                     ? 'text-blue-800 dark:text-blue-300'
-                    : 'text-yellow-800 dark:text-yellow-300'
+                    : importConfirmModal.formatType === 'array'
+                    ? 'text-yellow-800 dark:text-yellow-300'
+                    : 'text-green-800 dark:text-green-300'
                 }`}>
-                  {importConfirmModal.formatType === 'legacy' ? '旧格式检测' : '新格式检测'}
+                  {importConfirmModal.formatType === 'legacy' 
+                    ? '旧格式检测' 
+                    : importConfirmModal.formatType === 'array'
+                    ? '数组格式检测'
+                    : '单个对象格式检测'}
                 </span>
               </div>
               <p className={`text-sm ${
                 importConfirmModal.formatType === 'legacy'
                   ? 'text-blue-700 dark:text-blue-400'
-                  : 'text-yellow-700 dark:text-yellow-400'
+                  : importConfirmModal.formatType === 'array'
+                  ? 'text-yellow-700 dark:text-yellow-400'
+                  : 'text-green-700 dark:text-green-400'
               }`}>
                 {importConfirmModal.formatType === 'legacy'
                   ? '检测到旧格式配置，将自动转换为新格式并导入。'
-                  : `检测到新格式，即将导入 ${importConfirmModal.sourcesToImport.length} 个视频源。`}
+                  : importConfirmModal.formatType === 'array'
+                  ? `检测到数组格式，即将导入 ${importConfirmModal.sourcesToImport.length} 个视频源。`
+                  : '检测到单个视频源对象，将作为数组导入。'}
               </p>
             </div>
 
@@ -4120,7 +4202,11 @@ const VideoSourceConfig = ({
           {/* 操作按钮 */}
           <div className='flex justify-end space-x-3'>
             <button
-              onClick={() => setImportConfirmModal({ isOpen: false, sourcesToImport: [], formatType: 'auto' })}
+              onClick={() => setImportConfirmModal({
+                isOpen: false,
+                sourcesToImport: [],
+                formatType: 'auto',
+              })}
               className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
             >
               取消
