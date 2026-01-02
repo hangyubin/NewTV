@@ -24,7 +24,7 @@ class LocalStorageMock implements IStorage {
   // 管理员配置方法
   async getAdminConfig(): Promise<AdminConfig | null> {
     if (!this.adminConfig) {
-      // 返回完整默认配置
+      // 返回完整默认配置 - 注意：移除 Client 属性，因为 AdminConfig 类型中不存在
       this.adminConfig = {
         SourceConfig: [],
         UserConfig: {
@@ -49,16 +49,8 @@ class LocalStorageMock implements IStorage {
           DisableYellowFilter: false,
           FluidSearch: true
         },
-        CustomCategories: [],
-        Client: {
-          logo: '',
-          background: '',
-          favicon: '',
-          css: '',
-          copyright: '',
-          theme: '',
-          customTheme: '',
-        },
+        CustomCategories: []
+        // 注意：移除了 Client 属性，因为 AdminConfig 类型中不存在
       };
       console.log('本地存储：创建默认管理员配置');
     }
@@ -105,17 +97,7 @@ class LocalStorageMock implements IStorage {
     if (!config.CustomCategories) {
       config.CustomCategories = [];
     }
-    if (!config.Client) {
-      config.Client = {
-        logo: '',
-        background: '',
-        favicon: '',
-        css: '',
-        copyright: '',
-        theme: '',
-        customTheme: '',
-      };
-    }
+    // 注意：移除了 Client 属性的检查，因为 AdminConfig 类型中不存在
     
     this.adminConfig = config;
     console.log('本地存储：管理员配置已保存，SourceConfig数量:', config.SourceConfig.length);
@@ -441,17 +423,7 @@ export class DbManager {
     if (!config.CustomCategories) {
       config.CustomCategories = [];
     }
-    if (!config.Client) {
-      config.Client = {
-        logo: '',
-        background: '',
-        favicon: '',
-        css: '',
-        copyright: '',
-        theme: '',
-        customTheme: '',
-      };
-    }
+    // 注意：移除了 Client 属性的检查，因为 AdminConfig 类型中不存在
     
     console.log('准备保存配置:');
     console.log('- SourceConfig 数量:', config.SourceConfig.length);
