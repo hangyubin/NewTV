@@ -32,7 +32,7 @@ interface VideoSourceForExport extends VideoSource {
 }
 
 // 旧格式配置接口
-interface LegacySourceConfig {
+interface _LegacySourceConfig {
   cache_time?: number;
   api_site: Record<string, {
     api: string;
@@ -279,7 +279,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: result.error }, { status: 400 });
           }
           parsedSources = result.sources;
-          parsedFormat = result.format as 'array' | 'legacy' | 'single';
+          parsedFormat = result.format === 'single' ? 'array' : (result.format as 'array' | 'legacy');
         } else {
           return NextResponse.json({ error: '缺少 sources 或 data 参数' }, { status: 400 });
         }
@@ -323,7 +323,7 @@ export async function POST(request: NextRequest) {
           errors: [] as Array<{ key: string; error: string }>,
         };
         
-        const existingKeys = new Set(adminConfig.SourceConfig.map(s => s.key));
+        const _existingKeys = new Set(adminConfig.SourceConfig.map(s => s.key));
         const existingSources = new Map(adminConfig.SourceConfig.map(s => [s.key, s]));
         
         parsedSources.forEach(source => {
@@ -543,7 +543,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           ok: true,
           import: {
-            format,
+            format: format === 'single' ? 'array' : format,
             total: sources.length,
             ...importStats,
           },
