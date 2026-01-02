@@ -3,6 +3,7 @@
 import { Redis } from '@upstash/redis';
 
 import { AdminConfig } from './admin.types';
+import { logger } from './logger';
 import {
   DanmakuConfig,
   Favorite,
@@ -685,7 +686,11 @@ export class UpstashRedisStorage implements IStorage {
 
       logger.info('所有数据已清空');
     } catch (error) {
-      logger.error('清空数据失败:', error);
+      if (error instanceof Error) {
+        logger.error('清空数据失败:', error);
+      } else {
+        logger.error('清空数据失败:', new Error(String(error)));
+      }
       throw new Error('清空数据失败');
     }
   }

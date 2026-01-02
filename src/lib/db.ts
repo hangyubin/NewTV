@@ -419,7 +419,7 @@ export class DbManager {
   async getAdminConfig(): Promise<AdminConfig | null> {
     try {
       if (!this.storage) {
-        logger.error('存储未初始化');
+        logger.error('存储未初始化', new Error('存储未初始化'));
         return null;
       }
 
@@ -441,14 +441,14 @@ export class DbManager {
     // 验证存储
     if (!this.storage) {
       const errorMsg = '存储未初始化';
-      logger.error(errorMsg);
+      logger.error(errorMsg, new Error(errorMsg));
       throw new Error(errorMsg);
     }
 
     // 验证配置
     if (!config) {
       const errorMsg = '配置不能为空';
-      logger.error(errorMsg);
+      logger.error(errorMsg, new Error(errorMsg));
       throw new Error(errorMsg);
     }
 
@@ -510,7 +510,7 @@ export class DbManager {
       // 检查方法是否存在
       if (typeof this.storage.setAdminConfig !== 'function') {
         const errorMsg = '当前存储类型不支持管理员配置保存';
-        logger.error(errorMsg);
+        logger.error(errorMsg, new Error(errorMsg));
         throw new Error(errorMsg);
       }
 

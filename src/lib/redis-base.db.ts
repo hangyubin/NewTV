@@ -58,7 +58,7 @@ function createRetryWrapper(
               i + 1
             }/${maxRetries})`
           );
-          logger.error('Error:', err.message);
+          logger.error('Error:', err);
 
           // 等待一段时间后重试
           await new Promise((resolve) => setTimeout(resolve, 1000 * (i + 1)));
@@ -70,7 +70,11 @@ function createRetryWrapper(
               await client.connect();
             }
           } catch (reconnectErr) {
-            logger.error('Failed to reconnect:', reconnectErr);
+            if (reconnectErr instanceof Error) {
+              logger.error('Failed to reconnect:', reconnectErr);
+            } else {
+              logger.error('Failed to reconnect:', new Error(String(reconnectErr)));
+            }
           }
 
           continue;
@@ -727,7 +731,11 @@ export abstract class BaseRedisStorage implements IStorage {
 
       logger.info('所有数据已清空');
     } catch (error) {
-      logger.error('清空数据失败:', error);
+      if (error instanceof Error) {
+        logger.error('清空数据失败:', error);
+      } else {
+        logger.error('清空数据失败:', new Error(String(error)));
+      }
       throw new Error('清空数据失败');
     }
   }
