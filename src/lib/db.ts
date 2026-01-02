@@ -36,26 +36,18 @@ class LocalStorageMock implements IStorage {
           AutoUpdate: false,
           LastCheck: '',
         },
-        ConfigFile: '',           // 修复：改为空字符串而不是对象
+        ConfigFile: '',
         SiteConfig: {
-          title: 'NewTV',
-          description: '二次开发的跨平台影视聚合播放站',
-          logo: '',
-          favicon: '',
-          theme: 'dark',
-          language: 'zh-CN',
-          footer: '',
-          copyright: '',
-          analytics: '',
-          seo: {
-            keywords: '',
-            description: '',
-          },
-          social: [],
-          contact: {
-            email: '',
-            github: '',
-          },
+          SiteName: 'NewTV',
+          Announcement: '二次开发的跨平台影视聚合播放站',
+          SearchDownstreamMaxPage: 2,
+          SiteInterfaceCacheTime: 3600,
+          DoubanProxyType: 'custom',
+          DoubanProxy: '',
+          DoubanImageProxyType: 'custom',
+          DoubanImageProxy: '',
+          DisableYellowFilter: false,
+          FluidSearch: true
         },
         CustomCategories: [],
         Client: {
@@ -94,28 +86,20 @@ class LocalStorageMock implements IStorage {
       };
     }
     if (!config.ConfigFile) {
-      config.ConfigFile = '';  // 修复：改为空字符串
+      config.ConfigFile = '';
     }
     if (!config.SiteConfig) {
       config.SiteConfig = {
-        title: 'NewTV',
-        description: '二次开发的跨平台影视聚合播放站',
-        logo: '',
-        favicon: '',
-        theme: 'dark',
-        language: 'zh-CN',
-        footer: '',
-        copyright: '',
-        analytics: '',
-        seo: {
-          keywords: '',
-          description: '',
-        },
-        social: [],
-        contact: {
-          email: '',
-          github: '',
-        },
+        SiteName: 'NewTV',
+        Announcement: '二次开发的跨平台影视聚合播放站',
+        SearchDownstreamMaxPage: 2,
+        SiteInterfaceCacheTime: 3600,
+        DoubanProxyType: 'custom',
+        DoubanProxy: '',
+        DoubanImageProxyType: 'custom',
+        DoubanImageProxy: '',
+        DisableYellowFilter: false,
+        FluidSearch: true
       };
     }
     if (!config.CustomCategories) {
@@ -136,8 +120,6 @@ class LocalStorageMock implements IStorage {
     this.adminConfig = config;
     console.log('本地存储：管理员配置已保存，SourceConfig数量:', config.SourceConfig.length);
   }
-
-  // ... 其他方法保持不变 ...
 
   // 用户相关方法
   async registerUser(userName: string, password: string): Promise<void> {
@@ -440,28 +422,20 @@ export class DbManager {
       };
     }
     if (!config.ConfigFile) {
-      config.ConfigFile = '';  // 修复：改为空字符串
+      config.ConfigFile = '';
     }
     if (!config.SiteConfig) {
       config.SiteConfig = {
-        title: 'NewTV',
-        description: '二次开发的跨平台影视聚合播放站',
-        logo: '',
-        favicon: '',
-        theme: 'dark',
-        language: 'zh-CN',
-        footer: '',
-        copyright: '',
-        analytics: '',
-        seo: {
-          keywords: '',
-          description: '',
-        },
-        social: [],
-        contact: {
-          email: '',
-          github: '',
-        },
+        SiteName: 'NewTV',
+        Announcement: '二次开发的跨平台影视聚合播放站',
+        SearchDownstreamMaxPage: 2,
+        SiteInterfaceCacheTime: 3600,
+        DoubanProxyType: 'custom',
+        DoubanProxy: '',
+        DoubanImageProxyType: 'custom',
+        DoubanImageProxy: '',
+        DisableYellowFilter: false,
+        FluidSearch: true
       };
     }
     if (!config.CustomCategories) {
@@ -509,8 +483,6 @@ export class DbManager {
       throw new Error(`保存配置失败: ${errorMessage}`);
     }
   }
-
-  // ... 其他方法保持不变 ...
 
   // ---------- 播放记录 ----------
   async getPlayRecord(
