@@ -84,30 +84,64 @@ function convertLegacyToNewFormat(data: any): VideoSource[] {
   return sources;
 }
 
-// 解析不同格式的数据
-function parseSourceData(data: any): { sources: VideoSource[], format: 'array' | 'legacy' | 'unknown', error?: string } {
-  // 如果是数组格式（新格式）
-  if (Array.isArray(data)) {
-    const sources: VideoSource[] = data
-      .filter((item: any) => item.key && item.name && item.api)
-      .map((item: any) => ({
-        key: item.key,
-        name: item.name,
-        api: item.api,
-        detail: item.detail || '',
-        from: item.from || 'custom',
-        disabled: item.disabled || false,
-        originalKey: item.originalKey, // 保留 originalKey
-      }));
-    
+// 解析不同格式的数据 - 改进版，更灵活的格式检测
+function parseSourceData(data: any): { sources: VideoSource[], format: 'array' | 'legacy' | 'single' | 'unknown', error?: string } {
+  // 如果数据是 null 或 undefined
+  if (data == null) {
     return {
-      sources,
-      format: 'array',
+      sources: [],
+      format: 'unknown',
+      error: '数据为空'
     };
   }
+
+  // 1. 如果是数组格式（新格式）
+  if (Array.isArray(data)) {
+    if (data.length === 0) {
+      return {
+        sources: [],
+        format: 'array',
+      };
+    }
+
+    const sources: VideoSource[] = [];
+    let hasValidItems = false;
+    
+    for (const item of data) {
+      // 检查是否是有效的视频源对象
+      if (item && typeof item === 'object') {
+        // 如果是旧格式对象，尝试解析
+        if (item.api_site && typeof item.api_site === 'object') {
+          const legacySources = convertLegacyToNewFormat(item);
+          sources.push(...legacySources);
+          hasValidItems = true;
+        } 
+        // 如果是单个视频源对象
+        else if (item.key && item.name && item.api) {
+          sources.push({
+            key: item.key,
+            name: item.name,
+            api: item.api,
+            detail: item.detail || '',
+            from: item.from || 'custom',
+            disabled: item.disabled || false,
+            originalKey: item.originalKey,
+          });
+          hasValidItems = true;
+        }
+      }
+    }
+    
+    if (hasValidItems) {
+      return {
+        sources,
+        format: 'array',
+      };
+    }
+  }
   
-  // 如果是旧格式（嵌套对象）
-  if (data.api_site && typeof data.api_site === 'object') {
+  // 2. 如果是旧格式对象（包含 api_site）
+  if (data && typeof data === 'object' && data.api_site && typeof data.api_site === 'object') {
     const sources = convertLegacyToNewFormat(data);
     return {
       sources,
@@ -115,8 +149,8 @@ function parseSourceData(data: any): { sources: VideoSource[], format: 'array' |
     };
   }
   
-  // 如果数据本身就是一个视频源对象
-  if (data.key && data.name && data.api) {
+  // 3. 如果是单个视频源对象（新格式）
+  if (data && typeof data === 'object' && data.key && data.name && data.api) {
     return {
       sources: [{
         key: data.key,
@@ -125,16 +159,47 @@ function parseSourceData(data: any): { sources: VideoSource[], format: 'array' |
         detail: data.detail || '',
         from: data.from || 'custom',
         disabled: data.disabled || false,
-        originalKey: data.originalKey, // 保留 originalKey
+        originalKey: data.originalKey,
       }],
-      format: 'array',
+      format: 'single',
     };
+  }
+  
+  // 4. 尝试检查是否可能是数组的变种（如包含在其他字段中）
+  if (data && typeof data === 'object') {
+    // 检查常见的字段名
+    const possibleArrayFields = ['sources', 'data', 'items', 'list', 'sites'];
+    for (const field of possibleArrayFields) {
+      if (Array.isArray(data[field])) {
+        const result = parseSourceData(data[field]);
+        if (result.sources.length > 0) {
+          return result;
+        }
+      }
+    }
+    
+    // 检查是否可能是旧格式的变种
+    for (const field of possibleArrayFields) {
+      if (data[field] && typeof data[field] === 'object' && data[field].api_site) {
+        const sources = convertLegacyToNewFormat(data[field]);
+        if (sources.length > 0) {
+          return {
+            sources,
+            format: 'legacy',
+          };
+        }
+      }
+    }
   }
   
   return {
     sources: [],
     format: 'unknown',
-    error: '不支持的数据格式'
+    error: `不支持的数据格式。支持格式：
+1. 数组格式: [{key: "...", name: "...", api: "..."}, ...]
+2. 旧格式: {api_site: {"site1": {api: "...", name: "...", detail: "..."}, ...}}
+3. 单个对象: {key: "...", name: "...", api: "..."}
+4. 包装格式: {sources: [...]} 或 {data: [...]}`
   };
 }
 
@@ -203,7 +268,7 @@ export async function POST(request: NextRequest) {
               detail: item.detail || '',
               from: item.from || 'custom',
               disabled: item.disabled || false,
-              originalKey: item.originalKey, // 保留 originalKey
+              originalKey: item.originalKey,
             }));
           parsedFormat = 'array';
         } 
@@ -214,7 +279,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: result.error }, { status: 400 });
           }
           parsedSources = result.sources;
-          parsedFormat = result.format as 'array' | 'legacy';
+          parsedFormat = result.format as 'array' | 'legacy' | 'single';
         } else {
           return NextResponse.json({ error: '缺少 sources 或 data 参数' }, { status: 400 });
         }
@@ -317,34 +382,58 @@ export async function POST(request: NextRequest) {
       case 'import': {
         // 专门用于导入的操作，提供更多选项
         const { data, type = 'auto', strategy = 'skip', validate = true } = body as {
-          data: any;
+          data?: any;
           type?: 'auto' | 'array' | 'legacy';
           strategy?: 'skip' | 'overwrite' | 'merge';
           validate?: boolean;
         };
         
-        if (!data) {
-          return NextResponse.json({ error: '缺少 data 参数' }, { status: 400 });
+        // 支持多种方式提供数据
+        let importData = data;
+        if (!importData) {
+          // 如果没有 data 参数，尝试从其他常见字段获取
+          const possibleFields = ['sources', 'items', 'list', 'sites', 'api_site'];
+          for (const field of possibleFields) {
+            if (body[field] !== undefined) {
+              importData = body[field];
+              break;
+            }
+          }
         }
         
-        // 解析数据
+        if (!importData) {
+          return NextResponse.json({ 
+            error: '缺少数据参数',
+            hint: '请提供以下格式之一的参数：data, sources, items, list, sites 或 api_site'
+          }, { status: 400 });
+        }
+        
+        // 根据指定的类型或自动检测类型来解析数据
         let parsedResult;
         if (type === 'array') {
-          parsedResult = parseSourceData(Array.isArray(data) ? data : [data]);
+          parsedResult = parseSourceData(Array.isArray(importData) ? importData : { sources: importData });
         } else if (type === 'legacy') {
-          parsedResult = parseSourceData({ api_site: data.api_site || data });
+          parsedResult = parseSourceData({ api_site: importData.api_site || importData });
         } else {
-          parsedResult = parseSourceData(data);
+          // auto: 让 parseSourceData 自动检测格式
+          parsedResult = parseSourceData(importData);
         }
         
         if (parsedResult.error) {
-          return NextResponse.json({ error: parsedResult.error }, { status: 400 });
+          return NextResponse.json({ 
+            error: '数据解析失败',
+            details: parsedResult.error,
+            receivedData: importData // 可选：返回接收到的数据用于调试
+          }, { status: 400 });
         }
         
         const { sources, format } = parsedResult;
         
         if (sources.length === 0) {
-          return NextResponse.json({ error: '未找到有效的视频源数据' }, { status: 400 });
+          return NextResponse.json({ 
+            error: '未找到有效的视频源数据',
+            hint: '请确保数据包含有效的视频源（至少包含 key, name, api 字段）'
+          }, { status: 400 });
         }
         
         // 验证数据
@@ -352,6 +441,7 @@ export async function POST(request: NextRequest) {
           const validationResults = {
             invalidUrls: [] as Array<{ key: string; api: string }>,
             missingFields: [] as Array<{ key: string; missing: string[] }>,
+            invalidKeys: [] as Array<{ key: string; reason: string }>,
           };
           
           sources.forEach(source => {
@@ -367,6 +457,17 @@ export async function POST(request: NextRequest) {
               });
             }
             
+            // 检查 key 格式
+            if (source.key) {
+              // key 只能包含字母、数字、连字符和下划线
+              if (!/^[a-zA-Z0-9-_]+$/.test(source.key)) {
+                validationResults.invalidKeys.push({
+                  key: source.key,
+                  reason: 'key只能包含字母、数字、连字符(-)和下划线(_)',
+                });
+              }
+            }
+            
             if (source.api && !isValidUrl(source.api)) {
               validationResults.invalidUrls.push({
                 key: source.key,
@@ -375,10 +476,20 @@ export async function POST(request: NextRequest) {
             }
           });
           
-          if (validationResults.invalidUrls.length > 0 || validationResults.missingFields.length > 0) {
+          const hasErrors = validationResults.invalidUrls.length > 0 || 
+                           validationResults.missingFields.length > 0 || 
+                           validationResults.invalidKeys.length > 0;
+          
+          if (hasErrors) {
             return NextResponse.json({
               error: '数据验证失败',
               validationResults,
+              totalSources: sources.length,
+              validSources: sources.length - (
+                validationResults.invalidUrls.length + 
+                validationResults.missingFields.length + 
+                validationResults.invalidKeys.length
+              ),
             }, { status: 400 });
           }
         }
@@ -398,6 +509,7 @@ export async function POST(request: NextRequest) {
           
           if (existing) {
             // 已存在的处理逻辑
+            importStats.duplicates++;
             if (strategy === 'overwrite') {
               // 覆盖现有源
               Object.assign(existing, source);
@@ -435,6 +547,8 @@ export async function POST(request: NextRequest) {
             total: sources.length,
             ...importStats,
           },
+          sourcesImported: importStats.imported,
+          sourcesUpdated: importStats.updated,
         });
       }
 
@@ -704,7 +818,7 @@ export async function POST(request: NextRequest) {
             detail: source.detail,
             disabled: source.disabled,
             from: source.from,
-            originalKey: source.originalKey, // 包含 originalKey
+            originalKey: source.originalKey,
           }));
         }
 
