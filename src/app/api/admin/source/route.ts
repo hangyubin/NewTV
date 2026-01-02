@@ -780,8 +780,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 示例使用代码（前端调用）
-/*
 // 导入数组格式数据
 const importArrayFormat = async () => {
   const response = await fetch('/api/admin/sources', {
