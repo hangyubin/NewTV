@@ -315,7 +315,7 @@ function validateVideoSource(source: any): { valid: boolean; errors?: string[]; 
       name,
       api,
       detail: (source.detail || '').trim(),
-      from: 'custom', // 导入的数据都是 custom
+      from: 'custom' as const, // 这里修复：明确指定为字面量类型 'custom'
       disabled: !!source.disabled,
       originalKey: source.originalKey || source.key || source.name,
     }
@@ -606,7 +606,7 @@ export async function POST(request: NextRequest) {
               name: source.name || '',
               api: source.api || '',
               detail: source.detail || '',
-              from: 'custom',
+              from: 'custom' as const, // 这里修复：明确指定为字面量类型
               disabled: false,
               originalKey: source.originalKey || source.key || source.name,
             };
@@ -695,7 +695,7 @@ export async function POST(request: NextRequest) {
           name,
           api,
           detail: detail || '',
-          from: 'custom', // 重要：确保配置文件添加的源标记为 custom
+          from: 'custom' as const, // 关键修复：明确指定为 'custom' 字面量类型
           disabled: false,
         };
         
