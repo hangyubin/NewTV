@@ -31,7 +31,11 @@ class LocalStorageMock implements IStorage {
           Users: [],
           Tags: []
         },
-        ConfigSubscribtion: [], // 添加缺失的属性
+        ConfigSubscribtion: {           // 修复：改为对象而不是数组
+          URL: '',
+          AutoUpdate: false,
+          LastCheck: '',
+        },
         ConfigFile: {           // 添加缺失的属性
           version: '1.0',
           lastUpdated: new Date().toISOString(),
@@ -86,7 +90,11 @@ class LocalStorageMock implements IStorage {
       config.UserConfig = { Users: [], Tags: [] };
     }
     if (!config.ConfigSubscribtion) {
-      config.ConfigSubscribtion = [];
+      config.ConfigSubscribtion = {
+        URL: '',
+        AutoUpdate: false,
+        LastCheck: '',
+      };
     }
     if (!config.ConfigFile) {
       config.ConfigFile = {
@@ -429,7 +437,11 @@ export class DbManager {
     
     // 确保其他字段也存在
     if (!config.ConfigSubscribtion) {
-      config.ConfigSubscribtion = [];
+      config.ConfigSubscribtion = {
+        URL: '',
+        AutoUpdate: false,
+        LastCheck: '',
+      };
     }
     if (!config.ConfigFile) {
       config.ConfigFile = {
