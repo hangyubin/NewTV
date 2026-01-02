@@ -189,14 +189,7 @@ export function refineConfig(adminConfig: AdminConfig): AdminConfig {
 
 // 导入默认配置
 const defaultConfig = {
-  api_site: {
-    example: {
-      key: "example",
-      name: "示例API",
-      api: "https://api.example.com",
-      detail: "示例API站点"
-    }
-  },
+  api_site: {},
   cache_time: 7200,
   custom_category: [],
   lives: {}
