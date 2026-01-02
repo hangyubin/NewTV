@@ -57,6 +57,14 @@ function isValidUrl(url: string): boolean {
     new URL(url);
     return true;
   } catch {
+    // 对于可能不完整的URL（如相对路径），进行更宽松的检查
+    if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) {
+      return true;
+    }
+    // 检查是否是有效的网络路径
+    if (/^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(url)) {
+      return true;
+    }
     return false;
   }
 }
@@ -68,13 +76,18 @@ function convertLegacyToNewFormat(data: any): VideoSource[] {
   if (!data.api_site) return sources;
   
   Object.entries(data.api_site).forEach(([originalKey, source]: [string, any]) => {
-    if (!source.api || !source.name) return;
+    if (!source || typeof source !== 'object') return;
+    
+    const apiValue = source.api || source.url || source.link || '';
+    const nameValue = source.name || source.title || originalKey;
+    
+    if (!apiValue || !nameValue) return;
     
     sources.push({
       key: generateSafeKey(originalKey),
-      name: source.name,
-      api: source.api,
-      detail: source.detail || '',
+      name: nameValue,
+      api: apiValue,
+      detail: source.detail || source.desc || '',
       from: 'custom',
       disabled: false,
       originalKey,
@@ -95,29 +108,15 @@ function parseSourceData(data: any): { sources: VideoSource[], format: 'array' |
     };
   }
 
-  // 1. 如果是数组格式（新格式）
+  // 尝试多种格式解析
+  const sources: VideoSource[] = [];
+  
+  // 1. 如果已经是 VideoSource 数组
   if (Array.isArray(data)) {
-    if (data.length === 0) {
-      return {
-        sources: [],
-        format: 'array',
-      };
-    }
-
-    const sources: VideoSource[] = [];
-    let hasValidItems = false;
-    
     for (const item of data) {
-      // 检查是否是有效的视频源对象
       if (item && typeof item === 'object') {
-        // 如果是旧格式对象，尝试解析
-        if (item.api_site && typeof item.api_site === 'object') {
-          const legacySources = convertLegacyToNewFormat(item);
-          sources.push(...legacySources);
-          hasValidItems = true;
-        } 
-        // 如果是单个视频源对象
-        else if (item.key && item.name && item.api) {
+        // 检查是否是有效的视频源对象
+        if (item.key && item.name && item.api) {
           sources.push({
             key: item.key,
             name: item.name,
@@ -125,14 +124,18 @@ function parseSourceData(data: any): { sources: VideoSource[], format: 'array' |
             detail: item.detail || '',
             from: item.from || 'custom',
             disabled: item.disabled || false,
-            originalKey: item.originalKey,
+            originalKey: item.originalKey || item.key,
           });
-          hasValidItems = true;
+        }
+        // 检查是否是旧格式包装的数组
+        else if (item.api_site) {
+          const legacySources = convertLegacyToNewFormat(item);
+          sources.push(...legacySources);
         }
       }
     }
     
-    if (hasValidItems) {
+    if (sources.length > 0) {
       return {
         sources,
         format: 'array',
@@ -141,54 +144,64 @@ function parseSourceData(data: any): { sources: VideoSource[], format: 'array' |
   }
   
   // 2. 如果是旧格式对象（包含 api_site）
-  if (data && typeof data === 'object' && data.api_site && typeof data.api_site === 'object') {
-    const sources = convertLegacyToNewFormat(data);
-    return {
-      sources,
-      format: 'legacy',
-    };
-  }
-  
-  // 3. 如果是单个视频源对象（新格式）
-  if (data && typeof data === 'object' && data.key && data.name && data.api) {
-    return {
-      sources: [{
-        key: data.key,
-        name: data.name,
-        api: data.api,
-        detail: data.detail || '',
-        from: data.from || 'custom',
-        disabled: data.disabled || false,
-        originalKey: data.originalKey,
-      }],
-      format: 'single',
-    };
-  }
-  
-  // 4. 尝试检查是否可能是数组的变种（如包含在其他字段中）
   if (data && typeof data === 'object') {
-    // 检查常见的字段名
-    const possibleArrayFields = ['sources', 'data', 'items', 'list', 'sites'];
+    // 检查是否包含 api_site
+    if (data.api_site && typeof data.api_site === 'object') {
+      const legacySources = convertLegacyToNewFormat(data);
+      if (legacySources.length > 0) {
+        return {
+          sources: legacySources,
+          format: 'legacy',
+        };
+      }
+    }
+    
+    // 3. 检查是否可能是包装的数组格式
+    const possibleArrayFields = ['sources', 'data', 'items', 'list', 'sites', 'videoSources', 'video_sources'];
     for (const field of possibleArrayFields) {
       if (Array.isArray(data[field])) {
-        const result = parseSourceData(data[field]);
-        if (result.sources.length > 0) {
-          return result;
+        const arrayData = data[field];
+        const validSources: VideoSource[] = [];
+        
+        for (const item of arrayData) {
+          if (item && typeof item === 'object') {
+            if (item.key && item.name && item.api) {
+              validSources.push({
+                key: item.key,
+                name: item.name,
+                api: item.api,
+                detail: item.detail || '',
+                from: item.from || 'custom',
+                disabled: item.disabled || false,
+                originalKey: item.originalKey || item.key,
+              });
+            }
+          }
+        }
+        
+        if (validSources.length > 0) {
+          return {
+            sources: validSources,
+            format: 'array',
+          };
         }
       }
     }
     
-    // 检查是否可能是旧格式的变种
-    for (const field of possibleArrayFields) {
-      if (data[field] && typeof data[field] === 'object' && data[field].api_site) {
-        const sources = convertLegacyToNewFormat(data[field]);
-        if (sources.length > 0) {
-          return {
-            sources,
-            format: 'legacy',
-          };
-        }
-      }
+    // 4. 检查是否可能是单个视频源对象
+    if (data.key && data.name && data.api) {
+      return {
+        sources: [{
+          key: data.key,
+          name: data.name,
+          api: data.api,
+          detail: data.detail || '',
+          from: data.from || 'custom',
+          disabled: data.disabled || false,
+          originalKey: data.originalKey || data.key,
+        }],
+        format: 'single',
+      };
     }
   }
   
@@ -200,6 +213,71 @@ function parseSourceData(data: any): { sources: VideoSource[], format: 'array' |
 2. 旧格式: {api_site: {"site1": {api: "...", name: "...", detail: "..."}, ...}}
 3. 单个对象: {key: "...", name: "...", api: "..."}
 4. 包装格式: {sources: [...]} 或 {data: [...]}`
+  };
+}
+
+// 清理和标准化 key
+function sanitizeKey(key: string): string {
+  if (!key) return '';
+  return key
+    .trim()
+    .replace(/[^a-zA-Z0-9-_]/g, '_')
+    .replace(/_{2,}/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .toLowerCase();
+}
+
+// 验证视频源对象
+function validateVideoSource(source: any): { valid: boolean; errors?: string[]; normalizedSource?: VideoSource } {
+  const errors: string[] = [];
+  
+  // 必须有 key, name, api
+  if (!source.key && !source.name && !source.api) {
+    // 检查是否是旧格式
+    if (source.api_site) {
+      return { valid: true }; // 旧格式让解析函数处理
+    }
+    errors.push('缺少必要的字段: key, name, api');
+    return { valid: false, errors };
+  }
+  
+  const key = sanitizeKey(source.key || '');
+  const name = (source.name || '').trim();
+  const api = (source.api || '').trim();
+  
+  if (!key) errors.push('key 不能为空');
+  if (!name) errors.push('name 不能为空');
+  if (!api) errors.push('api 不能为空');
+  
+  if (errors.length > 0) {
+    return { valid: false, errors };
+  }
+  
+  // 验证 key 格式
+  if (!/^[a-zA-Z0-9-_]+$/.test(key)) {
+    errors.push('key只能包含字母、数字、连字符(-)和下划线(_)');
+  }
+  
+  // 验证 URL（放宽要求）
+  if (api && !isValidUrl(api)) {
+    errors.push('API URL格式可能无效');
+  }
+  
+  if (errors.length > 0) {
+    return { valid: false, errors };
+  }
+  
+  return {
+    valid: true,
+    normalizedSource: {
+      key,
+      name,
+      api,
+      detail: (source.detail || '').trim(),
+      from: source.from || 'custom',
+      disabled: !!source.disabled,
+      originalKey: source.originalKey || source.key,
+    }
   };
 }
 
@@ -244,141 +322,6 @@ export async function POST(request: NextRequest) {
     }
 
     switch (action) {
-      case 'batch': {
-        // 支持两种格式的批量导入
-        const { sources, data, format, overwrite = false, merge = false } = body as {
-          sources?: any[];
-          data?: any;
-          format?: 'array' | 'legacy';
-          overwrite?: boolean;
-          merge?: boolean;
-        };
-        
-        let parsedSources: VideoSource[] = [];
-        let parsedFormat = format;
-        
-        // 优先使用解析后的sources
-        if (sources && Array.isArray(sources)) {
-          parsedSources = sources
-            .filter(item => item.key && item.name && item.api)
-            .map(item => ({
-              key: item.key,
-              name: item.name,
-              api: item.api,
-              detail: item.detail || '',
-              from: item.from || 'custom',
-              disabled: item.disabled || false,
-              originalKey: item.originalKey,
-            }));
-          parsedFormat = 'array';
-        } 
-        // 否则尝试解析data
-        else if (data) {
-          const result = parseSourceData(data);
-          if (result.error) {
-            return NextResponse.json({ error: result.error }, { status: 400 });
-          }
-          parsedSources = result.sources;
-          parsedFormat = result.format === 'single' ? 'array' : (result.format as 'array' | 'legacy');
-        } else {
-          return NextResponse.json({ error: '缺少 sources 或 data 参数' }, { status: 400 });
-        }
-        
-        if (parsedSources.length === 0) {
-          return NextResponse.json({ error: '未找到有效的视频源数据' }, { status: 400 });
-        }
-        
-        // 验证所有源的URL格式
-        const invalidSources = parsedSources.filter(source => !isValidUrl(source.api));
-        if (invalidSources.length > 0) {
-          return NextResponse.json({
-            error: '部分源的API URL格式无效',
-            invalidSources: invalidSources.map(s => ({ key: s.key, name: s.name, api: s.api })),
-          }, { status: 400 });
-        }
-        
-        // 检查重复key（在待导入的数据中）
-        const importKeyCounts: Record<string, number> = {};
-        parsedSources.forEach(source => {
-          importKeyCounts[source.key] = (importKeyCounts[source.key] || 0) + 1;
-        });
-        
-        const duplicateKeys = Object.entries(importKeyCounts)
-          .filter(([_, count]) => count > 1)
-          .map(([key]) => key);
-          
-        if (duplicateKeys.length > 0) {
-          return NextResponse.json({
-            error: '导入数据中存在重复的key',
-            duplicateKeys,
-          }, { status: 400 });
-        }
-        
-        // 执行导入操作
-        const results = {
-          imported: 0,
-          updated: 0,
-          skipped: 0,
-          failed: 0,
-          errors: [] as Array<{ key: string; error: string }>,
-        };
-        
-        const _existingKeys = new Set(adminConfig.SourceConfig.map(s => s.key));
-        const existingSources = new Map(adminConfig.SourceConfig.map(s => [s.key, s]));
-        
-        parsedSources.forEach(source => {
-          try {
-            const existing = existingSources.get(source.key);
-            
-            if (existing) {
-              // 源已存在
-              if (overwrite) {
-                // 覆盖现有源
-                Object.assign(existing, source);
-                existing.from = 'custom';
-                results.updated++;
-              } else if (merge) {
-                // 合并更新，但不覆盖from为'config'的源
-                if (existing.from !== 'config') {
-                  Object.assign(existing, source);
-                  results.updated++;
-                } else {
-                  results.skipped++;
-                }
-              } else {
-                results.skipped++;
-              }
-            } else {
-              // 新源
-              adminConfig.SourceConfig.push({
-                ...source,
-                from: source.from || 'custom',
-                disabled: source.disabled || false,
-              });
-              results.imported++;
-            }
-          } catch (error) {
-            results.failed++;
-            results.errors.push({
-              key: source.key,
-              error: error instanceof Error ? error.message : '未知错误',
-            });
-          }
-        });
-        
-        await db.saveAdminConfig(adminConfig);
-        
-        return NextResponse.json({
-          ok: true,
-          summary: {
-            format: parsedFormat,
-            total: parsedSources.length,
-            ...results,
-          },
-          errors: results.errors,
-        });
-      }
-      
       case 'import': {
         // 专门用于导入的操作，提供更多选项
         const { data, type = 'auto', strategy = 'skip', validate = true } = body as {
@@ -411,9 +354,12 @@ export async function POST(request: NextRequest) {
         // 根据指定的类型或自动检测类型来解析数据
         let parsedResult;
         if (type === 'array') {
-          parsedResult = parseSourceData(Array.isArray(importData) ? importData : { sources: importData });
+          // 如果是数组类型，直接处理数组
+          parsedResult = parseSourceData(importData);
         } else if (type === 'legacy') {
-          parsedResult = parseSourceData({ api_site: importData.api_site || importData });
+          // 如果是旧格式，包装成旧格式结构
+          const legacyData = importData.api_site ? importData : { api_site: importData };
+          parsedResult = parseSourceData(legacyData);
         } else {
           // auto: 让 parseSourceData 自动检测格式
           parsedResult = parseSourceData(importData);
@@ -423,7 +369,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ 
             error: '数据解析失败',
             details: parsedResult.error,
-            receivedData: importData // 可选：返回接收到的数据用于调试
+            receivedFormat: parsedResult.format
           }, { status: 400 });
         }
         
@@ -432,124 +378,214 @@ export async function POST(request: NextRequest) {
         if (sources.length === 0) {
           return NextResponse.json({ 
             error: '未找到有效的视频源数据',
-            hint: '请确保数据包含有效的视频源（至少包含 key, name, api 字段）'
+            hint: '请确保数据包含有效的视频源（至少包含 key, name, api 字段）',
+            detectedFormat: format
           }, { status: 400 });
         }
         
         // 验证数据
         if (validate) {
           const validationResults = {
-            invalidUrls: [] as Array<{ key: string; api: string }>,
+            invalidUrls: [] as Array<{ key: string; api: string; reason: string }>,
             missingFields: [] as Array<{ key: string; missing: string[] }>,
             invalidKeys: [] as Array<{ key: string; reason: string }>,
+            warnings: [] as Array<{ key: string; warning: string }>,
           };
           
+          const validSources: VideoSource[] = [];
+          
           sources.forEach(source => {
-            const missingFields = [];
-            if (!source.key) missingFields.push('key');
-            if (!source.name) missingFields.push('name');
-            if (!source.api) missingFields.push('api');
+            const validation = validateVideoSource(source);
             
-            if (missingFields.length > 0) {
-              validationResults.missingFields.push({
-                key: source.key || 'unknown',
-                missing: missingFields,
-              });
-            }
-            
-            // 检查 key 格式
-            if (source.key) {
-              // key 只能包含字母、数字、连字符和下划线
-              if (!/^[a-zA-Z0-9-_]+$/.test(source.key)) {
-                validationResults.invalidKeys.push({
-                  key: source.key,
-                  reason: 'key只能包含字母、数字、连字符(-)和下划线(_)',
+            if (!validation.valid) {
+              // 如果是旧格式，可能有不同的字段名，尝试宽松处理
+              if (source.name && source.api) {
+                // 尝试从 name 生成 key
+                const generatedKey = sanitizeKey(source.name);
+                if (generatedKey) {
+                  validSources.push({
+                    key: generatedKey,
+                    name: source.name,
+                    api: source.api,
+                    detail: source.detail || '',
+                    from: 'custom',
+                    disabled: false,
+                    originalKey: source.name,
+                  });
+                  validationResults.warnings.push({
+                    key: generatedKey,
+                    warning: `自动生成 key: ${generatedKey} (原始名称: ${source.name})`
+                  });
+                  return;
+                }
+              }
+              
+              // 记录错误
+              if (validation.errors) {
+                const errorKey = source.key || source.name || 'unknown';
+                validation.errors.forEach(error => {
+                  if (error.includes('key')) {
+                    validationResults.invalidKeys.push({
+                      key: errorKey,
+                      reason: error,
+                    });
+                  } else if (error.includes('URL')) {
+                    validationResults.invalidUrls.push({
+                      key: errorKey,
+                      api: source.api || '',
+                      reason: error,
+                    });
+                  } else {
+                    validationResults.missingFields.push({
+                      key: errorKey,
+                      missing: error.includes('不能为空') ? [error.split(' ')[0]] : ['未知字段'],
+                    });
+                  }
                 });
               }
+              return;
             }
             
-            if (source.api && !isValidUrl(source.api)) {
-              validationResults.invalidUrls.push({
-                key: source.key,
-                api: source.api,
-              });
+            if (validation.normalizedSource) {
+              validSources.push(validation.normalizedSource);
             }
           });
           
-          const hasErrors = validationResults.invalidUrls.length > 0 || 
-                           validationResults.missingFields.length > 0 || 
-                           validationResults.invalidKeys.length > 0;
+          const hasCriticalErrors = validationResults.invalidUrls.length > 0 || 
+                                   validationResults.missingFields.length > 0 || 
+                                   validationResults.invalidKeys.length > 0;
           
-          if (hasErrors) {
+          if (hasCriticalErrors && validSources.length === 0) {
             return NextResponse.json({
               error: '数据验证失败',
               validationResults,
               totalSources: sources.length,
-              validSources: sources.length - (
-                validationResults.invalidUrls.length + 
-                validationResults.missingFields.length + 
-                validationResults.invalidKeys.length
-              ),
+              validSources: 0,
+              warnings: validationResults.warnings,
             }, { status: 400 });
           }
-        }
-        
-        // 执行导入
-        const importStats = {
-          imported: 0,
-          updated: 0,
-          skipped: 0,
-          duplicates: 0,
-        };
-        
-        const existingSources = new Map(adminConfig.SourceConfig.map(s => [s.key, s]));
-        
-        sources.forEach(source => {
-          const existing = existingSources.get(source.key);
           
-          if (existing) {
-            // 已存在的处理逻辑
-            importStats.duplicates++;
-            if (strategy === 'overwrite') {
-              // 覆盖现有源
-              Object.assign(existing, source);
-              existing.from = 'custom';
-              importStats.updated++;
-            } else if (strategy === 'merge') {
-              // 合并，但不覆盖from为'config'的源
-              if (existing.from !== 'config') {
-                Object.assign(existing, source);
+          // 如果有有效的源，继续处理，只是记录警告
+          if (validSources.length > 0) {
+            // 执行导入
+            const importStats = {
+              imported: 0,
+              updated: 0,
+              skipped: 0,
+              duplicates: 0,
+            };
+            
+            const existingSources = new Map(adminConfig.SourceConfig.map(s => [s.key, s]));
+            
+            validSources.forEach(source => {
+              const existing = existingSources.get(source.key);
+              
+              if (existing) {
+                // 已存在的处理逻辑
+                importStats.duplicates++;
+                if (strategy === 'overwrite') {
+                  // 覆盖现有源
+                  Object.assign(existing, source);
+                  existing.from = 'custom';
+                  importStats.updated++;
+                } else if (strategy === 'merge') {
+                  // 合并，但不覆盖from为'config'的源
+                  if (existing.from !== 'config') {
+                    Object.assign(existing, source);
+                    importStats.updated++;
+                  } else {
+                    importStats.skipped++;
+                  }
+                } else {
+                  // skip策略
+                  importStats.skipped++;
+                }
+              } else {
+                // 新源
+                adminConfig.SourceConfig.push({
+                  ...source,
+                  from: 'custom',
+                  disabled: source.disabled || false,
+                });
+                importStats.imported++;
+              }
+            });
+            
+            await db.saveAdminConfig(adminConfig);
+            
+            return NextResponse.json({
+              ok: true,
+              import: {
+                format: format === 'single' ? 'array' : format,
+                total: sources.length,
+                valid: validSources.length,
+                ...importStats,
+              },
+              sourcesImported: importStats.imported,
+              sourcesUpdated: importStats.updated,
+              warnings: validationResults.warnings.length > 0 ? validationResults.warnings : undefined,
+            });
+          }
+        } else {
+          // 不验证，直接导入
+          const importStats = {
+            imported: 0,
+            updated: 0,
+            skipped: 0,
+            duplicates: 0,
+          };
+          
+          const existingSources = new Map(adminConfig.SourceConfig.map(s => [s.key, s]));
+          
+          sources.forEach(source => {
+            const normalizedSource: VideoSource = {
+              key: sanitizeKey(source.key || source.name || ''),
+              name: source.name || '',
+              api: source.api || '',
+              detail: source.detail || '',
+              from: 'custom',
+              disabled: false,
+              originalKey: source.originalKey || source.key || source.name,
+            };
+            
+            const existing = existingSources.get(normalizedSource.key);
+            
+            if (existing) {
+              importStats.duplicates++;
+              if (strategy === 'overwrite') {
+                Object.assign(existing, normalizedSource);
+                existing.from = 'custom';
                 importStats.updated++;
+              } else if (strategy === 'merge') {
+                if (existing.from !== 'config') {
+                  Object.assign(existing, normalizedSource);
+                  importStats.updated++;
+                } else {
+                  importStats.skipped++;
+                }
               } else {
                 importStats.skipped++;
               }
             } else {
-              // skip策略
-              importStats.skipped++;
+              adminConfig.SourceConfig.push(normalizedSource);
+              importStats.imported++;
             }
-          } else {
-            // 新源
-            adminConfig.SourceConfig.push({
-              ...source,
-              from: 'custom',
-              disabled: source.disabled || false,
-            });
-            importStats.imported++;
-          }
-        });
-        
-        await db.saveAdminConfig(adminConfig);
-        
-        return NextResponse.json({
-          ok: true,
-          import: {
-            format: format === 'single' ? 'array' : format,
-            total: sources.length,
-            ...importStats,
-          },
-          sourcesImported: importStats.imported,
-          sourcesUpdated: importStats.updated,
-        });
+          });
+          
+          await db.saveAdminConfig(adminConfig);
+          
+          return NextResponse.json({
+            ok: true,
+            import: {
+              format: format === 'single' ? 'array' : format,
+              total: sources.length,
+              ...importStats,
+            },
+            sourcesImported: importStats.imported,
+            sourcesUpdated: importStats.updated,
+          });
+        }
+        break;
       }
 
       case 'add': {
@@ -750,9 +786,7 @@ export async function POST(request: NextRequest) {
           }
 
           // 检查URL格式
-          try {
-            new URL(source.api);
-          } catch {
+          if (!isValidUrl(source.api)) {
             problems.push('API URL格式无效');
           }
 
