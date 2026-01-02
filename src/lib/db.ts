@@ -31,16 +31,13 @@ class LocalStorageMock implements IStorage {
           Users: [],
           Tags: []
         },
-        ConfigSubscribtion: {           // 修复：改为对象而不是数组
+        ConfigSubscribtion: {
           URL: '',
           AutoUpdate: false,
           LastCheck: '',
         },
-        ConfigFile: {           // 添加缺失的属性
-          version: '1.0',
-          lastUpdated: new Date().toISOString(),
-        },
-        SiteConfig: {           // 添加缺失的属性
+        ConfigFile: '',           // 修复：改为空字符串而不是对象
+        SiteConfig: {
           title: 'NewTV',
           description: '二次开发的跨平台影视聚合播放站',
           logo: '',
@@ -60,8 +57,8 @@ class LocalStorageMock implements IStorage {
             github: '',
           },
         },
-        CustomCategories: [],   // 添加缺失的属性
-        Client: {               // 添加缺失的属性
+        CustomCategories: [],
+        Client: {
           logo: '',
           background: '',
           favicon: '',
@@ -97,10 +94,7 @@ class LocalStorageMock implements IStorage {
       };
     }
     if (!config.ConfigFile) {
-      config.ConfigFile = {
-        version: '1.0',
-        lastUpdated: new Date().toISOString(),
-      };
+      config.ConfigFile = '';  // 修复：改为空字符串
     }
     if (!config.SiteConfig) {
       config.SiteConfig = {
@@ -142,6 +136,8 @@ class LocalStorageMock implements IStorage {
     this.adminConfig = config;
     console.log('本地存储：管理员配置已保存，SourceConfig数量:', config.SourceConfig.length);
   }
+
+  // ... 其他方法保持不变 ...
 
   // 用户相关方法
   async registerUser(userName: string, password: string): Promise<void> {
@@ -444,10 +440,7 @@ export class DbManager {
       };
     }
     if (!config.ConfigFile) {
-      config.ConfigFile = {
-        version: '1.0',
-        lastUpdated: new Date().toISOString(),
-      };
+      config.ConfigFile = '';  // 修复：改为空字符串
     }
     if (!config.SiteConfig) {
       config.SiteConfig = {
@@ -516,6 +509,8 @@ export class DbManager {
       throw new Error(`保存配置失败: ${errorMessage}`);
     }
   }
+
+  // ... 其他方法保持不变 ...
 
   // ---------- 播放记录 ----------
   async getPlayRecord(
