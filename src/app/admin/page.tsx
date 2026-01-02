@@ -4009,109 +4009,139 @@ const VideoSourceConfig = ({
         )}
 
       {/* 导入确认弹窗 */}
-      {importConfirmModal.isOpen &&
-        createPortal(
-          <div
-            className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4'
-            onClick={() => setImportConfirmModal({ isOpen: false, sourcesToImport: [] })}
-          >
-            <div
-              className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full'
-              onClick={(e) => e.stopPropagation()}
+{/* 导入确认弹窗 */}
+{importConfirmModal.isOpen &&
+  createPortal(
+    <div
+      className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4'
+      onClick={() => setImportConfirmModal({ isOpen: false, sourcesToImport: [], formatType: 'auto' })}
+    >
+      <div
+        className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto'
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className='p-6'>
+          <div className='flex items-center justify-between mb-6'>
+            <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
+              确认导入视频源
+            </h3>
+            <button
+              onClick={() => setImportConfirmModal({ isOpen: false, sourcesToImport: [], formatType: 'auto' })}
+              className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
             >
-              <div className='p-6'>
-                <div className='flex items-center justify-between mb-6'>
-                  <h3 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
-                    确认导入视频源
-                  </h3>
-                  <button
-                    onClick={() => setImportConfirmModal({ isOpen: false, sourcesToImport: [] })}
-                    className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors'
-                  >
-                    <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
-                    </svg>
-                  </button>
-                </div>
+              <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
+              </svg>
+            </button>
+          </div>
 
-                <div className='mb-6'>
-                  <div className='bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4'>
-                    <div className='flex items-center space-x-2 mb-2'>
-                      <AlertTriangle className='w-5 h-5 text-yellow-600 dark:text-yellow-400' />
-                      <span className='text-sm font-medium text-yellow-800 dark:text-yellow-300'>
-                        导入提示
-                      </span>
-                    </div>
-                    <p className='text-sm text-yellow-700 dark:text-yellow-400'>
-                      即将导入 {importConfirmModal.sourcesToImport.length} 个视频源，导入后会覆盖现有的自定义视频源。
-                    </p>
-                  </div>
-
-                  {/* 视频源预览列表 */}
-                  <div className='max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg'>
-                    <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
-                      <thead className='bg-gray-50 dark:bg-gray-800'>
-                        <tr>
-                          <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
-                            名称
-                          </th>
-                          <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
-                            Key
-                          </th>
-                          <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
-                            API 地址
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
-                        {importConfirmModal.sourcesToImport.slice(0, 5).map((source, index) => (
-                          <tr key={index} className='hover:bg-gray-50 dark:hover:bg-gray-800'>
-                            <td className='px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100'>
-                              {source.name}
-                            </td>
-                            <td className='px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100'>
-                              {source.key}
-                            </td>
-                            <td className='px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 truncate max-w-[200px]'>
-                              {source.api}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {importConfirmModal.sourcesToImport.length > 5 && (
-                      <div className='px-4 py-2 text-center text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800'>
-                        还有 {importConfirmModal.sourcesToImport.length - 5} 个视频源...
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* 操作按钮 */}
-                <div className='flex justify-end space-x-3'>
-                  <button
-                    onClick={() => setImportConfirmModal({ isOpen: false, sourcesToImport: [] })}
-                    className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
-                  >
-                    取消
-                  </button>
-                  <button
-                    onClick={handleConfirmImport}
-                    disabled={isLoading('confirmImport')}
-                    className={`px-6 py-2.5 text-sm font-medium ${
-                      isLoading('confirmImport')
-                        ? buttonStyles.disabled
-                        : buttonStyles.primary
-                    }`}
-                  >
-                    {isLoading('confirmImport') ? '导入中...' : '确认导入'}
-                  </button>
-                </div>
+          <div className='mb-6'>
+            <div className={`p-4 mb-4 rounded-lg border ${
+              importConfirmModal.formatType === 'legacy' 
+                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+            }`}>
+              <div className='flex items-center space-x-2 mb-2'>
+                {importConfirmModal.formatType === 'legacy' ? (
+                  <AlertTriangle className='w-5 h-5 text-blue-600 dark:text-blue-400' />
+                ) : (
+                  <AlertTriangle className='w-5 h-5 text-yellow-600 dark:text-yellow-400' />
+                )}
+                <span className={`text-sm font-medium ${
+                  importConfirmModal.formatType === 'legacy'
+                    ? 'text-blue-800 dark:text-blue-300'
+                    : 'text-yellow-800 dark:text-yellow-300'
+                }`}>
+                  {importConfirmModal.formatType === 'legacy' ? '旧格式检测' : '新格式检测'}
+                </span>
               </div>
+              <p className={`text-sm ${
+                importConfirmModal.formatType === 'legacy'
+                  ? 'text-blue-700 dark:text-blue-400'
+                  : 'text-yellow-700 dark:text-yellow-400'
+              }`}>
+                {importConfirmModal.formatType === 'legacy'
+                  ? '检测到旧格式配置，将自动转换为新格式并导入。'
+                  : `检测到新格式，即将导入 ${importConfirmModal.sourcesToImport.length} 个视频源。`}
+              </p>
             </div>
-          </div>,
-          document.body
-        )}
+
+            {/* 视频源预览列表 - 只显示前5个 */}
+            {importConfirmModal.formatType !== 'legacy' && (
+              <div className='max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg'>
+                <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
+                  <thead className='bg-gray-50 dark:bg-gray-800'>
+                    <tr>
+                      <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                        名称
+                      </th>
+                      <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                        Key
+                      </th>
+                      <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                        API 地址
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
+                    {importConfirmModal.sourcesToImport.slice(0, 5).map((source, index) => (
+                      <tr key={index} className='hover:bg-gray-50 dark:hover:bg-gray-800'>
+                        <td className='px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100'>
+                          {source.name || source.title || '未命名'}
+                        </td>
+                        <td className='px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100'>
+                          {source.key || source.name || '自动生成'}
+                        </td>
+                        <td className='px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 truncate max-w-[200px]'>
+                          {source.api || source.url || ''}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {importConfirmModal.sourcesToImport.length > 5 && (
+                  <div className='px-4 py-2 text-center text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800'>
+                    还有 {importConfirmModal.sourcesToImport.length - 5} 个视频源...
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* 旧格式提示 */}
+            {importConfirmModal.formatType === 'legacy' && (
+              <div className='mt-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg'>
+                <p className='text-sm text-gray-600 dark:text-gray-400'>
+                  旧格式数据将自动解析为视频源数组导入。
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* 操作按钮 */}
+          <div className='flex justify-end space-x-3'>
+            <button
+              onClick={() => setImportConfirmModal({ isOpen: false, sourcesToImport: [], formatType: 'auto' })}
+              className={`px-6 py-2.5 text-sm font-medium ${buttonStyles.secondary}`}
+            >
+              取消
+            </button>
+            <button
+              onClick={handleConfirmImport}
+              disabled={isLoading('confirmImport')}
+              className={`px-6 py-2.5 text-sm font-medium ${
+                isLoading('confirmImport')
+                  ? buttonStyles.disabled
+                  : buttonStyles.primary
+              }`}
+            >
+              {isLoading('confirmImport') ? '导入中...' : '确认导入'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )}
 
       {/* 有效性检测弹窗 */}
       {showValidationModal &&
