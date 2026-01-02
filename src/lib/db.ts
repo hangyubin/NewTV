@@ -24,13 +24,48 @@ class LocalStorageMock implements IStorage {
   // 管理员配置方法
   async getAdminConfig(): Promise<AdminConfig | null> {
     if (!this.adminConfig) {
-      // 返回默认配置
+      // 返回完整默认配置
       this.adminConfig = {
         SourceConfig: [],
         UserConfig: {
           Users: [],
           Tags: []
-        }
+        },
+        ConfigSubscribtion: [], // 添加缺失的属性
+        ConfigFile: {           // 添加缺失的属性
+          version: '1.0',
+          lastUpdated: new Date().toISOString(),
+        },
+        SiteConfig: {           // 添加缺失的属性
+          title: 'NewTV',
+          description: '二次开发的跨平台影视聚合播放站',
+          logo: '',
+          favicon: '',
+          theme: 'dark',
+          language: 'zh-CN',
+          footer: '',
+          copyright: '',
+          analytics: '',
+          seo: {
+            keywords: '',
+            description: '',
+          },
+          social: [],
+          contact: {
+            email: '',
+            github: '',
+          },
+        },
+        CustomCategories: [],   // 添加缺失的属性
+        Client: {               // 添加缺失的属性
+          logo: '',
+          background: '',
+          favicon: '',
+          css: '',
+          copyright: '',
+          theme: '',
+          customTheme: '',
+        },
       };
       console.log('本地存储：创建默认管理员配置');
     }
@@ -49,6 +84,51 @@ class LocalStorageMock implements IStorage {
     }
     if (!config.UserConfig) {
       config.UserConfig = { Users: [], Tags: [] };
+    }
+    if (!config.ConfigSubscribtion) {
+      config.ConfigSubscribtion = [];
+    }
+    if (!config.ConfigFile) {
+      config.ConfigFile = {
+        version: '1.0',
+        lastUpdated: new Date().toISOString(),
+      };
+    }
+    if (!config.SiteConfig) {
+      config.SiteConfig = {
+        title: 'NewTV',
+        description: '二次开发的跨平台影视聚合播放站',
+        logo: '',
+        favicon: '',
+        theme: 'dark',
+        language: 'zh-CN',
+        footer: '',
+        copyright: '',
+        analytics: '',
+        seo: {
+          keywords: '',
+          description: '',
+        },
+        social: [],
+        contact: {
+          email: '',
+          github: '',
+        },
+      };
+    }
+    if (!config.CustomCategories) {
+      config.CustomCategories = [];
+    }
+    if (!config.Client) {
+      config.Client = {
+        logo: '',
+        background: '',
+        favicon: '',
+        css: '',
+        copyright: '',
+        theme: '',
+        customTheme: '',
+      };
     }
     
     this.adminConfig = config;
@@ -347,6 +427,53 @@ export class DbManager {
       console.log('UserConfig 不存在，初始化为空对象');
     }
     
+    // 确保其他字段也存在
+    if (!config.ConfigSubscribtion) {
+      config.ConfigSubscribtion = [];
+    }
+    if (!config.ConfigFile) {
+      config.ConfigFile = {
+        version: '1.0',
+        lastUpdated: new Date().toISOString(),
+      };
+    }
+    if (!config.SiteConfig) {
+      config.SiteConfig = {
+        title: 'NewTV',
+        description: '二次开发的跨平台影视聚合播放站',
+        logo: '',
+        favicon: '',
+        theme: 'dark',
+        language: 'zh-CN',
+        footer: '',
+        copyright: '',
+        analytics: '',
+        seo: {
+          keywords: '',
+          description: '',
+        },
+        social: [],
+        contact: {
+          email: '',
+          github: '',
+        },
+      };
+    }
+    if (!config.CustomCategories) {
+      config.CustomCategories = [];
+    }
+    if (!config.Client) {
+      config.Client = {
+        logo: '',
+        background: '',
+        favicon: '',
+        css: '',
+        copyright: '',
+        theme: '',
+        customTheme: '',
+      };
+    }
+    
     console.log('准备保存配置:');
     console.log('- SourceConfig 数量:', config.SourceConfig.length);
     console.log('- 第一个源:', config.SourceConfig[0] ? {
@@ -378,10 +505,7 @@ export class DbManager {
     }
   }
 
-  // ... 其他方法保持不变（播放记录、收藏、用户等）
-  // 注意：这里保持原有的其他方法实现，只修复了管理员配置相关方法
-  
-  // 播放记录相关方法
+  // ---------- 播放记录 ----------
   async getPlayRecord(
     userName: string,
     source: string,
@@ -420,7 +544,7 @@ export class DbManager {
     await this.storage.deletePlayRecord(userName, key);
   }
 
-  // 收藏相关方法
+  // ---------- 收藏 ----------
   async getFavorite(
     userName: string,
     source: string,
