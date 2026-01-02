@@ -347,7 +347,7 @@ function validateVideoSource(source: any): {
       name,
       api,
       detail: (source.detail || '').trim(),
-      from: 'custom' as const, // 这里修复：明确指定为字面量类型 'custom'
+      from: source.from || 'custom', // 保留原始from字段，如果没有则默认为custom
       disabled: !!source.disabled,
       originalKey: source.originalKey || source.key || source.name,
     },
@@ -703,7 +703,7 @@ export async function POST(request: NextRequest) {
               name: source.name || '',
               api: source.api || '',
               detail: source.detail || '',
-              from: 'custom' as const, // 这里修复：明确指定为字面量类型
+              from: source.from || 'custom', // 保留原始from字段，如果没有则默认为custom
               disabled: false,
               originalKey: source.originalKey || source.key || source.name,
             };
