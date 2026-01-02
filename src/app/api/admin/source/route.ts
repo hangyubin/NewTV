@@ -23,7 +23,6 @@ interface VideoSource {
   detail?: string;
   disabled?: boolean;
   from?: 'config' | 'custom';
-  category?: string;
   originalKey?: string; // 原始key，用于转换后的追踪
 }
 
@@ -45,18 +44,6 @@ function generateSafeKey(originalKey: string): string {
     .replace(/_{2,}/g, '_')
     .replace(/^_+|_+$/g, '')
     .toLowerCase();
-}
-
-// 检测源分类
-function detectSourceCategory(name: string): string {
-  if (!name) return 'other';
-  
-  const lowerName = name.toLowerCase();
-  if (lowerName.includes('tv-') || name.includes('🎬')) return 'tv';
-  if (lowerName.includes('av-') || name.includes('🔞')) return 'adult';
-  if (lowerName.includes('动漫') || lowerName.includes('anime')) return 'anime';
-  if (lowerName.includes('短剧') || lowerName.includes('short')) return 'short_drama';
-  return 'other';
 }
 
 // 验证URL格式
@@ -85,7 +72,6 @@ function convertLegacyToNewFormat(data: any): VideoSource[] { // 修改参数类
       detail: source.detail || '',
       from: 'custom',
       disabled: false,
-      category: detectSourceCategory(source.name),
       originalKey,
     });
   });
@@ -106,7 +92,6 @@ function parseSourceData(data: any): { sources: VideoSource[], format: 'array' |
         detail: item.detail || '',
         from: item.from || 'custom',
         disabled: item.disabled || false,
-        category: item.category || detectSourceCategory(item.name),
       }));
     
     return {
@@ -134,7 +119,6 @@ function parseSourceData(data: any): { sources: VideoSource[], format: 'array' |
         detail: data.detail || '',
         from: data.from || 'custom',
         disabled: data.disabled || false,
-        category: data.category || detectSourceCategory(data.name),
       }],
       format: 'array',
     };
@@ -212,7 +196,6 @@ export async function POST(request: NextRequest) {
               detail: item.detail || '',
               from: item.from || 'custom',
               disabled: item.disabled || false,
-              category: item.category || detectSourceCategory(item.name),
             }));
           parsedFormat = 'array';
         } 
@@ -267,7 +250,7 @@ export async function POST(request: NextRequest) {
           errors: [] as Array<{ key: string; error: string }>,
         };
         
-        const existingKeys = new Set(adminConfig.SourceConfig.map(s => s.key));
+        const _existingKeys = new Set(adminConfig.SourceConfig.map(s => s.key)); // 添加 _ 前缀
         const existingSources = new Map(adminConfig.SourceConfig.map(s => [s.key, s]));
         
         parsedSources.forEach(source => {
@@ -448,12 +431,11 @@ export async function POST(request: NextRequest) {
       }
 
       case 'add': {
-        const { key, name, api, detail, category } = body as {
+        const { key, name, api, detail } = body as {
           key?: string;
           name?: string;
           api?: string;
           detail?: string;
-          category?: string;
         };
         if (!key || !name || !api) {
           return NextResponse.json({ error: '缺少必要参数' }, { status: 400 });
@@ -471,7 +453,7 @@ export async function POST(request: NextRequest) {
           detail: detail || '',
           from: 'custom',
           disabled: false,
-          category: category || detectSourceCategory(name),
+          // 移除 category 属性
         });
         break;
       }
@@ -516,7 +498,7 @@ export async function POST(request: NextRequest) {
         if (adminConfig.UserConfig.Tags) {
           adminConfig.UserConfig.Tags.forEach(tag => {
             if (tag.enabledApis) {
-              tag.enabledApis = tag.enabledApis.filter(api => api !== key);
+              tag.enabledApis = tag.enabledApis.filter(apiKey => apiKey !== key);
             }
           });
         }
@@ -524,7 +506,7 @@ export async function POST(request: NextRequest) {
         // 清理用户权限
         adminConfig.UserConfig.Users.forEach(user => {
           if (user.enabledApis) {
-            user.enabledApis = user.enabledApis.filter(api => api !== key);
+            user.enabledApis = user.enabledApis.filter(apiKey => apiKey !== key);
           }
         });
         break;
@@ -583,7 +565,7 @@ export async function POST(request: NextRequest) {
           if (adminConfig.UserConfig.Tags) {
             adminConfig.UserConfig.Tags.forEach(tag => {
               if (tag.enabledApis) {
-                tag.enabledApis = tag.enabledApis.filter(api => !keysToDelete.includes(api));
+                tag.enabledApis = tag.enabledApis.filter(apiKey => !keysToDelete.includes(apiKey));
               }
             });
           }
@@ -591,7 +573,7 @@ export async function POST(request: NextRequest) {
           // 清理用户权限
           adminConfig.UserConfig.Users.forEach(user => {
             if (user.enabledApis) {
-              user.enabledApis = user.enabledApis.filter(api => !keysToDelete.includes(api));
+              user.enabledApis = user.enabledApis.filter(apiKey => !keysToDelete.includes(apiKey));
             }
           });
         }
@@ -653,47 +635,20 @@ export async function POST(request: NextRequest) {
             problems.push('API URL格式无效');
           }
 
-          // 检查分类
-          if (!source.category) {
-            problems.push('未设置分类');
-          }
-
           if (problems.length > 0) {
             issues.push({
               key: source.key,
               name: source.name,
               issue: problems.join(', '),
-              fix: source.category ? undefined : '自动分类',
             });
           }
         });
 
-        // 自动修复可以修复的问题
-        const fixedCount = 0; // 修改为 const
-        issues.forEach(_issue => { // 添加 _ 前缀
-          if (_issue.fix === '自动分类') {
-            const source = adminConfig.SourceConfig.find(s => s.key === _issue.key);
-            if (source) {
-              source.category = detectSourceCategory(source.name);
-              // fixedCount++; // 由于 fixedCount 是 const，这里需要重新设计逻辑
-            }
-          }
-        });
-
-        // 重新计算 fixedCount
-        const actualFixedCount = issues.filter(issue => 
-          issue.fix === '自动分类' && adminConfig.SourceConfig.find(s => s.key === issue.key)?.category
-        ).length;
-
-        if (actualFixedCount > 0) {
-          await db.saveAdminConfig(adminConfig);
-        }
-
         return NextResponse.json({
           ok: true,
           issues,
-          fixed: actualFixedCount,
-          needManualFix: issues.length - actualFixedCount,
+          fixed: 0,
+          needManualFix: issues.length,
         });
       }
 
@@ -701,11 +656,9 @@ export async function POST(request: NextRequest) {
         const { 
           format = 'new',  // 'new' 或 'legacy'
           includeDisabled = false,
-          category 
         } = body as {
           format?: 'new' | 'legacy';
           includeDisabled?: boolean;
-          category?: string;
         };
 
         let sourcesToExport = adminConfig.SourceConfig;
@@ -713,10 +666,6 @@ export async function POST(request: NextRequest) {
         // 应用过滤器
         if (!includeDisabled) {
           sourcesToExport = sourcesToExport.filter(s => !s.disabled);
-        }
-
-        if (category) {
-          sourcesToExport = sourcesToExport.filter(s => s.category === category);
         }
 
         let exportData: any;
@@ -745,7 +694,6 @@ export async function POST(request: NextRequest) {
             api: source.api,
             detail: source.detail,
             disabled: source.disabled,
-            category: source.category,
             from: source.from,
           }));
         }
