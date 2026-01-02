@@ -24,9 +24,25 @@ class LocalStorageMock implements IStorage {
   // 管理员配置方法
   async getAdminConfig(): Promise<AdminConfig | null> {
     if (!this.adminConfig) {
+      // 加载默认API站点配置
+      const defaultApiSites = {
+        'dbzy_tv': {
+          name: 'DBZY TV',
+          api: 'https://api.r2afosne.dpdns.org',
+          detail: 'DBZY TV API'
+        }
+      };
+      
       // 返回完整默认配置 - 注意：移除 Client 属性，因为 AdminConfig 类型中不存在
       this.adminConfig = {
-        SourceConfig: [],
+        SourceConfig: Object.entries(defaultApiSites).map(([key, site]) => ({
+          key,
+          name: site.name,
+          api: site.api,
+          detail: site.detail,
+          from: 'config',
+          disabled: false
+        })),
         UserConfig: {
           Users: [],
           Tags: []
@@ -52,7 +68,7 @@ class LocalStorageMock implements IStorage {
         CustomCategories: []
         // 注意：移除了 Client 属性，因为 AdminConfig 类型中不存在
       };
-      console.log('本地存储：创建默认管理员配置');
+      console.log('本地存储：创建默认管理员配置，SourceConfig数量:', this.adminConfig.SourceConfig.length);
     }
     return this.adminConfig;
   }

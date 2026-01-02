@@ -201,47 +201,47 @@ function parseSourceData(data: any): {
     }
 
     // 检查包装格式
-    const possibleArrayFields = ['sources', 'data', 'items', 'list', 'sites'];
-    for (const field of possibleArrayFields) {
-      if (Array.isArray(data[field])) {
-        const arrayData = data[field];
-        const validSources: VideoSource[] = [];
+            const possibleArrayFields = ['sources', 'data', 'items', 'list', 'sites'];
+            for (const field of possibleArrayFields) {
+              if (Array.isArray(data[field])) {
+                const arrayData = data[field];
+                const validSources: VideoSource[] = [];
 
-        for (const item of arrayData) {
-          if (item && typeof item === 'object') {
-            if (item.key && item.name && item.api) {
-              validSources.push({
-                key: item.key,
-                name: item.name,
-                api: item.api,
-                detail: item.detail || '',
-                from: 'custom', // 导入的数据都是 custom
-                disabled: item.disabled || false,
-                originalKey: item.originalKey || item.key,
-              });
-            } else if (item.name && item.api) {
-              const key = generateSafeKey(item.key || item.name);
-              validSources.push({
-                key,
-                name: item.name,
-                api: item.api,
-                detail: item.detail || '',
-                from: 'custom', // 导入的数据都是 custom
-                disabled: false,
-                originalKey: item.name,
-              });
+                for (const item of arrayData) {
+                  if (item && typeof item === 'object') {
+                    if (item.key && item.name && item.api) {
+                      validSources.push({
+                        key: item.key,
+                        name: item.name,
+                        api: item.api,
+                        detail: item.detail || '',
+                        from: 'config', // 导入的数据标记为 config，与配置文件源相同
+                        disabled: item.disabled || false,
+                        originalKey: item.originalKey || item.key,
+                      });
+                    } else if (item.name && item.api) {
+                      const key = generateSafeKey(item.key || item.name);
+                      validSources.push({
+                        key,
+                        name: item.name,
+                        api: item.api,
+                        detail: item.detail || '',
+                        from: 'config', // 导入的数据标记为 config，与配置文件源相同
+                        disabled: false,
+                        originalKey: item.name,
+                      });
+                    }
+                  }
+                }
+
+                if (validSources.length > 0) {
+                  return {
+                    sources: validSources,
+                    format: 'array',
+                  };
+                }
+              }
             }
-          }
-        }
-
-        if (validSources.length > 0) {
-          return {
-            sources: validSources,
-            format: 'array',
-          };
-        }
-      }
-    }
 
     // 单个对象
     if (data.key && data.name && data.api) {
@@ -347,7 +347,7 @@ function validateVideoSource(source: any): {
       name,
       api,
       detail: (source.detail || '').trim(),
-      from: source.from || 'custom', // 保留原始from字段，如果没有则默认为custom
+      from: source.from || 'config', // 导入的数据标记为 config，与配置文件源相同
       disabled: !!source.disabled,
       originalKey: source.originalKey || source.key || source.name,
     },
@@ -699,14 +699,14 @@ export async function POST(request: NextRequest) {
           sources.forEach((source) => {
             const validation = validateVideoSource(source);
             const normalizedSource = validation.normalizedSource || {
-              key: sanitizeKey(source.key || source.name || ''),
-              name: source.name || '',
-              api: source.api || '',
-              detail: source.detail || '',
-              from: source.from || 'custom', // 保留原始from字段，如果没有则默认为custom
-              disabled: false,
-              originalKey: source.originalKey || source.key || source.name,
-            };
+            key: sanitizeKey(source.key || source.name || ''),
+            name: source.name || '',
+            api: source.api || '',
+            detail: source.detail || '',
+            from: source.from || 'config', // 保留原始from字段，如果没有则默认为config
+            disabled: false,
+            originalKey: source.originalKey || source.key || source.name,
+          };
 
             const existing = existingSources.get(normalizedSource.key);
 

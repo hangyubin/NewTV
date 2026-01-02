@@ -21,7 +21,11 @@ export interface LiveCfg {
 interface ConfigFileStruct {
   cache_time?: number;
   api_site?: {
-    [key: string]: ApiSite;
+    [key: string]: {
+      api: string;
+      name: string;
+      detail?: string;
+    };
   };
   custom_category?: {
     name?: string;
@@ -193,7 +197,13 @@ export function refineConfig(adminConfig: AdminConfig): AdminConfig {
 
 // 导入默认配置
 const defaultConfig = {
-  api_site: {},
+  api_site: {
+    'dbzy_tv': {
+      name: 'DBZY TV',
+      api: 'https://api.r2afosne.dpdns.org',
+      detail: 'DBZY TV API'
+    }
+  },
   cache_time: 7200,
   custom_category: [],
   lives: {},
