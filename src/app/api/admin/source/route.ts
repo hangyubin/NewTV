@@ -31,16 +31,6 @@ interface VideoSourceForExport extends VideoSource {
   originalKey?: string;
 }
 
-// 旧格式配置接口
-interface _LegacySourceConfig {
-  cache_time?: number;
-  api_site: Record<string, {
-    api: string;
-    name: string;
-    detail?: string;
-  }>;
-}
-
 // 生成安全的key
 function generateSafeKey(originalKey: string): string {
   // 移除特殊字符，只保留字母数字和连字符
@@ -73,7 +63,7 @@ function isValidUrl(url: string): boolean {
 function convertLegacyToNewFormat(data: any): VideoSource[] {
   const sources: VideoSource[] = [];
   
-  if (!data.api_site) return sources;
+  if (!data || typeof data !== 'object' || !data.api_site) return sources;
   
   Object.entries(data.api_site).forEach(([originalKey, source]: [string, any]) => {
     if (!source || typeof source !== 'object') return;
@@ -132,6 +122,20 @@ function parseSourceData(data: any): { sources: VideoSource[], format: 'array' |
           const legacySources = convertLegacyToNewFormat(item);
           sources.push(...legacySources);
         }
+        // 尝试从其他字段解析
+        else if (item.name && item.api) {
+          // 如果没有key，从name生成
+          const key = generateSafeKey(item.key || item.name);
+          sources.push({
+            key,
+            name: item.name,
+            api: item.api,
+            detail: item.detail || '',
+            from: 'custom',
+            disabled: false,
+            originalKey: item.name,
+          });
+        }
       }
     }
     
@@ -175,6 +179,18 @@ function parseSourceData(data: any): { sources: VideoSource[], format: 'array' |
                 disabled: item.disabled || false,
                 originalKey: item.originalKey || item.key,
               });
+            } else if (item.name && item.api) {
+              // 如果没有key，从name生成
+              const key = generateSafeKey(item.key || item.name);
+              validSources.push({
+                key,
+                name: item.name,
+                api: item.api,
+                detail: item.detail || '',
+                from: 'custom',
+                disabled: false,
+                originalKey: item.name,
+              });
             }
           }
         }
@@ -199,6 +215,23 @@ function parseSourceData(data: any): { sources: VideoSource[], format: 'array' |
           from: data.from || 'custom',
           disabled: data.disabled || false,
           originalKey: data.originalKey || data.key,
+        }],
+        format: 'single',
+      };
+    }
+    
+    // 5. 检查是否有 name 和 api 但没有 key
+    if (data.name && data.api) {
+      const key = generateSafeKey(data.key || data.name);
+      return {
+        sources: [{
+          key,
+          name: data.name,
+          api: data.api,
+          detail: data.detail || '',
+          from: 'custom',
+          disabled: false,
+          originalKey: data.name,
         }],
         format: 'single',
       };
@@ -231,25 +264,25 @@ function sanitizeKey(key: string): string {
 function validateVideoSource(source: any): { valid: boolean; errors?: string[]; normalizedSource?: VideoSource } {
   const errors: string[] = [];
   
-  // 必须有 key, name, api
-  if (!source.key && !source.name && !source.api) {
-    // 检查是否是旧格式
-    if (source.api_site) {
-      return { valid: true }; // 旧格式让解析函数处理
-    }
-    errors.push('缺少必要的字段: key, name, api');
+  // 必须有 name 和 api，key可以自动生成
+  if (!source.name && !source.api) {
+    errors.push('缺少必要的字段: name, api');
     return { valid: false, errors };
   }
   
-  const key = sanitizeKey(source.key || '');
+  const key = sanitizeKey(source.key || source.name || '');
   const name = (source.name || '').trim();
   const api = (source.api || '').trim();
   
-  if (!key) errors.push('key 不能为空');
   if (!name) errors.push('name 不能为空');
   if (!api) errors.push('api 不能为空');
   
   if (errors.length > 0) {
+    return { valid: false, errors };
+  }
+  
+  if (!key) {
+    errors.push('无法生成有效的 key');
     return { valid: false, errors };
   }
   
@@ -276,7 +309,7 @@ function validateVideoSource(source: any): { valid: boolean; errors?: string[]; 
       detail: (source.detail || '').trim(),
       from: source.from || 'custom',
       disabled: !!source.disabled,
-      originalKey: source.originalKey || source.key,
+      originalKey: source.originalKey || source.key || source.name,
     }
   };
 }
@@ -323,10 +356,10 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'import': {
-        // 专门用于导入的操作，提供更多选项
+        // 专门用于导入的操作，支持多种格式
         const { data, type = 'auto', strategy = 'skip', validate = true } = body as {
           data?: any;
-          type?: 'auto' | 'array' | 'legacy';
+          type?: 'auto' | 'array' | 'legacy' | 'single';
           strategy?: 'skip' | 'overwrite' | 'merge';
           validate?: boolean;
         };
@@ -354,12 +387,20 @@ export async function POST(request: NextRequest) {
         // 根据指定的类型或自动检测类型来解析数据
         let parsedResult;
         if (type === 'array') {
-          // 如果是数组类型，直接处理数组
-          parsedResult = parseSourceData(importData);
+          // 如果是数组类型，确保是数组格式
+          if (Array.isArray(importData)) {
+            parsedResult = parseSourceData(importData);
+          } else {
+            // 如果不是数组，尝试包装成数组
+            parsedResult = parseSourceData([importData]);
+          }
         } else if (type === 'legacy') {
           // 如果是旧格式，包装成旧格式结构
           const legacyData = importData.api_site ? importData : { api_site: importData };
           parsedResult = parseSourceData(legacyData);
+        } else if (type === 'single') {
+          // 单个对象格式
+          parsedResult = parseSourceData(importData);
         } else {
           // auto: 让 parseSourceData 自动检测格式
           parsedResult = parseSourceData(importData);
@@ -378,7 +419,7 @@ export async function POST(request: NextRequest) {
         if (sources.length === 0) {
           return NextResponse.json({ 
             error: '未找到有效的视频源数据',
-            hint: '请确保数据包含有效的视频源（至少包含 key, name, api 字段）',
+            hint: '请确保数据包含有效的视频源（至少包含 name 和 api 字段）',
             detectedFormat: format
           }, { status: 400 });
         }
@@ -398,28 +439,6 @@ export async function POST(request: NextRequest) {
             const validation = validateVideoSource(source);
             
             if (!validation.valid) {
-              // 如果是旧格式，可能有不同的字段名，尝试宽松处理
-              if (source.name && source.api) {
-                // 尝试从 name 生成 key
-                const generatedKey = sanitizeKey(source.name);
-                if (generatedKey) {
-                  validSources.push({
-                    key: generatedKey,
-                    name: source.name,
-                    api: source.api,
-                    detail: source.detail || '',
-                    from: 'custom',
-                    disabled: false,
-                    originalKey: source.name,
-                  });
-                  validationResults.warnings.push({
-                    key: generatedKey,
-                    warning: `自动生成 key: ${generatedKey} (原始名称: ${source.name})`
-                  });
-                  return;
-                }
-              }
-              
               // 记录错误
               if (validation.errors) {
                 const errorKey = source.key || source.name || 'unknown';
@@ -448,6 +467,14 @@ export async function POST(request: NextRequest) {
             
             if (validation.normalizedSource) {
               validSources.push(validation.normalizedSource);
+              
+              // 检查是否自动生成了key
+              if (source.key !== validation.normalizedSource.key) {
+                validationResults.warnings.push({
+                  key: validation.normalizedSource.key,
+                  warning: `自动生成 key: ${validation.normalizedSource.key} (原始: ${source.key || '无'})`
+                });
+              }
             }
           });
           
@@ -516,7 +543,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({
               ok: true,
               import: {
-                format: format === 'single' ? 'array' : format,
+                format: format,
                 total: sources.length,
                 valid: validSources.length,
                 ...importStats,
@@ -538,7 +565,9 @@ export async function POST(request: NextRequest) {
           const existingSources = new Map(adminConfig.SourceConfig.map(s => [s.key, s]));
           
           sources.forEach(source => {
-            const normalizedSource: VideoSource = {
+            // 验证并标准化源
+            const validation = validateVideoSource(source);
+            const normalizedSource = validation.normalizedSource || {
               key: sanitizeKey(source.key || source.name || ''),
               name: source.name || '',
               api: source.api || '',
@@ -577,7 +606,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({
             ok: true,
             import: {
-              format: format === 'single' ? 'array' : format,
+              format: format,
               total: sources.length,
               ...importStats,
             },
