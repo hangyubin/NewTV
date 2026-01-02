@@ -22,7 +22,7 @@ interface VideoSource {
   api: string;
   detail?: string;
   disabled?: boolean;
-  from?: 'config' | 'custom';
+  from: 'config' | 'custom'; // 修改：from 不再是可选属性
   originalKey?: string; // 原始key，用于转换后的追踪
 }
 
@@ -78,7 +78,7 @@ function convertLegacyToNewFormat(data: any): VideoSource[] {
       name: nameValue,
       api: apiValue,
       detail: source.detail || source.desc || '',
-      from: 'custom',
+      from: 'custom', // 明确设置 from 为 'custom'
       disabled: false,
       originalKey,
     });
@@ -112,7 +112,7 @@ function parseSourceData(data: any): { sources: VideoSource[], format: 'array' |
             name: item.name,
             api: item.api,
             detail: item.detail || '',
-            from: item.from || 'custom',
+            from: item.from === 'config' ? 'config' : 'custom', // 确保 from 有值
             disabled: item.disabled || false,
             originalKey: item.originalKey || item.key,
           });
@@ -131,7 +131,7 @@ function parseSourceData(data: any): { sources: VideoSource[], format: 'array' |
             name: item.name,
             api: item.api,
             detail: item.detail || '',
-            from: 'custom',
+            from: 'custom', // 明确设置 from 为 'custom'
             disabled: false,
             originalKey: item.name,
           });
@@ -175,7 +175,7 @@ function parseSourceData(data: any): { sources: VideoSource[], format: 'array' |
                 name: item.name,
                 api: item.api,
                 detail: item.detail || '',
-                from: item.from || 'custom',
+                from: item.from === 'config' ? 'config' : 'custom', // 确保 from 有值
                 disabled: item.disabled || false,
                 originalKey: item.originalKey || item.key,
               });
@@ -187,7 +187,7 @@ function parseSourceData(data: any): { sources: VideoSource[], format: 'array' |
                 name: item.name,
                 api: item.api,
                 detail: item.detail || '',
-                from: 'custom',
+                from: 'custom', // 明确设置 from 为 'custom'
                 disabled: false,
                 originalKey: item.name,
               });
@@ -212,7 +212,7 @@ function parseSourceData(data: any): { sources: VideoSource[], format: 'array' |
           name: data.name,
           api: data.api,
           detail: data.detail || '',
-          from: data.from || 'custom',
+          from: data.from === 'config' ? 'config' : 'custom', // 确保 from 有值
           disabled: data.disabled || false,
           originalKey: data.originalKey || data.key,
         }],
@@ -229,7 +229,7 @@ function parseSourceData(data: any): { sources: VideoSource[], format: 'array' |
           name: data.name,
           api: data.api,
           detail: data.detail || '',
-          from: 'custom',
+          from: 'custom', // 明确设置 from 为 'custom'
           disabled: false,
           originalKey: data.name,
         }],
@@ -300,6 +300,9 @@ function validateVideoSource(source: any): { valid: boolean; errors?: string[]; 
     return { valid: false, errors };
   }
   
+  // 确保 from 有默认值，不能是 undefined
+  const from = source.from === 'config' ? 'config' : 'custom';
+  
   return {
     valid: true,
     normalizedSource: {
@@ -307,7 +310,7 @@ function validateVideoSource(source: any): { valid: boolean; errors?: string[]; 
       name,
       api,
       detail: (source.detail || '').trim(),
-      from: source.from || 'custom',
+      from, // 确保 from 有明确的值
       disabled: !!source.disabled,
       originalKey: source.originalKey || source.key || source.name,
     }
@@ -513,7 +516,6 @@ export async function POST(request: NextRequest) {
                 if (strategy === 'overwrite') {
                   // 覆盖现有源
                   Object.assign(existing, source);
-                  existing.from = 'custom';
                   importStats.updated++;
                 } else if (strategy === 'merge') {
                   // 合并，但不覆盖from为'config'的源
@@ -528,12 +530,13 @@ export async function POST(request: NextRequest) {
                   importStats.skipped++;
                 }
               } else {
-                // 新源
-                adminConfig.SourceConfig.push({
+                // 新源 - 确保 from 有值
+                const normalizedSource = {
                   ...source,
-                  from: 'custom',
+                  from: source.from || 'custom',
                   disabled: source.disabled || false,
-                });
+                };
+                adminConfig.SourceConfig.push(normalizedSource);
                 importStats.imported++;
               }
             });
@@ -572,7 +575,7 @@ export async function POST(request: NextRequest) {
               name: source.name || '',
               api: source.api || '',
               detail: source.detail || '',
-              from: 'custom',
+              from: 'custom', // 确保 from 有值
               disabled: false,
               originalKey: source.originalKey || source.key || source.name,
             };
@@ -583,7 +586,6 @@ export async function POST(request: NextRequest) {
               importStats.duplicates++;
               if (strategy === 'overwrite') {
                 Object.assign(existing, normalizedSource);
-                existing.from = 'custom';
                 importStats.updated++;
               } else if (strategy === 'merge') {
                 if (existing.from !== 'config') {
@@ -638,7 +640,7 @@ export async function POST(request: NextRequest) {
           name,
           api,
           detail: detail || '',
-          from: 'custom',
+          from: 'custom', // 明确设置 from 为 'custom'
           disabled: false,
         });
         break;
