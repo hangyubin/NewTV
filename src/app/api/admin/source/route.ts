@@ -26,8 +26,13 @@ interface VideoSource {
   originalKey?: string; // 原始key，用于转换后的追踪
 }
 
+// 为了导出操作，创建一个包含 originalKey 的类型
+interface VideoSourceForExport extends VideoSource {
+  originalKey?: string;
+}
+
 // 旧格式配置接口
-interface _LegacySourceConfig { // 添加 _ 前缀，因为未使用
+interface LegacySourceConfig {
   cache_time?: number;
   api_site: Record<string, {
     api: string;
@@ -57,7 +62,7 @@ function isValidUrl(url: string): boolean {
 }
 
 // 转换旧格式数据为新格式
-function convertLegacyToNewFormat(data: any): VideoSource[] { // 修改参数类型为 any
+function convertLegacyToNewFormat(data: any): VideoSource[] {
   const sources: VideoSource[] = [];
   
   if (!data.api_site) return sources;
@@ -92,6 +97,7 @@ function parseSourceData(data: any): { sources: VideoSource[], format: 'array' |
         detail: item.detail || '',
         from: item.from || 'custom',
         disabled: item.disabled || false,
+        originalKey: item.originalKey, // 保留 originalKey
       }));
     
     return {
@@ -119,6 +125,7 @@ function parseSourceData(data: any): { sources: VideoSource[], format: 'array' |
         detail: data.detail || '',
         from: data.from || 'custom',
         disabled: data.disabled || false,
+        originalKey: data.originalKey, // 保留 originalKey
       }],
       format: 'array',
     };
@@ -196,6 +203,7 @@ export async function POST(request: NextRequest) {
               detail: item.detail || '',
               from: item.from || 'custom',
               disabled: item.disabled || false,
+              originalKey: item.originalKey, // 保留 originalKey
             }));
           parsedFormat = 'array';
         } 
@@ -250,7 +258,7 @@ export async function POST(request: NextRequest) {
           errors: [] as Array<{ key: string; error: string }>,
         };
         
-        const _existingKeys = new Set(adminConfig.SourceConfig.map(s => s.key)); // 添加 _ 前缀
+        const existingKeys = new Set(adminConfig.SourceConfig.map(s => s.key));
         const existingSources = new Map(adminConfig.SourceConfig.map(s => [s.key, s]));
         
         parsedSources.forEach(source => {
@@ -453,7 +461,6 @@ export async function POST(request: NextRequest) {
           detail: detail || '',
           from: 'custom',
           disabled: false,
-          // 移除 category 属性
         });
         break;
       }
@@ -661,7 +668,8 @@ export async function POST(request: NextRequest) {
           includeDisabled?: boolean;
         };
 
-        let sourcesToExport = adminConfig.SourceConfig;
+        // 使用类型断言确保 sourcesToExport 包含 originalKey
+        let sourcesToExport = adminConfig.SourceConfig as VideoSourceForExport[];
 
         // 应用过滤器
         if (!includeDisabled) {
@@ -674,6 +682,7 @@ export async function POST(request: NextRequest) {
           // 导出为旧格式
           const api_site: Record<string, any> = {};
           sourcesToExport.forEach(source => {
+            // 这里 source 已经是 VideoSourceForExport 类型，包含 originalKey
             const legacyKey = source.originalKey || source.key;
             api_site[legacyKey] = {
               api: source.api,
@@ -695,6 +704,7 @@ export async function POST(request: NextRequest) {
             detail: source.detail,
             disabled: source.disabled,
             from: source.from,
+            originalKey: source.originalKey, // 包含 originalKey
           }));
         }
 
