@@ -27,7 +27,16 @@ export function isShortDrama(typeName?: string, title?: string): boolean {
     '热门短剧',
     '短剧推荐',
     '短剧剧场',
-    '短剧专区'
+    '短剧专区',
+    '短视频剧',
+    '网络剧',
+    '迷你剧',
+    '短剧集',
+    '短剧热播',
+    '短剧合集',
+    '短剧在线',
+    '短剧免费',
+    '短剧大全'
   ];
   
   // 标题中的关键词
@@ -36,9 +45,13 @@ export function isShortDrama(typeName?: string, title?: string): boolean {
     '竖屏',
     '微电影',
     '小剧场',
-    '短剧',
+    '微剧',
+    '迷你剧',
+    '短剧集',
     '微',
-    '短'
+    '短',
+    '短视频',
+    '短剧集'
   ];
   
   // 检查type_name
@@ -62,6 +75,14 @@ export function isShortDrama(typeName?: string, title?: string): boolean {
   if (title && !typeName) {
     // 短剧通常集数较少，标题较短
     if (title.length < 20) {
+      return true;
+    }
+  }
+  
+  // 再次放宽条件：只要包含短或微关键字，就认为是短剧
+  if (title) {
+    const titleLower = title.toLowerCase();
+    if (titleLower.includes('短') || titleLower.includes('微')) {
       return true;
     }
   }

@@ -117,8 +117,20 @@ async function searchWithCache(
       };
     });
 
-    // 过滤掉集数为 0 的结果
-    let results = allResults.filter((result: SearchResult) => result.episodes.length > 0);
+    // 对于短剧，允许集数为 0 的结果
+    let results = allResults.filter((result: SearchResult) => {
+      // 检查是否为短剧
+      const isShortDramaResult = result.type_name?.toLowerCase().includes('短剧') || 
+                                 result.title?.toLowerCase().includes('短剧') ||
+                                 result.title?.toLowerCase().includes('竖屏') ||
+                                 result.title?.toLowerCase().includes('微电影') ||
+                                 result.title?.toLowerCase().includes('小剧场') ||
+                                 result.title?.toLowerCase().includes('微') ||
+                                 result.title?.toLowerCase().includes('短');
+      
+      // 短剧允许集数为 0，非短剧需要集数 > 0
+      return isShortDramaResult || result.episodes.length > 0;
+    });
 
     // 在每个API站点返回的数据中也进行去重处理
     const seenTitles = new Set<string>();
