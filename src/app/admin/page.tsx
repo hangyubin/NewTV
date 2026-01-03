@@ -3048,7 +3048,7 @@ const VideoSourceConfig = ({
   };
 
   // 文件上传处理函数
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -3075,6 +3075,9 @@ const VideoSourceConfig = ({
     }
 
     setImportFile(file);
+    
+    // 选择文件后自动解析并显示确认弹窗，减少用户操作步骤
+    await handleImportSources();
   };
 
   // 处理拖拽上传
@@ -3083,7 +3086,7 @@ const VideoSourceConfig = ({
     e.stopPropagation();
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -3113,6 +3116,9 @@ const VideoSourceConfig = ({
     }
 
     setImportFile(file);
+    
+    // 拖拽文件后自动解析并显示确认弹窗，减少用户操作步骤
+    await handleImportSources();
   };
 
   const handleImportSources = async () => {
@@ -3547,8 +3553,9 @@ const VideoSourceConfig = ({
           >
             {!source.disabled ? '禁用' : '启用'}
           </button>
-          {/* 配置文件里填写的源视频列表是不能清除的，只有手动添加的源才显示删除按钮 */}
-          {source.from === 'custom' && (
+          {/* 只有当存在配置文件写入的源或导入的源时，系统默认源才显示删除按钮 */}
+          {source.key === 'DBZY' && 
+           (sources.filter(s => s.from === 'config' || s.from === 'custom').length > 0) && (
             <button
               onClick={() => handleDelete(source.key)}
               disabled={isLoading(`deleteSource_${source.key}`)}
