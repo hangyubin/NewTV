@@ -859,25 +859,17 @@ function DoubanPageClient() {
           </div>
 
           {/* 加载更多指示器 */}
-          {hasMore && !loading && (
-            <div
-              ref={(el) => {
-                if (el && el.offsetParent !== null) {
-                  (
-                    loadingRef as React.MutableRefObject<HTMLDivElement | null>
-                  ).current = el;
-                }
-              }}
-              className='flex justify-center mt-12 py-8'
-            >
-              {isLoadingMore && (
-                <div className='flex items-center gap-2'>
-                  <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-green-500'></div>
-                  <span className='text-gray-600'>加载中...</span>
-                </div>
-              )}
-            </div>
-          )}
+          <div
+            ref={loadingRef}
+            className='flex justify-center mt-12 py-8'
+          >
+            {hasMore && isLoadingMore && (
+              <div className='flex items-center gap-2'>
+                <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-green-500'></div>
+                <span className='text-gray-600'>加载中...</span>
+              </div>
+            )}
+          </div>
 
           {/* 没有更多数据提示 */}
           {!hasMore && doubanData.length > 0 && (

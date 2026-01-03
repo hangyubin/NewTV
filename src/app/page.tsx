@@ -560,12 +560,14 @@ function HomeClient() {
                     <ChevronRight className='w-4 h-4 ml-1' />
                   </Link>
                 </div>
-                {/* 使用网格布局代替滚动行，实现无限加载 */}
-                <div className='grid grid-cols-2 gap-x-3 gap-y-10 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-14 md:grid-cols-4 md:gap-x-6 lg:grid-cols-5 lg:gap-x-8 px-4 sm:px-6'>
+                <ScrollableRow>
                   {loading
                     ? // 加载状态显示灰色占位数据
-                      Array.from({ length: 10 }).map((_, index) => (
-                        <div key={index} className='w-full'>
+                      Array.from({ length: 8 }).map((_, index) => (
+                        <div
+                          key={index}
+                          className='min-w-[115px] w-[115px] sm:min-w-[180px] sm:w-44'
+                        >
                           <div className='relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800'>
                             <div className='absolute inset-0 bg-gray-300 dark:bg-gray-700'></div>
                           </div>
@@ -574,7 +576,10 @@ function HomeClient() {
                       ))
                     : // 显示真实数据
                       hotShortDramas.map((drama, index) => (
-                        <div key={index} className='w-full'>
+                        <div
+                          key={index}
+                          className='min-w-[115px] w-[115px] sm:min-w-[180px] sm:w-44'
+                        >
                           <VideoCard
                             from='douban'
                             title={drama.title}
@@ -584,29 +589,7 @@ function HomeClient() {
                           />
                         </div>
                       ))}
-                  
-                  {/* 加载更多指示器 */}
-                  {shortDramaLoading && (
-                    <div className='col-span-full flex justify-center items-center py-8'>
-                      <div className='flex items-center gap-2 text-gray-600 dark:text-gray-400'>
-                        <div className='w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin dark:border-gray-700 dark:border-t-gray-400'></div>
-                        <span>加载中...</span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* 加载更多触发点 */}
-                  {shortDramaHasMore && (
-                    <div ref={loadMoreRef} className='col-span-full h-16'></div>
-                  )}
-                  
-                  {/* 没有更多数据提示 */}
-                  {!shortDramaHasMore && hotShortDramas.length > 0 && (
-                    <div className='col-span-full text-center py-8 text-gray-600 dark:text-gray-400'>
-                      没有更多数据了
-                    </div>
-                  )}
-                </div>
+                </ScrollableRow>
               </section>
             </>
           )}
