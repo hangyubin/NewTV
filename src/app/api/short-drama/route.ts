@@ -2,116 +2,149 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
+import { getAvailableApiSites, getCacheTime } from '@/lib/config';
+import { searchFromApi } from '@/lib/downstream';
+import { SearchResult } from '@/lib/types';
+import { isShortDrama } from '@/lib/utils';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 /**
  * 短剧专用API接口
- * 直接调用专门的短剧API获取数据
+ * 通过采集站API获取短剧内容，并进行内容分类和筛选
  */
 export async function GET(request: NextRequest) {
-  // 短剧API暂时不需要认证
-
   const { searchParams } = new URL(request.url);
-  const _type = searchParams.get('type') || 'all'; // 短剧类型筛选
-  const _region = searchParams.get('region') || 'all'; // 地区筛选
-  const _year = searchParams.get('year') || 'all'; // 年份筛选
+  const type = searchParams.get('type') || 'all'; // 短剧类型筛选
+  const region = searchParams.get('region') || 'all'; // 地区筛选
+  const year = searchParams.get('year') || 'all'; // 年份筛选
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '25');
-  const categoryId = searchParams.get('categoryId') || '1'; // 默认分类
-  const _keyword = searchParams.get('keyword') || '';
+  const keyword = searchParams.get('keyword') || '';
 
   try {
-    let allResults: any[] = [];
-    let hasMore = false;
+    // 简化短剧相关的搜索关键词，只使用"短剧"这一个词
+    const shortDramaKeywords = keyword ? [keyword, '短剧'] : ['短剧'];
 
-    // 添加Docker环境信息日志
-    console.log('📺 [短剧API] 运行环境信息:', {
-      DOCKER_ENV: process.env.DOCKER_ENV,
-      NODE_ENV: process.env.NODE_ENV,
-      HOSTNAME: process.env.HOSTNAME,
-      PORT: process.env.PORT,
-    });
+    let allResults: SearchResult[] = [];
+    
+    // 直接使用默认API站点，确保有可用的API源
+    const defaultApiSites = [
+      {
+        key: 'dbzy_tv',
+        name: 'DBZY TV',
+        api: 'https://api.r2afosne.dpdns.org',
+        detail: 'DBZY TV API',
+        disabled: false
+      }
+    ];
+    
+    console.log('📺 [短剧API] 使用的API站点:', defaultApiSites.map(site => site.name));
 
-    // 调用专门的短剧API
-    const primaryApiUrl = `https://api.r2afosne.dpdns.org/vod/list?categoryId=${categoryId}&page=${page}&size=${limit}`;
-    console.log(`📺 [短剧API] 请求URL: ${primaryApiUrl}`);
-    
-    // 使用AbortController实现超时功能，增加超时时间到15秒
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      console.error('📺 [短剧API] 外部API调用超时 (15秒)');
-      controller.abort();
-    }, 15000);
-    
-    const response = await fetch(primaryApiUrl, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        Accept: 'application/json, text/plain, */*',
-        Referer: 'https://movie.douban.com/',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-        Connection: 'keep-alive',
-      },
-      cache: 'no-store',
-      signal: controller.signal,
-    });
-    
-    clearTimeout(timeoutId);
-    console.log('📺 [短剧API] 收到外部API响应:', response.status);
-    
-    if (response.ok) {
-      console.log('📺 [短剧API] 响应状态正常，解析JSON数据...');
-      const data = await response.json();
-      console.log('📺 [短剧API] 外部API返回数据:', {
-        total: data.total,
-        totalPages: data.totalPages,
-        currentPage: data.currentPage,
-        listLength: data.list?.length || 0
+    // 并行搜索多个关键词
+    const searchPromises = shortDramaKeywords.map(async (searchKeyword) => {
+      const sitePromises = defaultApiSites.map(async (site) => {
+        try {
+          console.log(`📺 [短剧API] 从 ${site.name} 搜索: ${searchKeyword}`);
+          
+          const results = await Promise.race([
+            searchFromApi(site, searchKeyword),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error(`${site.name} timeout`)), 15000)
+            ),
+          ]) as SearchResult[];
+
+          console.log(`📺 [短剧API] ${site.name} 返回 ${results.length} 条结果`);
+          
+          // 过滤出真正的短剧内容
+          const filteredResults = results.filter((result) => {
+            // 1. 检查是否为短剧
+            const isShort = isShortDrama(result.type_name, result.title);
+            if (!isShort) {
+              return false;
+            }
+
+            return true;
+          });
+          
+          console.log(`📺 [短剧API] 过滤后保留 ${filteredResults.length} 条短剧结果`);
+          return filteredResults;
+        } catch (error) {
+          console.warn(`📺 [短剧API] 搜索短剧失败 ${site.name} - ${searchKeyword}:`, error);
+          return [];
+        }
       });
-      
-      const items = data.list || [];
-      
-      // 转换数据格式
-      const formattedResults = items.map((item: any) => ({
-        id: item.id,
-        title: item.name,
-        poster: item.cover,
-        year: new Date(item.update_time || Date.now()).getFullYear().toString(),
-        type_name: '短剧',
-        desc: item.description || '',
-        url: '',
-        douban_id: 0,
-        score: item.score || 0,
-        eps: 1,
-      }));
 
-      allResults = formattedResults;
-      hasMore = data.currentPage < data.totalPages;
-    } else {
-      console.error('📺 [短剧API] 外部API返回错误状态:', response.status);
-      // 尝试获取错误响应的内容
-      const errorText = await response.text();
-      console.error('📺 [短剧API] 错误响应内容:', errorText);
+      const siteResults = await Promise.allSettled(sitePromises);
+      return siteResults
+        .filter((result) => result.status === 'fulfilled')
+        .map((result) => (result as PromiseFulfilledResult<SearchResult[]>).value)
+        .flat();
+    });
+
+    const keywordResults = await Promise.allSettled(searchPromises);
+    allResults = keywordResults
+      .filter((result) => result.status === 'fulfilled')
+      .map((result) => (result as PromiseFulfilledResult<SearchResult[]>).value)
+      .flat();
+
+    console.log(`📺 [短剧API] 所有站点返回 ${allResults.length} 条结果`);
+
+    // 改进去重机制，使用更高效的Set方式去重
+    const seenTitles = new Set<string>();
+    const uniqueResults: SearchResult[] = [];
+    
+    for (const result of allResults) {
+      // 使用标题作为唯一标识进行去重
+      if (!seenTitles.has(result.title)) {
+        seenTitles.add(result.title);
+        uniqueResults.push(result);
+      }
     }
+    
+    console.log(`📺 [短剧API] 去重后保留 ${uniqueResults.length} 条结果`);
 
-    // 过滤重复项
-    const uniqueResults = Array.from(
-      new Map(allResults.map((item) => [item.id, item])).values()
-    );
+    // 按年份和热度排序
+    const sortedResults = uniqueResults.sort((a, b) => {
+      // 优先按年份排序（新的在前）
+      const yearA = parseInt(a.year) || 0;
+      const yearB = parseInt(b.year) || 0;
+      if (yearA !== yearB) {
+        return yearB - yearA;
+      }
+      // 然后按标题长度排序（短剧通常标题较短）
+      return a.title.length - b.title.length;
+    });
+
+    // 分页
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedResults = sortedResults.slice(startIndex, endIndex);
+    
+    console.log(`📺 [短剧API] 分页后返回 ${paginatedResults.length} 条结果`);
 
     // 构建返回数据
     const result = {
       code: 200,
       message: 'success',
-      results: uniqueResults,
-      total: uniqueResults.length,
+      results: paginatedResults,
+      total: sortedResults.length,
       page,
       limit,
-      hasMore,
+      hasMore: startIndex + limit < sortedResults.length,
+      totalPages: Math.ceil(sortedResults.length / limit),
     };
+
+    const cacheTime = await getCacheTime();
 
     return NextResponse.json(result, {
       headers: {
-        'Cache-Control': 'public, max-age=300',
-        Vary: 'Accept-Encoding, User-Agent',
+        'Cache-Control': `public, max-age=${cacheTime}, s-maxage=${cacheTime}`,
+        'CDN-Cache-Control': `public, s-maxage=${cacheTime}`,
+        'Vercel-CDN-Cache-Control': `public, s-maxage=${cacheTime}`,
+        'Netlify-Vary': 'query',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -129,6 +162,7 @@ export async function GET(request: NextRequest) {
         page,
         limit,
         hasMore: false,
+        totalPages: 0,
       },
       {
         status: 200,
