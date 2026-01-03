@@ -208,78 +208,29 @@ export async function GET(request: NextRequest) {
       console.log(`所有关键词搜索结果总数: ${allResults.length}`);
     }
 
-    // 增加调试日志，查看搜索结果数量
+    // 如果没有搜索到结果，返回空结果
+    if (allResults.length === 0) {
+      console.log('没有搜索到短剧数据，返回空结果');
+      return NextResponse.json(
+        {
+          results: [],
+          total: 0,
+          page,
+          limit,
+          totalPages: 0,
+        },
+        {
+          headers: {
+            'Cache-Control': 'public, max-age=300, s-maxage=300',
+            'CDN-Cache-Control': 'public, s-maxage=300',
+            'Vercel-CDN-Cache-Control': 'public, s-maxage=300',
+            'Netlify-Vary': 'query',
+          },
+        }
+      );
+    }
+    
     console.log(`搜索后结果数量: ${allResults.length}`);
-    
-    // 修改：无论是否搜索到结果，都添加示例短剧数据，确保有数据返回
-    console.log('添加示例短剧数据，确保有数据返回');
-    // 示例短剧数据
-    const exampleShortDramas: SearchResult[] = [
-      {
-        id: 'example-1',
-        title: '总裁的贴身秘书',
-        poster: 'https://picsum.photos/id/1/300/450',
-        episodes: [],
-        episodes_titles: [],
-        source: 'example',
-        source_name: '示例站点',
-        year: '2025',
-        desc: '讲述了一位年轻秘书与霸道总裁之间的爱情故事',
-        type_name: '短剧',
-      },
-      {
-        id: 'example-2',
-        title: '穿越到古代当王妃',
-        poster: 'https://picsum.photos/id/2/300/450',
-        episodes: [],
-        episodes_titles: [],
-        source: 'example',
-        source_name: '示例站点',
-        year: '2025',
-        desc: '现代女孩穿越到古代，成为了一位王妃',
-        type_name: '短剧',
-      },
-      {
-        id: 'example-3',
-        title: '都市爱情故事',
-        poster: 'https://picsum.photos/id/3/300/450',
-        episodes: [],
-        episodes_titles: [],
-        source: 'example',
-        source_name: '示例站点',
-        year: '2025',
-        desc: '都市男女之间的爱情纠葛',
-        type_name: '短剧',
-      },
-      {
-        id: 'example-4',
-        title: '校园青春短剧',
-        poster: 'https://picsum.photos/id/4/300/450',
-        episodes: [],
-        episodes_titles: [],
-        source: 'example',
-        source_name: '示例站点',
-        year: '2025',
-        desc: '讲述了校园里的青春爱情故事',
-        type_name: '短剧',
-      },
-      {
-        id: 'example-5',
-        title: '悬疑短剧：谁是凶手',
-        poster: 'https://picsum.photos/id/5/300/450',
-        episodes: [],
-        episodes_titles: [],
-        source: 'example',
-        source_name: '示例站点',
-        year: '2025',
-        desc: '一部扣人心弦的悬疑短剧',
-        type_name: '短剧',
-      },
-    ];
-    
-    // 合并搜索结果和示例数据
-    allResults = [...allResults, ...exampleShortDramas];
-    console.log(`合并后结果数量: ${allResults.length}`);
 
     // 改进去重机制，使用更高效的Set方式去重
     const seenTitles = new Set<string>();
