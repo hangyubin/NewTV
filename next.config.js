@@ -11,7 +11,7 @@ const nextConfig = {
   swcMinify: false,
 
   experimental: {
-    instrumentationHook: process.env.NODE_ENV === 'production',
+    // instrumentationHook: process.env.NODE_ENV === 'production',
   },
 
   // Uncoment to add domain whitelist
