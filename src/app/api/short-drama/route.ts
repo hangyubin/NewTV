@@ -23,9 +23,6 @@ export async function GET(request: NextRequest) {
   //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   // }
 
-  // 使用默认用户名获取API站点
-  const authInfo = { username: 'default' };
-
   const { searchParams } = new URL(request.url);
   const type = searchParams.get('type') || 'all'; // 短剧类型筛选
   const region = searchParams.get('region') || 'all'; // 地区筛选
@@ -34,7 +31,8 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get('limit') || '25');
 
   const config = await getConfig();
-  const apiSites = await getAvailableApiSites(authInfo.username);
+  // 直接获取所有可用的API站点，不考虑用户权限
+  const apiSites = await getAvailableApiSites();
 
   // 检查是否有可用的API站点
   const hasAvailableSites = apiSites && apiSites.length > 0;
@@ -78,11 +76,11 @@ export async function GET(request: NextRequest) {
 
     // 不管是否有可用站点，都尝试返回一些示例短剧数据
     if (hasAvailableSites) {
-      // 优化：限制同时搜索的关键词和站点数量，减少并行请求
-      // 只使用前5个最相关的关键词，减少搜索次数
-      const topKeywords = shortDramaKeywords.slice(0, 5);
-      // 限制同时请求的站点数量，使用最多5个站点
-      const topSites = apiSites.slice(0, 5);
+      // 使用更多关键词和站点进行搜索，提高结果数量
+      // 使用前10个最相关的关键词
+      const topKeywords = shortDramaKeywords.slice(0, 10);
+      // 使用所有可用的站点
+      const topSites = apiSites;
 
       console.log(`优化后使用的关键词数量: ${topKeywords.length}`);
       console.log(`优化后使用的站点数量: ${topSites.length}`);
@@ -204,6 +202,51 @@ export async function GET(request: NextRequest) {
         .flat();
 
       console.log(`所有关键词搜索结果总数: ${allResults.length}`);
+    }
+
+    // 如果没有搜索到结果，添加一些示例短剧数据
+    if (allResults.length === 0) {
+      console.log('没有搜索到短剧数据，使用示例数据');
+      // 示例短剧数据
+      const exampleShortDramas: SearchResult[] = [
+        {
+          id: 'example-1',
+          title: '总裁的贴身秘书',
+          poster: 'https://picsum.photos/id/1/300/450',
+          episodes: [],
+          episodes_titles: [],
+          source: 'example',
+          source_name: '示例站点',
+          year: '2025',
+          desc: '讲述了一位年轻秘书与霸道总裁之间的爱情故事',
+          type_name: '短剧',
+        },
+        {
+          id: 'example-2',
+          title: '穿越到古代当王妃',
+          poster: 'https://picsum.photos/id/2/300/450',
+          episodes: [],
+          episodes_titles: [],
+          source: 'example',
+          source_name: '示例站点',
+          year: '2025',
+          desc: '现代女孩穿越到古代，成为了一位王妃',
+          type_name: '短剧',
+        },
+        {
+          id: 'example-3',
+          title: '都市爱情故事',
+          poster: 'https://picsum.photos/id/3/300/450',
+          episodes: [],
+          episodes_titles: [],
+          source: 'example',
+          source_name: '示例站点',
+          year: '2025',
+          desc: '都市男女之间的爱情纠葛',
+          type_name: '短剧',
+        },
+      ];
+      allResults = exampleShortDramas;
     }
 
     // 改进去重机制，使用更高效的Set方式去重
