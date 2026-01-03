@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         };
         if (!query || !type)
           return NextResponse.json(
-            { error: '缺少 query 或 type 参数' },
+            { error: '缺少 query 和 type 参数' },
             { status: 400 }
           );
         const entry = adminConfig.CustomCategories.find(
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
         };
         if (!query || !type)
           return NextResponse.json(
-            { error: '缺少 query 或 type 参数' },
+            { error: '缺少 query 和 type 参数' },
             { status: 400 }
           );
         const entry = adminConfig.CustomCategories.find(
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
         };
         if (!query || !type)
           return NextResponse.json(
-            { error: '缺少 query 或 type 参数' },
+            { error: '缺少 query 和 type 参数' },
             { status: 400 }
           );
         const idx = adminConfig.CustomCategories.findIndex(
