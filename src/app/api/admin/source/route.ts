@@ -953,7 +953,7 @@ export async function POST(request: NextRequest) {
           if (!entry) return;
 
           // 检查是否可以删除该源
-          let canDelete = canDeleteAll;
+          const canDelete = canDeleteAll;
 
           if (canDelete) {
             keysToDelete.push(key);

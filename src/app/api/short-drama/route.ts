@@ -36,10 +36,6 @@ export async function GET(request: NextRequest) {
 
   // 检查是否有可用的API站点
   const hasAvailableSites = apiSites && apiSites.length > 0;
-  
-  console.log(`短剧API请求参数: type=${type}, region=${region}, year=${year}, page=${page}, limit=${limit}`);
-  console.log(`可用API站点数量: ${apiSites.length}, 站点列表: ${JSON.stringify(apiSites.map(s => s.name))}`);
-  console.log(`是否有可用站点: ${hasAvailableSites}`);
 
   try {
     let allResults: SearchResult[] = [];
@@ -74,9 +70,7 @@ export async function GET(request: NextRequest) {
       '短剧大全',
     ];
 
-    // 添加调试日志
-    console.log(`可用API站点数量: ${apiSites.length}`);
-    console.log(`API站点详情: ${JSON.stringify(apiSites)}`);
+
 
     // 不管是否有可用站点，都尝试返回一些示例短剧数据
     if (hasAvailableSites) {
@@ -86,8 +80,7 @@ export async function GET(request: NextRequest) {
       // 使用所有可用的站点
       const topSites = apiSites;
 
-      console.log(`优化后使用的关键词数量: ${topKeywords.length}`);
-      console.log(`优化后使用的站点数量: ${topSites.length}`);
+    
 
       // 并行搜索多个关键词
       const searchPromises = topKeywords.map(async (keyword) => {
@@ -97,7 +90,6 @@ export async function GET(request: NextRequest) {
         // 串行处理站点请求，避免太多并行请求
         for (const site of topSites) {
           try {
-            console.log(`正在搜索站点 ${site.name}，关键词: ${keyword}`);
             const results = (await Promise.race([
               searchFromApi(site, keyword),
               new Promise((_, reject) =>
@@ -107,8 +99,6 @@ export async function GET(request: NextRequest) {
                 )
               ),
             ])) as SearchResult[];
-
-            console.log(`站点 ${site.name} 返回结果数量: ${results.length}`);
 
             // 过滤出真正的短剧内容，增加容错处理
             const filteredResults = results.filter((result) => {
@@ -180,20 +170,17 @@ export async function GET(request: NextRequest) {
                 return true;
               } catch (error) {
                 // 容错处理，允许解析错误的内容通过
-                console.warn('短剧过滤出错，允许内容通过:', error);
-                return true;
+              return true;
               }
             });
 
             siteResults.push(filteredResults);
           } catch (error) {
-            console.warn(`搜索短剧失败 ${site.name} - ${keyword}:`, error);
             siteResults.push([]);
           }
         }
 
         const flatResults = siteResults.flat();
-        console.log(`关键词 ${keyword} 搜索结果数量: ${flatResults.length}`);
         return flatResults;
       });
 
@@ -205,12 +192,11 @@ export async function GET(request: NextRequest) {
         )
         .flat();
 
-      console.log(`所有关键词搜索结果总数: ${allResults.length}`);
+
     }
 
     // 如果没有搜索到结果，返回空结果
     if (allResults.length === 0) {
-      console.log('没有搜索到短剧数据，返回空结果');
       return NextResponse.json(
         {
           results: [],
@@ -229,8 +215,6 @@ export async function GET(request: NextRequest) {
         }
       );
     }
-    
-    console.log(`搜索后结果数量: ${allResults.length}`);
 
     // 改进去重机制，使用更高效的Set方式去重
     const seenTitles = new Set<string>();
