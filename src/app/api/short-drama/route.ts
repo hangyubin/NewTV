@@ -2,528 +2,97 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getAvailableApiSites, getCacheTime, getConfig } from '@/lib/config';
-import { searchFromApi } from '@/lib/downstream';
-import { SearchResult } from '@/lib/types';
-import { isShortDrama } from '@/lib/utils';
-import { yellowWords } from '@/lib/yellow';
-
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
 /**
  * 短剧专用API接口
- * 通过采集站API获取短剧内容，并进行内容分类和筛选
+ * 直接调用专门的短剧API获取数据
  */
 export async function GET(request: NextRequest) {
-  // 短剧API暂时不需要认证，移除认证检查
-  // const authInfo = getAuthInfoFromCookie(request);
-  // if (!authInfo || !authInfo.username) {
-  //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  // }
+  // 短剧API暂时不需要认证
 
   const { searchParams } = new URL(request.url);
-  const type = searchParams.get('type') || 'all'; // 短剧类型筛选
-  const region = searchParams.get('region') || 'all'; // 地区筛选
-  const year = searchParams.get('year') || 'all'; // 年份筛选
+  const _type = searchParams.get('type') || 'all'; // 短剧类型筛选
+  const _region = searchParams.get('region') || 'all'; // 地区筛选
+  const _year = searchParams.get('year') || 'all'; // 年份筛选
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '25');
-
-  const config = await getConfig();
-  // 直接获取所有可用的API站点，不考虑用户权限
-  const apiSites = await getAvailableApiSites();
-
-  // 检查是否有可用的API站点
-  const hasAvailableSites = apiSites && apiSites.length > 0;
+  const categoryId = searchParams.get('categoryId') || '1'; // 默认分类
+  const _keyword = searchParams.get('keyword') || '';
 
   try {
-    let allResults: SearchResult[] = [];
+    let allResults: any[] = [];
+    let hasMore = true;
 
-    // 增加更多短剧相关的搜索关键词，提高搜索结果数量
-  const shortDramaKeywords = [
-    '短剧',
-    '微剧',
-    '竖屏短剧',
-    '网络短剧',
-    '小剧场',
-    '微电影',
-    'mini drama',
-    'micro drama',
-    'short drama',
-    'short film',
-    '竖屏',
-    '短视频剧',
-    '网络剧',
-    '迷你剧',
-    '短剧集',
-    '短剧精选',
-    '热门短剧',
-    '短剧推荐',
-    '短剧剧场',
-    '短剧专区',
-    '微短剧',
-    '短剧热播',
-    '短剧合集',
-    '短剧在线',
-    '短剧免费',
-    '短剧大全',
-    '热门',
-    '最新',
-    '精选',
-    '推荐',
-    '影视',
-    '电影',
-    '电视剧',
-    '剧集',
-    '影视推荐',
-    '热播',
-    '最新热播',
-    '影视大全',
-    '免费影视',
-    '在线影视',
-    '影视资源',
-    '影视播放',
-    '影视搜索',
-    '影视导航',
-    '影视网站',
-    '影视平台',
-    '影视APP',
-    '影视软件',
-    '影视盒子',
-    '影视直播',
-    '影视点播',
-    '影视下载',
-    '影视分享',
-    '影视论坛',
-    '影视社区',
-    '影视资讯',
-    '影视评论',
-    '影视评分',
-    '影视排行榜',
-    '影视分类',
-    '影视类型',
-    '影视地区',
-    '影视年份',
-    '影视语言',
-    '影视字幕',
-    '影视清晰度',
-    '影视格式',
-    '影视码率',
-    '影视分辨率',
-    '影视大小',
-    '影视时长',
-    '影视更新',
-    '影视完结',
-    '影视连载',
-    '影视预告',
-    '影视花絮',
-    '影视海报',
-    '影视剧照',
-    '影视演员',
-    '影视导演',
-    '影视编剧',
-    '影视制片人',
-    '影视出品公司',
-    '影视发行公司',
-    '影视上映时间',
-    '影视票房',
-    '影视奖项',
-    '影视口碑',
-    '影视评分',
-    '影视影评',
-    '影视观后感',
-    '影视推荐',
-    '影视分享',
-    '影视讨论',
-    '影视交流',
-    '影视资源',
-    '影视链接',
-    '影视种子',
-    '影视磁力',
-    '影视网盘',
-    '影视云盘',
-    '影视迅雷',
-    '影视下载链接',
-    '影视在线观看',
-    '影视播放链接',
-    '影视网站推荐',
-    '影视平台推荐',
-    '影视APP推荐',
-    '影视软件推荐',
-    '影视盒子推荐',
-    '影视直播推荐',
-    '影视点播推荐',
-    '影视下载推荐',
-    '影视分享推荐',
-    '影视论坛推荐',
-    '影视社区推荐',
-    '影视资讯推荐',
-    '影视评论推荐',
-    '影视评分推荐',
-    '影视排行榜推荐',
-    '影视分类推荐',
-    '影视类型推荐',
-    '影视地区推荐',
-    '影视年份推荐',
-    '影视语言推荐',
-    '影视字幕推荐',
-    '影视清晰度推荐',
-    '影视格式推荐',
-    '影视码率推荐',
-    '影视分辨率推荐',
-    '影视大小推荐',
-    '影视时长推荐',
-    '影视更新推荐',
-    '影视完结推荐',
-    '影视连载推荐',
-    '影视预告推荐',
-    '影视花絮推荐',
-    '影视海报推荐',
-    '影视剧照推荐',
-    '影视演员推荐',
-    '影视导演推荐',
-    '影视编剧推荐',
-    '影视制片人推荐',
-    '影视出品公司推荐',
-    '影视发行公司推荐',
-    '影视上映时间推荐',
-    '影视票房推荐',
-    '影视奖项推荐',
-    '影视口碑推荐',
-    '影视评分推荐',
-    '影视影评推荐',
-    '影视观后感推荐',
-  ];
+    // 调用专门的短剧API
+    const apiUrl = `https://api.r2afosne.dpdns.org/vod/list?categoryId=${categoryId}&page=${page}&size=${limit}`;
 
+    console.log('📺 [短剧API] 调用外部短剧API:', apiUrl);
 
-
-    // 不管是否有可用站点，都尝试返回一些示例短剧数据
-    if (hasAvailableSites) {
-      // 使用所有关键词进行搜索，提高结果数量
-      const allKeywords = shortDramaKeywords;
-      // 使用所有可用的站点
-      const allSites = apiSites;
-
-      // 并行搜索多个关键词和站点
-      const searchPromises = [];
-      
-      // 为每个站点和关键词组合创建搜索请求
-      for (const site of allSites) {
-        for (const keyword of allKeywords) {
-          searchPromises.push(
-            (async () => {
-              try {
-                const results = (await Promise.race([
-                  searchFromApi(site, keyword),
-                  new Promise((_, reject) =>
-                    setTimeout(
-                      () => reject(new Error(`${site.name} timeout`)),
-                      10000 // 缩短超时时间
-                    )
-                  ),
-                ])) as SearchResult[];
-
-                // 过滤短剧内容，使用更宽松的过滤条件
-                const filteredResults = results.filter((result) => {
-                  try {
-                    // 1. 黄色内容过滤（保留，重要）
-                    if (!config.SiteConfig.DisableYellowFilter) {
-                      const typeName = result.type_name || '';
-                      const title = result.title || '';
-                      const desc = result.desc || '';
-                      const content = `${typeName} ${title} ${desc}`;
-                      if (
-                        yellowWords.some((word: string) => content.includes(word))
-                      ) {
-                        return false;
-                      }
-                    }
-
-                    // 2. 类型筛选（保留，但放宽条件）
-                    if (type !== 'all') {
-                      const resultType = getShortDramaType(
-                        result.type_name,
-                        result.title
-                      );
-                      if (resultType !== type && resultType !== 'all') {
-                        // 放宽条件：如果类型不匹配，也允许通过
-                        // return false;
-                      }
-                    }
-
-                    // 3. 地区筛选（保留，但放宽条件）
-                    if (region !== 'all') {
-                      const resultRegion = getContentRegion(
-                        result.title,
-                        result.desc
-                      );
-                      if (resultRegion !== region && resultRegion !== 'all') {
-                        // 放宽条件：如果地区不匹配，也允许通过
-                        // return false;
-                      }
-                    }
-
-                    // 4. 年份筛选（保留，但放宽条件）
-                    if (year !== 'all' && result.year) {
-                      if (!matchYear(result.year, year)) {
-                        // 放宽条件：如果年份不匹配，也允许通过
-                        // return false;
-                      }
-                    }
-
-                    // 5. 使用 isShortDrama 函数检测是否为短剧，放宽条件
-                    // 允许更多内容通过，包括可能的短剧
-                    const isShort = isShortDrama(result.type_name, result.title);
-                    if (!isShort) {
-                      // 放宽条件：如果不是明确的短剧，也允许通过，增加内容数量
-                      // return false;
-                    }
-
-                    return true;
-                  } catch (error) {
-                    // 容错处理，允许解析错误的内容通过
-                    return true;
-                  }
-                });
-
-                return filteredResults;
-              } catch (error) {
-                return [];
-              }
-            })()
-          );
-        }
-      }
-
-      const keywordResults = await Promise.allSettled(searchPromises);
-      allResults = keywordResults
-        .filter((result) => result.status === 'fulfilled')
-        .map(
-          (result) => (result as PromiseFulfilledResult<SearchResult[]>).value
-        )
-        .flat();
-
-
-    }
-
-    // 如果没有搜索到结果，尝试使用更通用的搜索关键词
-    if (allResults.length === 0 && hasAvailableSites) {
-      // 使用更通用的关键词再次搜索
-      const generalKeywords = ['热门', '最新', '精选', '推荐'];
-      const generalSearchPromises = [];
-      
-      // 使用所有可用的站点
-      const allSites = apiSites;
-      
-      for (const site of allSites) {
-        for (const keyword of generalKeywords) {
-          generalSearchPromises.push(
-            (async () => {
-              try {
-                const results = (await Promise.race([
-                  searchFromApi(site, keyword),
-                  new Promise((_, reject) =>
-                    setTimeout(
-                      () => reject(new Error(`${site.name} timeout`)),
-                      8000
-                    )
-                  ),
-                ])) as SearchResult[];
-                
-                // 过滤短剧内容，使用更宽松的过滤条件
-                return results.filter((result) => {
-                  try {
-                    // 使用更宽松的条件，允许更多内容通过
-                    // 黄色内容已经在前面的搜索中过滤掉了，这里只做基本的内容检查
-                    return result.title && result.poster;
-                  } catch (error) {
-                    return true;
-                  }
-                });
-              } catch (error) {
-                return [];
-              }
-            })()
-          );
-        }
-      }
-      
-      const generalResults = await Promise.allSettled(generalSearchPromises);
-      const generalSearchResults = generalResults
-        .filter((result) => result.status === 'fulfilled')
-        .map(
-          (result) => (result as PromiseFulfilledResult<SearchResult[]>).value
-        )
-        .flat();
-      
-      // 更新 allResults
-      allResults = generalSearchResults;
-    }
-    
-    // 如果仍然没有搜索到结果，返回空结果
-    if (allResults.length === 0) {
-      return NextResponse.json(
-        {
-          results: [],
-          total: 0,
-          page,
-          limit,
-          totalPages: 0,
-        },
-        {
-          headers: {
-            'Cache-Control': 'public, max-age=300, s-maxage=300',
-            'CDN-Cache-Control': 'public, s-maxage=300',
-            'Vercel-CDN-Cache-Control': 'public, s-maxage=300',
-            'Netlify-Vary': 'query',
-          },
-        }
-      );
-    }
-
-    // 改进去重机制，使用更高效的Set方式去重
-    const seenTitles = new Set<string>();
-    const uniqueResults: SearchResult[] = [];
-
-    for (const result of allResults) {
-      // 使用标题作为唯一标识进行去重
-      if (!seenTitles.has(result.title)) {
-        seenTitles.add(result.title);
-        uniqueResults.push(result);
-      }
-    }
-
-    // 按年份和热度排序
-    const sortedResults = uniqueResults.sort((a, b) => {
-      // 优先按年份排序（新的在前）
-      const yearA = parseInt(a.year) || 0;
-      const yearB = parseInt(b.year) || 0;
-      if (yearA !== yearB) {
-        return yearB - yearA;
-      }
-      // 然后按标题长度排序（短剧通常标题较短）
-      return a.title.length - b.title.length;
+    const response = await fetch(apiUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        Accept: 'application/json',
+      },
+      cache: 'no-store',
     });
 
-    // 分页
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    const paginatedResults = sortedResults.slice(startIndex, endIndex);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
-    const cacheTime = await getCacheTime();
+    const data = await response.json();
+    console.log('📺 [短剧API] 外部API返回:', JSON.stringify(data, null, 2));
 
+    const items = data.list || [];
+
+    // 转换数据格式
+    const formattedResults = items.map((item: any) => ({
+      id: item.id,
+      title: item.name,
+      poster: item.cover,
+      year: new Date(item.update_time || Date.now()).getFullYear().toString(),
+      type_name: '短剧',
+      desc: item.description || '',
+      url: '',
+      douban_id: 0,
+      score: item.score || 0,
+      eps: 1,
+    }));
+
+    allResults = formattedResults;
+    hasMore = data.currentPage < data.totalPages;
+
+    // 过滤重复项
+    const uniqueResults = Array.from(
+      new Map(allResults.map((item) => [item.id, item])).values()
+    );
+
+    // 构建返回数据
+    const result = {
+      code: 200,
+      message: 'success',
+      results: uniqueResults,
+      total: uniqueResults.length,
+      page,
+      limit,
+      hasMore,
+    };
+
+    return NextResponse.json(result, {
+      headers: {
+        'Cache-Control': 'public, max-age=300',
+        Vary: 'Accept-Encoding, User-Agent',
+      },
+    });
+  } catch (error) {
+    console.error('📺 [短剧API] 错误:', error);
     return NextResponse.json(
       {
-        results: paginatedResults,
-        total: sortedResults.length,
-        page,
-        limit,
-        totalPages: Math.ceil(sortedResults.length / limit),
+        error: '获取短剧数据失败',
+        message: error instanceof Error ? error.message : '未知错误',
+        code: 500,
       },
-      {
-        headers: {
-          'Cache-Control': `public, max-age=${cacheTime}, s-maxage=${cacheTime}`,
-          'CDN-Cache-Control': `public, s-maxage=${cacheTime}`,
-          'Vercel-CDN-Cache-Control': `public, s-maxage=${cacheTime}`,
-          'Netlify-Vary': 'query',
-        },
-      }
+      { status: 500 }
     );
-  } catch (error) {
-    console.error('获取短剧数据失败:', error);
-    return NextResponse.json({ error: '获取短剧数据失败' }, { status: 500 });
-  }
-}
-
-/**
- * 获取短剧的具体类型
- */
-function getShortDramaType(typeName?: string, title?: string): string {
-  if (!typeName && !title) return 'all';
-
-  const content = `${typeName || ''} ${title || ''}`.toLowerCase();
-
-  if (content.includes('爱情') || content.includes('romance')) return 'romance';
-  if (content.includes('家庭') || content.includes('family')) return 'family';
-  if (content.includes('现代') || content.includes('modern')) return 'modern';
-  if (content.includes('都市') || content.includes('urban')) return 'urban';
-  if (content.includes('古装') || content.includes('costume')) return 'costume';
-  if (content.includes('穿越') || content.includes('time'))
-    return 'time_travel';
-  if (content.includes('商战') || content.includes('business'))
-    return 'business';
-  if (content.includes('悬疑') || content.includes('suspense'))
-    return 'suspense';
-  if (content.includes('喜剧') || content.includes('comedy')) return 'comedy';
-  if (content.includes('青春') || content.includes('youth')) return 'youth';
-
-  return 'all';
-}
-
-/**
- * 获取内容的地区信息
- */
-function getContentRegion(title?: string, desc?: string): string {
-  if (!title && !desc) return 'all';
-
-  const content = `${title || ''} ${desc || ''}`.toLowerCase();
-
-  if (content.includes('韩国') || content.includes('korean')) return 'korean';
-  if (content.includes('日本') || content.includes('japanese'))
-    return 'japanese';
-  if (content.includes('美国') || content.includes('american')) return 'usa';
-  if (content.includes('英国') || content.includes('british')) return 'uk';
-  if (content.includes('泰国') || content.includes('thai')) return 'thailand';
-  if (
-    content.includes('中国') ||
-    content.includes('chinese') ||
-    content.includes('国产')
-  )
-    return 'mainland_china';
-
-  return 'all';
-}
-
-/**
- * 匹配年份筛选
- */
-function matchYear(resultYear: string, filterYear: string): boolean {
-  const year = parseInt(resultYear);
-  if (!year) return false;
-
-  switch (filterYear) {
-    case '2025':
-      return year === 2025;
-    case '2024':
-      return year === 2024;
-    case '2023':
-      return year === 2023;
-    case '2022':
-      return year === 2022;
-    case '2021':
-      return year === 2021;
-    case '2020':
-      return year === 2020;
-    case '2019':
-      return year === 2019;
-    case '2020s':
-      return year >= 2020 && year <= 2029;
-    case '2010s':
-      return year >= 2010 && year <= 2019;
-    case '2000s':
-      return year >= 2000 && year <= 2009;
-    case '1990s':
-      return year >= 1990 && year <= 1999;
-    case '1980s':
-      return year >= 1980 && year <= 1989;
-    case '1970s':
-      return year >= 1970 && year <= 1979;
-    case '1960s':
-      return year >= 1960 && year <= 1969;
-    case 'earlier':
-      return year < 1960;
-    default:
-      return true;
   }
 }

@@ -344,11 +344,8 @@ function DoubanPageClient() {
           })),
         };
 
-        // 存储当前请求的总数据量，用于判断是否还有更多数据
-        localStorage.setItem(
-          `shortDramaTotal_${type}_${multiLevelValues.type}_${multiLevelValues.region}_${multiLevelValues.year}`,
-          shortDramaResponse.total.toString()
-        );
+        // 直接使用API返回的hasMore字段判断是否还有更多数据
+        setHasMore(shortDramaResponse.hasMore);
       } else if (type === 'anime') {
         data = await getDoubanRecommends({
           kind: primarySelection === '番剧' ? 'tv' : 'movie',
@@ -524,11 +521,8 @@ function DoubanPageClient() {
               })),
             };
 
-            // 存储当前请求的总数据量，用于判断是否还有更多数据
-            localStorage.setItem(
-              `shortDramaTotal_${type}_${multiLevelValues.type}_${multiLevelValues.region}_${multiLevelValues.year}`,
-              shortDramaResponse.total.toString()
-            );
+            // 直接使用API返回的hasMore字段判断是否还有更多数据
+            setHasMore(shortDramaResponse.hasMore);
           } else if (type === 'anime' && primarySelection === '每日放送') {
             // 每日放送模式下，不进行数据请求，返回空数据
             data = {
@@ -623,36 +617,30 @@ function DoubanPageClient() {
     selectedWeekday,
   ]);
 
-  // 设置滚动监听
-  useEffect(() => {
-    // 如果没有更多数据或正在加载，则不设置监听
-    if (!hasMore || isLoadingMore || loading) {
-      return;
-    }
+  // 无限加载实现，参考LunaTV项目
+  const lastElementRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (loading || isLoadingMore || !hasMore) return;
+      if (observerRef.current) observerRef.current.disconnect();
 
-    // 确保 loadingRef 存在
-    if (!loadingRef.current) {
-      return;
-    }
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          if (
+            entries[0].isIntersecting &&
+            hasMore &&
+            !isLoadingMore &&
+            !loading
+          ) {
+            setCurrentPage((prev) => prev + 1);
+          }
+        },
+        { threshold: 0.1 }
+      );
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
-          setCurrentPage((prev) => prev + 1);
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    observer.observe(loadingRef.current);
-    observerRef.current = observer;
-
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-      }
-    };
-  }, [hasMore, isLoadingMore, loading]);
+      if (node) observerRef.current.observe(node);
+    },
+    [loading, isLoadingMore, hasMore]
+  );
 
   // 处理选择器变化
   const handlePrimaryChange = useCallback(
@@ -841,7 +829,13 @@ function DoubanPageClient() {
                 skeletonData.map((index) => <DoubanCardSkeleton key={index} />)
               : // 显示实际数据
                 doubanData.map((item, index) => (
-                  <div key={`${item.title}-${index}`} className='w-full'>
+                  <div
+                    key={`${item.title}-${index}`}
+                    className='w-full'
+                    ref={
+                      index === doubanData.length - 1 ? lastElementRef : null
+                    }
+                  >
                     <VideoCard
                       from='douban'
                       title={item.title}
@@ -859,10 +853,7 @@ function DoubanPageClient() {
           </div>
 
           {/* 加载更多指示器 */}
-          <div
-            ref={loadingRef}
-            className='flex justify-center mt-12 py-8'
-          >
+          <div ref={loadingRef} className='flex justify-center mt-12 py-8'>
             {hasMore && isLoadingMore && (
               <div className='flex items-center gap-2'>
                 <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-green-500'></div>
