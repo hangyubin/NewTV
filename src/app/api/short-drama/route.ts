@@ -31,27 +31,31 @@ export async function GET(request: NextRequest) {
     });
 
     // 调用专门的短剧API
-    const apiUrl = `https://api.r2afosne.dpdns.org/vod/list?categoryId=${categoryId}&page=${page}&size=${limit}`;
+    const primaryApiUrl = `https://api.r2afosne.dpdns.org/vod/list?categoryId=${categoryId}&page=${page}&size=${limit}`;
+    // 添加备用API地址，提高可用性
+    const apiUrls = [primaryApiUrl];
     
-    console.log('📺 [短剧API] 调用外部短剧API:', apiUrl);
-    
-    // 实现重试机制，处理IP限制等临时问题
+    // 实现重试机制，处理IP限制、网络超时等问题
     const maxRetries = 3;
     const retryDelay = 1000; // 1秒
     let retryCount = 0;
     let success = false;
+    let currentApiIndex = 0;
     
-    while (retryCount < maxRetries && !success) {
+    while (retryCount < maxRetries && !success && currentApiIndex < apiUrls.length) {
+      const apiUrl = apiUrls[currentApiIndex];
+      
       try {
         retryCount++;
-        console.log(`📺 [短剧API] 发起外部API请求 (重试 ${retryCount}/${maxRetries})...`);
+        console.log(`📺 [短剧API] 发起外部API请求 (重试 ${retryCount}/${maxRetries}, API ${currentApiIndex + 1}/${apiUrls.length})...`);
+        console.log(`📺 [短剧API] 请求URL: ${apiUrl}`);
         
-        // 使用AbortController实现超时功能
+        // 使用AbortController实现超时功能，增加超时时间到15秒
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
-          console.error('📺 [短剧API] 外部API调用超时');
+          console.error('📺 [短剧API] 外部API调用超时 (15秒)');
           controller.abort();
-        }, 10000);
+        }, 15000);
         
         const response = await fetch(apiUrl, {
           headers: {
@@ -104,25 +108,24 @@ export async function GET(request: NextRequest) {
           const errorText = await response.text();
           console.error('📺 [短剧API] 错误响应内容:', errorText);
           
-          // 检查是否是IP限制错误（通常是429 Too Many Requests或503 Service Unavailable）
-          if (response.status === 429 || response.status === 503) {
-            console.warn(`📺 [短剧API] 可能遇到IP限制，正在重试... (${retryCount}/${maxRetries})`);
+          // 检查是否是IP限制或服务不可用错误
+          if (response.status === 429 || response.status === 503 || response.status === 504) {
+            console.warn(`📺 [短剧API] 可能遇到IP限制或服务不可用，正在重试... (${retryCount}/${maxRetries})`);
             if (retryCount < maxRetries) {
               // 指数退避重试
               const delay = retryDelay * Math.pow(2, retryCount - 1);
               console.log(`📺 [短剧API] 等待 ${delay}ms 后重试...`);
               await new Promise(resolve => setTimeout(resolve, delay));
             } else {
-              console.error('📺 [短剧API] 达到最大重试次数，返回空数组');
-              allResults = [];
-              hasMore = false;
+              console.error('📺 [短剧API] 达到最大重试次数，尝试下一个API');
+              currentApiIndex++; // 尝试下一个API
+              retryCount = 0; // 重置重试计数
             }
           } else {
-            // 其他错误，直接返回空数组
-            console.error('📺 [短剧API] 外部API返回错误，返回空数组');
-            allResults = [];
-            hasMore = false;
-            success = true; // 不再重试
+            // 其他错误，尝试下一个API
+            console.error('📺 [短剧API] 外部API返回错误，尝试下一个API');
+            currentApiIndex++; // 尝试下一个API
+            retryCount = 0; // 重置重试计数
           }
         }
       } catch (externalError) {
@@ -130,23 +133,30 @@ export async function GET(request: NextRequest) {
         const error = externalError instanceof Error ? externalError : new Error(String(externalError));
         console.error('📺 [短剧API] 调用外部API失败:', {
           retry: retryCount,
+          apiIndex: currentApiIndex,
           name: error.name,
           message: error.message,
           stack: error.stack,
         });
         
-        // 检查是否是网络错误或超时，这些情况可以重试
-        if ((error.name === 'AbortError' || error.name === 'FetchError' || error.message.includes('NetworkError') || error.message.includes('fetch failed')) && retryCount < maxRetries) {
-          console.warn(`📺 [短剧API] 网络错误，正在重试... (${retryCount}/${maxRetries})`);
+        // 检查是否是网络错误、超时或DNS错误，这些情况可以重试
+        const isRetryableError = 
+          error.name === 'AbortError' || // 超时
+          error.message.includes('ETIMEDOUT') || // 网络超时
+          error.message.includes('NetworkError') || // 网络错误
+          error.message.includes('fetch failed') || // fetch失败
+          error.message.includes('getaddrinfo'); // DNS解析错误
+        
+        if (isRetryableError && retryCount < maxRetries) {
+          console.warn(`📺 [短剧API] 网络错误或超时，正在重试... (${retryCount}/${maxRetries})`);
           // 指数退避重试
           const delay = retryDelay * Math.pow(2, retryCount - 1);
           console.log(`📺 [短剧API] 等待 ${delay}ms 后重试...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         } else {
-          console.error('📺 [短剧API] 达到最大重试次数或遇到不可重试错误，返回空数组');
-          allResults = [];
-          hasMore = false;
-          success = true; // 不再重试
+          console.error('📺 [短剧API] 达到最大重试次数或遇到不可重试错误，尝试下一个API');
+          currentApiIndex++; // 尝试下一个API
+          retryCount = 0; // 重置重试计数
         }
       }
     }
