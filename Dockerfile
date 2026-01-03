@@ -47,9 +47,9 @@ ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 ENV DOCKER_ENV=true
 
-# 优化DNS配置，使用Google DNS
-RUN echo 'nameserver 8.8.8.8' > /etc/resolv.conf && \
-    echo 'nameserver 8.8.4.4' >> /etc/resolv.conf
+# DNS配置由Docker守护进程管理，无需手动修改
+# 可以在运行容器时使用 --dns 参数指定DNS服务器，例如：
+# docker run --dns 8.8.8.8 --dns 8.8.4.4 -p 3000:3000 newtv
 
 # 从构建器中复制 standalone 输出
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
