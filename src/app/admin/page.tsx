@@ -3547,23 +3547,18 @@ const VideoSourceConfig = ({
           >
             {!source.disabled ? '禁用' : '启用'}
           </button>
-          {/* 配置文件里填写的源视频列表是不能随便删除的，除非配置文件里填写了新的源或导入了新的源 */}
-          {(source.from === 'custom' || 
-            // 配置源（from: 'config'）可以删除的条件：存在多个配置源
-            // 只有当存在多个配置源时，才能删除配置源
-            sources.filter(s => s.from === 'config').length > 1) && (
-            <button
-              onClick={() => handleDelete(source.key)}
-              disabled={isLoading(`deleteSource_${source.key}`)}
-              className={`${buttonStyles.roundedSecondary} ${
-                isLoading(`deleteSource_${source.key}`)
-                  ? 'opacity-50 cursor-not-allowed'
-                  : ''
-              }`}
-            >
-              删除
-            </button>
-          )}
+          {/* 所有视频源都可以删除，包括最后一个配置源 */}
+          <button
+            onClick={() => handleDelete(source.key)}
+            disabled={isLoading(`deleteSource_${source.key}`)}
+            className={`${buttonStyles.roundedSecondary} ${
+              isLoading(`deleteSource_${source.key}`)
+                ? 'opacity-50 cursor-not-allowed'
+                : ''
+            }`}
+          >
+            删除
+          </button>
         </td>
       </tr>
     );
