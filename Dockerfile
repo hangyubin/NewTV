@@ -31,6 +31,13 @@ RUN pnpm run build
 # ---- 第 3 阶段：生成运行时镜像 ----
 FROM node:20-alpine AS runner
 
+# 安装必要的网络工具和依赖
+RUN apk add --no-cache \
+    curl \
+    wget \
+    bind-tools \
+    && rm -rf /var/cache/apk/*
+
 # 创建非 root 用户
 RUN addgroup -g 1001 -S nodejs && adduser -u 1001 -S nextjs -G nodejs
 
@@ -39,6 +46,10 @@ ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 ENV DOCKER_ENV=true
+
+# 优化DNS配置，使用Google DNS
+RUN echo 'nameserver 8.8.8.8' > /etc/resolv.conf && \
+    echo 'nameserver 8.8.4.4' >> /etc/resolv.conf
 
 # 从构建器中复制 standalone 输出
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
