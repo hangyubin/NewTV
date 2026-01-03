@@ -814,12 +814,25 @@ export async function POST(request: NextRequest) {
         });
 
         // 允许删除逻辑：
-        // 1. 只要不是最后一个视频源，所有源都可以删除
+        // 1. 不能删除最后一个视频源
         if (adminConfig.SourceConfig.length <= 1) {
           console.log('不能删除最后一个视频源');
           return NextResponse.json(
             {
               error: '至少需要保留一个视频源',
+            },
+            { status: 400 }
+          );
+        }
+        
+        // 2. 不能删除唯一的配置源
+        // 只有当存在多个配置源时，才能删除配置源
+        const configSources = adminConfig.SourceConfig.filter(s => s.from === 'config');
+        if (configSources.length === 1 && entry.from === 'config') {
+          console.log('不能删除唯一的配置源');
+          return NextResponse.json(
+            {
+              error: '至少需要保留一个配置源',
             },
             { status: 400 }
           );
@@ -948,12 +961,25 @@ export async function POST(request: NextRequest) {
         // 检查删除后是否至少保留一个源
         const canDeleteAll = adminConfig.SourceConfig.length > keys.length;
 
+        // 获取当前配置源列表
+        const currentConfigSources = adminConfig.SourceConfig.filter(s => s.from === 'config');
+        const currentConfigSourceKeys = new Set(currentConfigSources.map(s => s.key));
+        
+        // 计算删除后还剩下的配置源数量
+        const deletedConfigSources = keys.filter(key => currentConfigSourceKeys.has(key));
+        const remainingConfigSourcesCount = currentConfigSources.length - deletedConfigSources.length;
+
         keys.forEach((key) => {
           const entry = adminConfig.SourceConfig.find((s) => s.key === key);
           if (!entry) return;
 
           // 检查是否可以删除该源
-          const canDelete = canDeleteAll;
+          let canDelete = canDeleteAll;
+          
+          // 额外检查：如果是配置源，确保删除后至少还剩一个配置源
+          if (entry.from === 'config' && remainingConfigSourcesCount <= 0) {
+            canDelete = false;
+          }
 
           if (canDelete) {
             keysToDelete.push(key);

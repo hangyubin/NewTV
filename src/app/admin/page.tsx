@@ -3547,8 +3547,11 @@ const VideoSourceConfig = ({
           >
             {!source.disabled ? '禁用' : '启用'}
           </button>
-          {/* 当有其他视频源时，所有源都显示删除按钮 */}
-          {sources.length > 1 && (
+          {/* 配置文件里填写的源视频列表是不能随便删除的，除非配置文件里填写了新的源或导入了新的源 */}
+          {(source.from === 'custom' || 
+            // 配置源（from: 'config'）可以删除的条件：存在多个配置源
+            // 只有当存在多个配置源时，才能删除配置源
+            sources.filter(s => s.from === 'config').length > 1) && (
             <button
               onClick={() => handleDelete(source.key)}
               disabled={isLoading(`deleteSource_${source.key}`)}

@@ -74,93 +74,95 @@ export async function GET(request: NextRequest) {
 
     // 不管是否有可用站点，都尝试返回一些示例短剧数据
     if (hasAvailableSites) {
-      // 使用更多关键词和站点进行搜索，提高结果数量
-      // 使用前10个最相关的关键词
-      const topKeywords = shortDramaKeywords.slice(0, 10);
+      // 使用所有关键词进行搜索，提高结果数量
+      const allKeywords = shortDramaKeywords;
       // 使用所有可用的站点
-      const topSites = apiSites;
+      const allSites = apiSites;
 
-    
-
-      // 并行搜索多个关键词
-      const searchPromises = topKeywords.map(async (keyword) => {
-        // 优化：使用更高效的方式处理站点请求，限制并发数量
-        const siteResults: SearchResult[][] = [];
-
-        // 串行处理站点请求，避免太多并行请求
-        for (const site of topSites) {
-          try {
-            const results = (await Promise.race([
-              searchFromApi(site, keyword),
-              new Promise((_, reject) =>
-                setTimeout(
-                  () => reject(new Error(`${site.name} timeout`)),
-                  15000
-                )
-              ),
-            ])) as SearchResult[];
-
-            // 简化过滤条件，允许更多内容通过
-            const filteredResults = results.filter((result) => {
+      // 并行搜索多个关键词和站点
+      const searchPromises = [];
+      
+      // 为每个站点和关键词组合创建搜索请求
+      for (const site of allSites) {
+        for (const keyword of allKeywords) {
+          searchPromises.push(
+            (async () => {
               try {
-                // 1. 取消严格的短剧类型检查，允许更多内容通过
-                // 2. 仅过滤黄色内容
-                if (!config.SiteConfig.DisableYellowFilter) {
-                  const typeName = result.type_name || '';
-                  if (
-                    yellowWords.some((word: string) => typeName.includes(word))
-                  ) {
-                    return false;
-                  }
-                }
+                const results = (await Promise.race([
+                  searchFromApi(site, keyword),
+                  new Promise((_, reject) =>
+                    setTimeout(
+                      () => reject(new Error(`${site.name} timeout`)),
+                      10000 // 缩短超时时间
+                    )
+                  ),
+                ])) as SearchResult[];
 
-                // 3. 简化类型筛选
-                if (type !== 'all') {
-                  const resultType = getShortDramaType(
-                    result.type_name,
-                    result.title
-                  );
-                  // 允许"全部"或匹配的类型通过
-                  if (resultType !== type && resultType !== 'all') {
-                    return false;
-                  }
-                }
+                // 过滤短剧内容
+                const filteredResults = results.filter((result) => {
+                  try {
+                    // 1. 使用 isShortDrama 函数检测是否为短剧
+                    if (!isShortDrama(result.type_name, result.title)) {
+                      return false;
+                    }
+                    
+                    // 2. 过滤黄色内容
+                    if (!config.SiteConfig.DisableYellowFilter) {
+                      const typeName = result.type_name || '';
+                      const title = result.title || '';
+                      const desc = result.desc || '';
+                      const content = `${typeName} ${title} ${desc}`;
+                      if (
+                        yellowWords.some((word: string) => content.includes(word))
+                      ) {
+                        return false;
+                      }
+                    }
 
-                // 4. 简化地区筛选
-                if (region !== 'all') {
-                  const resultRegion = getContentRegion(
-                    result.title,
-                    result.desc
-                  );
-                  // 允许"全部"或匹配的地区通过
-                  if (resultRegion !== region && resultRegion !== 'all') {
-                    return false;
-                  }
-                }
+                    // 3. 类型筛选
+                    if (type !== 'all') {
+                      const resultType = getShortDramaType(
+                        result.type_name,
+                        result.title
+                      );
+                      if (resultType !== type && resultType !== 'all') {
+                        return false;
+                      }
+                    }
 
-                // 5. 简化年份筛选
-                if (year !== 'all' && result.year) {
-                  if (!matchYear(result.year, year)) {
-                    return false;
-                  }
-                }
+                    // 4. 地区筛选
+                    if (region !== 'all') {
+                      const resultRegion = getContentRegion(
+                        result.title,
+                        result.desc
+                      );
+                      if (resultRegion !== region && resultRegion !== 'all') {
+                        return false;
+                      }
+                    }
 
-                return true;
+                    // 5. 年份筛选
+                    if (year !== 'all' && result.year) {
+                      if (!matchYear(result.year, year)) {
+                        return false;
+                      }
+                    }
+
+                    return true;
+                  } catch (error) {
+                    // 容错处理，允许解析错误的内容通过
+                    return true;
+                  }
+                });
+
+                return filteredResults;
               } catch (error) {
-                // 容错处理，允许解析错误的内容通过
-                return true;
+                return [];
               }
-            });
-
-            siteResults.push(filteredResults);
-          } catch (error) {
-            siteResults.push([]);
-          }
+            })()
+          );
         }
-
-        const flatResults = siteResults.flat();
-        return flatResults;
-      });
+      }
 
       const keywordResults = await Promise.allSettled(searchPromises);
       allResults = keywordResults
@@ -173,8 +175,57 @@ export async function GET(request: NextRequest) {
 
     }
 
-    // 简化过滤条件，允许更多内容通过
-    // 如果没有搜索到结果，返回空结果
+    // 如果没有搜索到结果，尝试使用更通用的搜索关键词
+    if (allResults.length === 0) {
+      // 使用更通用的关键词再次搜索
+      const generalKeywords = ['热门', '最新', '精选', '推荐'];
+      const generalSearchPromises = [];
+      
+      for (const site of allSites) {
+        for (const keyword of generalKeywords) {
+          generalSearchPromises.push(
+            (async () => {
+              try {
+                const results = (await Promise.race([
+                  searchFromApi(site, keyword),
+                  new Promise((_, reject) =>
+                    setTimeout(
+                      () => reject(new Error(`${site.name} timeout`)),
+                      8000
+                    )
+                  ),
+                ])) as SearchResult[];
+                
+                // 过滤短剧内容
+                return results.filter((result) => {
+                  try {
+                    // 使用 isShortDrama 函数检测是否为短剧
+                    return isShortDrama(result.type_name, result.title);
+                  } catch (error) {
+                    return false;
+                  }
+                });
+              } catch (error) {
+                return [];
+              }
+            })()
+          );
+        }
+      }
+      
+      const generalResults = await Promise.allSettled(generalSearchPromises);
+      const generalSearchResults = generalResults
+        .filter((result) => result.status === 'fulfilled')
+        .map(
+          (result) => (result as PromiseFulfilledResult<SearchResult[]>).value
+        )
+        .flat();
+      
+      // 更新 allResults
+      allResults = generalSearchResults;
+    }
+    
+    // 如果仍然没有搜索到结果，返回空结果
     if (allResults.length === 0) {
       return NextResponse.json(
         {
