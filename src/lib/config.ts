@@ -202,15 +202,16 @@ export function refineConfig(adminConfig: AdminConfig): AdminConfig {
   });
 
   // 检查现有源是否在 fileConfig.api_site 中，
-  // 如果不在且之前不是通过导入设置为 config 的，则标记为 custom
+  // 如果不在，标记为 custom 类型
+  // 只有配置文件里填写的源才是 config 类型
   const apiSitesFromFileKey = new Set(apiSitesFromFile.map(([key]) => key));
   currentApiSites.forEach((source) => {
-    // 保留从配置文件或导入设置为 config 的源的类型
-    // 只有真正自定义添加的源才标记为 custom
     if (!apiSitesFromFileKey.has(source.key)) {
-      // 不要改变已经是 config 类型的源
-      // 只有未指定或之前是 custom 的源才标记为 custom
-      // source.from = 'custom';
+      // 不在配置文件中的源，标记为 custom 类型
+      source.from = 'custom';
+    } else {
+      // 在配置文件中的源，确保标记为 config 类型
+      source.from = 'config';
     }
   });
 
