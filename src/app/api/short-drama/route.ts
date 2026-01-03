@@ -100,26 +100,11 @@ export async function GET(request: NextRequest) {
               ),
             ])) as SearchResult[];
 
-            // 过滤出真正的短剧内容，增加容错处理
+            // 简化过滤条件，允许更多内容通过
             const filteredResults = results.filter((result) => {
               try {
-                // 1. 检查是否为短剧 - 放宽条件，允许更多内容通过
-                const isShortDramaResult = isShortDrama(
-                  result.type_name,
-                  result.title
-                );
-                if (!isShortDramaResult) {
-                  // 放宽条件：如果标题包含短剧相关关键词，也允许通过
-                  const titleLower = result.title.toLowerCase();
-                  const hasShortDramaKeyword = shortDramaKeywords.some(
-                    (keyword) => titleLower.includes(keyword)
-                  );
-                  if (!hasShortDramaKeyword) {
-                    return false;
-                  }
-                }
-
-                // 2. 过滤黄色内容
+                // 1. 取消严格的短剧类型检查，允许更多内容通过
+                // 2. 仅过滤黄色内容
                 if (!config.SiteConfig.DisableYellowFilter) {
                   const typeName = result.type_name || '';
                   if (
@@ -129,38 +114,31 @@ export async function GET(request: NextRequest) {
                   }
                 }
 
-                // 3. 类型筛选 - 增加容错处理，允许更多类型通过
+                // 3. 简化类型筛选
                 if (type !== 'all') {
                   const resultType = getShortDramaType(
                     result.type_name,
                     result.title
                   );
+                  // 允许"全部"或匹配的类型通过
                   if (resultType !== type && resultType !== 'all') {
                     return false;
                   }
                 }
 
-                // 4. 地区筛选 - 简化地区筛选逻辑，允许更多地区通过
+                // 4. 简化地区筛选
                 if (region !== 'all') {
                   const resultRegion = getContentRegion(
                     result.title,
                     result.desc
                   );
-                  // 允许"全部"、匹配的地区或华语内容通过
-                  if (
-                    resultRegion !== region &&
-                    resultRegion !== 'all' &&
-                    !(
-                      region === 'chinese' &&
-                      (resultRegion === 'mainland_china' ||
-                        resultRegion === 'chinese')
-                    )
-                  ) {
+                  // 允许"全部"或匹配的地区通过
+                  if (resultRegion !== region && resultRegion !== 'all') {
                     return false;
                   }
                 }
 
-                // 5. 年份筛选 - 增加容错处理，允许没有年份的内容通过
+                // 5. 简化年份筛选
                 if (year !== 'all' && result.year) {
                   if (!matchYear(result.year, year)) {
                     return false;
@@ -170,7 +148,7 @@ export async function GET(request: NextRequest) {
                 return true;
               } catch (error) {
                 // 容错处理，允许解析错误的内容通过
-              return true;
+                return true;
               }
             });
 
@@ -195,6 +173,7 @@ export async function GET(request: NextRequest) {
 
     }
 
+    // 简化过滤条件，允许更多内容通过
     // 如果没有搜索到结果，返回空结果
     if (allResults.length === 0) {
       return NextResponse.json(
