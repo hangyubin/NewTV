@@ -554,6 +554,16 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
     return true;
   });
 
+  // 为所有源添加 from 字段默认值
+  // 配置文件里填写的源和导入的源都应该是 config 类型
+  // 只有真正手动添加的源才是 custom 类型
+  adminConfig.SourceConfig.forEach((source) => {
+    if (!source.from || (source.from !== 'config' && source.from !== 'custom')) {
+      // 默认值为 config，因为只有手动添加的源才是 custom
+      source.from = 'config';
+    }
+  });
+
   // 自定义分类去重
   const seenCustomCategoryKeys = new Set<string>();
   adminConfig.CustomCategories = adminConfig.CustomCategories.filter(
