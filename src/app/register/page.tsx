@@ -159,6 +159,10 @@ function RegisterPageClient() {
           setSuccess('已提交注册申请，等待管理员审核');
         } else {
           setSuccess('注册成功！正在跳转...');
+          // 触发认证状态变化事件，通知UserMenu组件更新
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('authChanged'));
+          }
           // 给用户一个成功提示，然后再跳转
           setTimeout(() => {
             const redirect = searchParams.get('redirect') || '/';

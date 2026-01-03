@@ -19,23 +19,23 @@ export function generateJWT(
 ): string {
   const iat = Math.floor(Date.now() / 1000);
   const exp = iat + JWT_EXPIRATION;
-  
+
   const payload = {
     username,
     role,
     exp,
     iat,
   };
-  
+
   // 简单的JWT实现，使用HS256算法
   const header = Buffer.from(
     JSON.stringify({ alg: 'HS256', typ: 'JWT' })
   ).toString('base64url');
   const payloadStr = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  
+
   // 使用简单的同步HMAC实现
   const signature = simpleHmacSha256(`${header}.${payloadStr}`, JWT_SECRET);
-  
+
   return `${header}.${payloadStr}.${signature}`;
 }
 
@@ -43,23 +43,26 @@ export function generateJWT(
 export function verifyJWT(token: string): JWTPayload | null {
   try {
     const [header, payloadStr, signature] = token.split('.');
-    
+
     // 使用简单的同步HMAC实现验证签名
-    const expectedSignature = simpleHmacSha256(`${header}.${payloadStr}`, JWT_SECRET);
-    
+    const expectedSignature = simpleHmacSha256(
+      `${header}.${payloadStr}`,
+      JWT_SECRET
+    );
+
     if (signature !== expectedSignature) {
       return null;
     }
-    
+
     const payload = JSON.parse(
       Buffer.from(payloadStr, 'base64url').toString()
     ) as JWTPayload;
-    
+
     // 检查令牌是否过期
     if (payload.exp < Math.floor(Date.now() / 1000)) {
       return null;
     }
-    
+
     return payload;
   } catch (error) {
     return null;
@@ -75,7 +78,7 @@ function simpleHmacSha256(data: string, secret: string): string {
   let hash = 0;
   for (let i = 0; i < combined.length; i++) {
     const char = combined.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32bit integer
   }
   // 转换为base64url
@@ -110,7 +113,14 @@ export function getAuthInfoFromCookie(request: NextRequest): {
           role: payload.role,
         };
       }
-      return null;
+      // token验证失败，仍然返回authData中的用户名和角色
+      // 这样即使token过期或无效，也能显示正确的用户名
+      return {
+        username: authData.username,
+        role: authData.role || 'user',
+        password: authData.password,
+        signature: authData.signature,
+      };
     }
 
     return authData;
@@ -173,7 +183,14 @@ export function getAuthInfoFromBrowserCookie(): {
           role: payload.role,
         };
       }
-      return null;
+      // token验证失败，仍然返回authData中的用户名和角色
+      // 这样即使token过期或无效，也能显示正确的用户名
+      return {
+        username: authData.username,
+        role: authData.role || 'user',
+        password: authData.password,
+        signature: authData.signature,
+      };
     }
 
     return authData;

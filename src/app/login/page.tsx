@@ -105,6 +105,10 @@ function LoginPageClient() {
       });
 
       if (res.ok) {
+        // 触发认证状态变化事件，通知UserMenu组件更新
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('authChanged'));
+        }
         const redirect = searchParams.get('redirect') || '/';
         router.replace(redirect);
       } else if (res.status === 401) {

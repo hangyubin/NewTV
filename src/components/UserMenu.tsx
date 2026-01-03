@@ -131,7 +131,7 @@ export const UserMenu: React.FC = () => {
 
     // 监听新集数更新变化
     const unsubscribeWatchingUpdates = subscribeToWatchingUpdates(
-      (hasUpdates, updatedCount) => {
+      (hasUpdates, _updatedCount) => {
         setHasWatchingUpdates(hasUpdates);
       }
     );
@@ -149,7 +149,7 @@ export const UserMenu: React.FC = () => {
   }, []);
 
   // 获取认证信息和存储类型
-  useEffect(() => {
+  const updateAuthInfo = () => {
     if (typeof window !== 'undefined') {
       const auth = getAuthInfoFromBrowserCookie();
       setAuthInfo(auth);
@@ -158,6 +158,32 @@ export const UserMenu: React.FC = () => {
         (window as any).RUNTIME_CONFIG?.STORAGE_TYPE || 'localstorage';
       setStorageType(type);
     }
+  };
+
+  useEffect(() => {
+    updateAuthInfo();
+
+    // 监听路由变化，在页面切换时重新获取认证信息
+    const handleRouteChange = () => {
+      updateAuthInfo();
+    };
+
+    // 使用事件总线监听认证状态变化
+    const handleAuthChange = () => {
+      updateAuthInfo();
+    };
+
+    // 添加路由变化监听（Next.js App Router）
+    window.addEventListener('popstate', handleRouteChange);
+    window.addEventListener('hashchange', handleRouteChange);
+    // 添加自定义事件监听
+    window.addEventListener('authChanged', handleAuthChange);
+
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange);
+      window.removeEventListener('hashchange', handleRouteChange);
+      window.removeEventListener('authChanged', handleAuthChange);
+    };
   }, []);
 
   // 从 localStorage 读取设置
@@ -551,7 +577,7 @@ export const UserMenu: React.FC = () => {
             </div>
             <div className='flex items-center justify-between'>
               <div className='font-semibold text-gray-900 dark:text-gray-100 text-sm truncate'>
-                {authInfo?.username || 'default'}
+                {authInfo?.username || process.env.USERNAME || 'admin'}
               </div>
               <div className='text-[10px] text-gray-400 dark:text-gray-500'>
                 数据存储：

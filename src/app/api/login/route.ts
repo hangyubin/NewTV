@@ -80,11 +80,11 @@ export async function POST(req: NextRequest) {
       // 验证成功，设置认证cookie
       const response = NextResponse.json({ ok: true });
       const cookieValue = await generateAuthCookie(
-        undefined,
+        process.env.USERNAME || 'admin',
         password,
-        'user',
+        'owner',
         true
-      ); // localstorage 模式包含 password
+      ); // localstorage 模式包含 password 和用户名
       const expires = new Date();
       expires.setDate(expires.getDate() + 7); // 7天过期
 
