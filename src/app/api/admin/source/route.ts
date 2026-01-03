@@ -814,39 +814,17 @@ export async function POST(request: NextRequest) {
         });
 
         // 允许删除逻辑：
-        // 1. from: 'custom' 的源都可以删除
-        // 2. 默认的 DBZY TV 源（key: dbzy_tv）在有其他视频源时可以删除
-        // 3. 其他 from: 'config' 的源不能删除
-
-        if (entry.from === 'custom') {
-          // custom 来源都可以删除
-          console.log('删除 custom 来源的源:', entry.key);
-        } else if (entry.key === 'dbzy_tv') {
-          // 检查是否有其他视频源
-          const hasOtherSources = adminConfig.SourceConfig.some(
-            (source) => source.key !== entry.key
-          );
-          if (hasOtherSources) {
-            console.log('删除默认的 DBZY TV 源，因为有其他视频源');
-          } else {
-            console.log('不能删除默认的 DBZY TV 源，因为没有其他视频源');
-            return NextResponse.json(
-              {
-                error: '至少需要保留一个视频源',
-              },
-              { status: 400 }
-            );
-          }
-        } else {
-          // 其他 from: 'config' 的源不能删除
-          console.log('不能删除系统配置源:', entry.key);
+        // 1. 只要不是最后一个视频源，所有源都可以删除
+        if (adminConfig.SourceConfig.length <= 1) {
+          console.log('不能删除最后一个视频源');
           return NextResponse.json(
             {
-              error: '该源为系统配置源，不可删除',
+              error: '至少需要保留一个视频源',
             },
             { status: 400 }
           );
         }
+        console.log('删除源:', entry.key);
 
         // 执行删除
         adminConfig.SourceConfig.splice(idx, 1);
@@ -967,29 +945,15 @@ export async function POST(request: NextRequest) {
         const cannotDeleteKeys: string[] = [];
         const keysToDelete: string[] = [];
 
-        // 检查是否有默认的 DBZY TV 源
-        const hasDbzyTvSource = keys.includes('dbzy_tv');
-        // 检查是否有其他视频源
-        const hasOtherSources = adminConfig.SourceConfig.some(
-          (source) => !keys.includes(source.key) && source.key !== 'dbzy_tv'
-        );
-        // 如果删除 DBZY TV 源后至少还有一个其他视频源，则允许删除
-        const canDeleteDbzyTv = hasDbzyTvSource && (hasOtherSources || keys.length > 1);
+        // 检查删除后是否至少保留一个源
+        const canDeleteAll = adminConfig.SourceConfig.length > keys.length;
 
         keys.forEach((key) => {
           const entry = adminConfig.SourceConfig.find((s) => s.key === key);
           if (!entry) return;
 
           // 检查是否可以删除该源
-          let canDelete = false;
-
-          if (entry.from === 'custom') {
-            // custom 来源都可以删除
-            canDelete = true;
-          } else if (entry.key === 'dbzy_tv') {
-            // DBZY TV 源在满足条件时可以删除
-            canDelete = canDeleteDbzyTv;
-          }
+          let canDelete = canDeleteAll;
 
           if (canDelete) {
             keysToDelete.push(key);
