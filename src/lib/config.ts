@@ -309,10 +309,15 @@ async function getInitConfig(
 ): Promise<AdminConfig> {
   let cfgFile: ConfigFileStruct;
   try {
-    cfgFile = JSON.parse(configFile) as ConfigFileStruct;
-    // 如果没有API站点配置，使用默认配置
-    if (!cfgFile.api_site || Object.keys(cfgFile.api_site).length === 0) {
-      cfgFile.api_site = ConfigManager.DEFAULT_CONFIG.api_site;
+    // 检查configFile是否为空字符串，避免JSON.parse('')抛出错误
+    if (!configFile || configFile.trim() === '') {
+      cfgFile = ConfigManager.DEFAULT_CONFIG as ConfigFileStruct;
+    } else {
+      cfgFile = JSON.parse(configFile) as ConfigFileStruct;
+      // 如果没有API站点配置，使用默认配置
+      if (!cfgFile.api_site || Object.keys(cfgFile.api_site).length === 0) {
+        cfgFile.api_site = ConfigManager.DEFAULT_CONFIG.api_site;
+      }
     }
   } catch (e) {
     // 解析失败，使用默认配置
