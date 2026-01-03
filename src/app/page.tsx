@@ -4,7 +4,7 @@
 
 import { BookOpen, ChevronRight, Film, Music, Tv, Video } from 'lucide-react';
 import Link from 'next/link';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 // 客户端收藏 API
@@ -31,8 +31,14 @@ function HomeClient() {
   const [hotVarietyShows, setHotVarietyShows] = useState<DoubanItem[]>([]);
   const [hotAnime, setHotAnime] = useState<DoubanItem[]>([]);
   const [hotShortDramas, setHotShortDramas] = useState<DoubanItem[]>([]);
+  const [shortDramaPage, setShortDramaPage] = useState(1);
+  const [shortDramaLoading, setShortDramaLoading] = useState(false);
+  const [shortDramaHasMore, setShortDramaHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
   const { announcement } = useSite();
+  
+  // 用于检测滚动到底部的ref
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const [showAnnouncement, setShowAnnouncement] = useState(false);
 
@@ -130,6 +136,8 @@ function HomeClient() {
             year: item.year || '',
           }));
           setHotShortDramas(shortDramaList);
+          setShortDramaPage(1);
+          setShortDramaHasMore(shortDramaData.results.length >= (shortDramaData.limit || 25));
         }
       } catch (error) {
         console.error('获取推荐数据失败:', error);
@@ -215,6 +223,68 @@ function HomeClient() {
     setShowAnnouncement(false);
     localStorage.setItem('hasSeenAnnouncement', announcement); // 记录已查看弹窗
   };
+
+  // 加载更多短剧数据
+  const loadMoreShortDramas = async () => {
+    if (shortDramaLoading || !shortDramaHasMore) return;
+    
+    setShortDramaLoading(true);
+    
+    try {
+      const nextPage = shortDramaPage + 1;
+      const shortDramaData = await getShortDramaData({
+        page: nextPage,
+        limit: 25,
+      });
+      
+      if (shortDramaData && shortDramaData.results) {
+        const shortDramaList = shortDramaData.results.map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          poster: item.poster,
+          rate: '', // 短剧通常没有豆瓣评分
+          year: item.year || '',
+        }));
+        
+        setHotShortDramas(prev => [...prev, ...shortDramaList]);
+        setShortDramaPage(nextPage);
+        setShortDramaHasMore(shortDramaData.results.length >= (shortDramaData.limit || 25));
+      } else {
+        setShortDramaHasMore(false);
+      }
+    } catch (error) {
+      console.error('加载更多短剧失败:', error);
+      setShortDramaHasMore(false);
+    } finally {
+      setShortDramaLoading(false);
+    }
+  };
+
+  // 使用IntersectionObserver实现无限滚动
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMoreShortDramas();
+        }
+      },
+      {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.1,
+      }
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => {
+      if (loadMoreRef.current) {
+        observer.unobserve(loadMoreRef.current);
+      }
+    };
+  }, [shortDramaLoading, shortDramaHasMore]);
 
   return (
     <PageLayout>
@@ -490,14 +560,12 @@ function HomeClient() {
                     <ChevronRight className='w-4 h-4 ml-1' />
                   </Link>
                 </div>
-                <ScrollableRow>
+                {/* 使用网格布局代替滚动行，实现无限加载 */}
+                <div className='grid grid-cols-2 gap-x-3 gap-y-10 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-14 md:grid-cols-4 md:gap-x-6 lg:grid-cols-5 lg:gap-x-8 px-4 sm:px-6'>
                   {loading
                     ? // 加载状态显示灰色占位数据
-                      Array.from({ length: 8 }).map((_, index) => (
-                        <div
-                          key={index}
-                          className='min-w-[115px] w-[115px] sm:min-w-[180px] sm:w-44'
-                        >
+                      Array.from({ length: 10 }).map((_, index) => (
+                        <div key={index} className='w-full'>
                           <div className='relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800'>
                             <div className='absolute inset-0 bg-gray-300 dark:bg-gray-700'></div>
                           </div>
@@ -506,10 +574,7 @@ function HomeClient() {
                       ))
                     : // 显示真实数据
                       hotShortDramas.map((drama, index) => (
-                        <div
-                          key={index}
-                          className='min-w-[115px] w-[115px] sm:min-w-[180px] sm:w-44'
-                        >
+                        <div key={index} className='w-full'>
                           <VideoCard
                             from='douban'
                             title={drama.title}
@@ -519,7 +584,29 @@ function HomeClient() {
                           />
                         </div>
                       ))}
-                </ScrollableRow>
+                  
+                  {/* 加载更多指示器 */}
+                  {shortDramaLoading && (
+                    <div className='col-span-full flex justify-center items-center py-8'>
+                      <div className='flex items-center gap-2 text-gray-600 dark:text-gray-400'>
+                        <div className='w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin dark:border-gray-700 dark:border-t-gray-400'></div>
+                        <span>加载中...</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* 加载更多触发点 */}
+                  {shortDramaHasMore && (
+                    <div ref={loadMoreRef} className='col-span-full h-16'></div>
+                  )}
+                  
+                  {/* 没有更多数据提示 */}
+                  {!shortDramaHasMore && hotShortDramas.length > 0 && (
+                    <div className='col-span-full text-center py-8 text-gray-600 dark:text-gray-400'>
+                      没有更多数据了
+                    </div>
+                  )}
+                </div>
               </section>
             </>
           )}
