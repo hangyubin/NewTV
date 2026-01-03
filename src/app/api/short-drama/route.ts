@@ -22,6 +22,14 @@ export async function GET(request: NextRequest) {
     let allResults: any[] = [];
     let hasMore = false;
 
+    // 添加Docker环境信息日志
+    console.log('📺 [短剧API] 运行环境信息:', {
+      DOCKER_ENV: process.env.DOCKER_ENV,
+      NODE_ENV: process.env.NODE_ENV,
+      HOSTNAME: process.env.HOSTNAME,
+      PORT: process.env.PORT,
+    });
+
     // 调用专门的短剧API
     const apiUrl = `https://api.r2afosne.dpdns.org/vod/list?categoryId=${categoryId}&page=${page}&size=${limit}`;
     
@@ -30,23 +38,38 @@ export async function GET(request: NextRequest) {
     try {
       // 使用AbortController实现超时功能
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const timeoutId = setTimeout(() => {
+        console.error('📺 [短剧API] 外部API调用超时');
+        controller.abort();
+      }, 10000);
       
+      console.log('📺 [短剧API] 发起外部API请求...');
       const response = await fetch(apiUrl, {
         headers: {
           'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          Accept: 'application/json',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          Accept: 'application/json, text/plain, */*',
+          Referer: 'https://movie.douban.com/',
+          'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+          Connection: 'keep-alive',
         },
         cache: 'no-store',
         signal: controller.signal,
       });
       
       clearTimeout(timeoutId);
+      console.log('📺 [短剧API] 收到外部API响应:', response.status);
+      console.log('📺 [短剧API] 响应头:', JSON.stringify(Object.fromEntries(response.headers), null, 2));
 
       if (response.ok) {
+        console.log('📺 [短剧API] 响应状态正常，解析JSON数据...');
         const data = await response.json();
-        console.log('📺 [短剧API] 外部API返回:', JSON.stringify(data, null, 2));
+        console.log('📺 [短剧API] 外部API返回数据:', {
+          total: data.total,
+          totalPages: data.totalPages,
+          currentPage: data.currentPage,
+          listLength: data.list?.length || 0
+        });
         
         const items = data.list || [];
         
@@ -68,13 +91,22 @@ export async function GET(request: NextRequest) {
         hasMore = data.currentPage < data.totalPages;
       } else {
         console.error('📺 [短剧API] 外部API返回错误状态:', response.status);
-        // 外部API返回错误，返回空数组而不是抛出错误
+        // 尝试获取错误响应的内容
+        const errorText = await response.text();
+        console.error('📺 [短剧API] 错误响应内容:', errorText);
+        // 外部API返回错误，返回空数组
         allResults = [];
         hasMore = false;
       }
     } catch (externalError) {
-      console.error('📺 [短剧API] 调用外部API失败:', externalError);
-      // 外部API调用失败，返回空数组而不是抛出错误
+      // 确保externalError是Error类型
+      const error = externalError instanceof Error ? externalError : new Error(String(externalError));
+      console.error('📺 [短剧API] 调用外部API失败:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      });
+      // 外部API调用失败，返回空数组
       allResults = [];
       hasMore = false;
     }
