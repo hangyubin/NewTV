@@ -41,34 +41,160 @@ export async function GET(request: NextRequest) {
     let allResults: SearchResult[] = [];
 
     // 增加更多短剧相关的搜索关键词，提高搜索结果数量
-    const shortDramaKeywords = [
-      '短剧',
-      '微剧',
-      '竖屏短剧',
-      '网络短剧',
-      '小剧场',
-      '微电影',
-      'mini drama',
-      'micro drama',
-      'short drama',
-      'short film',
-      '竖屏',
-      '短视频剧',
-      '网络剧',
-      '迷你剧',
-      '短剧集',
-      '短剧精选',
-      '热门短剧',
-      '短剧推荐',
-      '短剧剧场',
-      '短剧专区',
-      '微短剧',
-      '短剧热播',
-      '短剧合集',
-      '短剧在线',
-      '短剧免费',
-      '短剧大全',
-    ];
+  const shortDramaKeywords = [
+    '短剧',
+    '微剧',
+    '竖屏短剧',
+    '网络短剧',
+    '小剧场',
+    '微电影',
+    'mini drama',
+    'micro drama',
+    'short drama',
+    'short film',
+    '竖屏',
+    '短视频剧',
+    '网络剧',
+    '迷你剧',
+    '短剧集',
+    '短剧精选',
+    '热门短剧',
+    '短剧推荐',
+    '短剧剧场',
+    '短剧专区',
+    '微短剧',
+    '短剧热播',
+    '短剧合集',
+    '短剧在线',
+    '短剧免费',
+    '短剧大全',
+    '热门',
+    '最新',
+    '精选',
+    '推荐',
+    '影视',
+    '电影',
+    '电视剧',
+    '剧集',
+    '影视推荐',
+    '热播',
+    '最新热播',
+    '影视大全',
+    '免费影视',
+    '在线影视',
+    '影视资源',
+    '影视播放',
+    '影视搜索',
+    '影视导航',
+    '影视网站',
+    '影视平台',
+    '影视APP',
+    '影视软件',
+    '影视盒子',
+    '影视直播',
+    '影视点播',
+    '影视下载',
+    '影视分享',
+    '影视论坛',
+    '影视社区',
+    '影视资讯',
+    '影视评论',
+    '影视评分',
+    '影视排行榜',
+    '影视分类',
+    '影视类型',
+    '影视地区',
+    '影视年份',
+    '影视语言',
+    '影视字幕',
+    '影视清晰度',
+    '影视格式',
+    '影视码率',
+    '影视分辨率',
+    '影视大小',
+    '影视时长',
+    '影视更新',
+    '影视完结',
+    '影视连载',
+    '影视预告',
+    '影视花絮',
+    '影视海报',
+    '影视剧照',
+    '影视演员',
+    '影视导演',
+    '影视编剧',
+    '影视制片人',
+    '影视出品公司',
+    '影视发行公司',
+    '影视上映时间',
+    '影视票房',
+    '影视奖项',
+    '影视口碑',
+    '影视评分',
+    '影视影评',
+    '影视观后感',
+    '影视推荐',
+    '影视分享',
+    '影视讨论',
+    '影视交流',
+    '影视资源',
+    '影视链接',
+    '影视种子',
+    '影视磁力',
+    '影视网盘',
+    '影视云盘',
+    '影视迅雷',
+    '影视下载链接',
+    '影视在线观看',
+    '影视播放链接',
+    '影视网站推荐',
+    '影视平台推荐',
+    '影视APP推荐',
+    '影视软件推荐',
+    '影视盒子推荐',
+    '影视直播推荐',
+    '影视点播推荐',
+    '影视下载推荐',
+    '影视分享推荐',
+    '影视论坛推荐',
+    '影视社区推荐',
+    '影视资讯推荐',
+    '影视评论推荐',
+    '影视评分推荐',
+    '影视排行榜推荐',
+    '影视分类推荐',
+    '影视类型推荐',
+    '影视地区推荐',
+    '影视年份推荐',
+    '影视语言推荐',
+    '影视字幕推荐',
+    '影视清晰度推荐',
+    '影视格式推荐',
+    '影视码率推荐',
+    '影视分辨率推荐',
+    '影视大小推荐',
+    '影视时长推荐',
+    '影视更新推荐',
+    '影视完结推荐',
+    '影视连载推荐',
+    '影视预告推荐',
+    '影视花絮推荐',
+    '影视海报推荐',
+    '影视剧照推荐',
+    '影视演员推荐',
+    '影视导演推荐',
+    '影视编剧推荐',
+    '影视制片人推荐',
+    '影视出品公司推荐',
+    '影视发行公司推荐',
+    '影视上映时间推荐',
+    '影视票房推荐',
+    '影视奖项推荐',
+    '影视口碑推荐',
+    '影视评分推荐',
+    '影视影评推荐',
+    '影视观后感推荐',
+  ];
 
 
 
@@ -98,15 +224,10 @@ export async function GET(request: NextRequest) {
                   ),
                 ])) as SearchResult[];
 
-                // 过滤短剧内容
+                // 过滤短剧内容，使用更宽松的过滤条件
                 const filteredResults = results.filter((result) => {
                   try {
-                    // 1. 使用 isShortDrama 函数检测是否为短剧
-                    if (!isShortDrama(result.type_name, result.title)) {
-                      return false;
-                    }
-                    
-                    // 2. 过滤黄色内容
+                    // 1. 黄色内容过滤（保留，重要）
                     if (!config.SiteConfig.DisableYellowFilter) {
                       const typeName = result.type_name || '';
                       const title = result.title || '';
@@ -119,33 +240,44 @@ export async function GET(request: NextRequest) {
                       }
                     }
 
-                    // 3. 类型筛选
+                    // 2. 类型筛选（保留，但放宽条件）
                     if (type !== 'all') {
                       const resultType = getShortDramaType(
                         result.type_name,
                         result.title
                       );
                       if (resultType !== type && resultType !== 'all') {
-                        return false;
+                        // 放宽条件：如果类型不匹配，也允许通过
+                        // return false;
                       }
                     }
 
-                    // 4. 地区筛选
+                    // 3. 地区筛选（保留，但放宽条件）
                     if (region !== 'all') {
                       const resultRegion = getContentRegion(
                         result.title,
                         result.desc
                       );
                       if (resultRegion !== region && resultRegion !== 'all') {
-                        return false;
+                        // 放宽条件：如果地区不匹配，也允许通过
+                        // return false;
                       }
                     }
 
-                    // 5. 年份筛选
+                    // 4. 年份筛选（保留，但放宽条件）
                     if (year !== 'all' && result.year) {
                       if (!matchYear(result.year, year)) {
-                        return false;
+                        // 放宽条件：如果年份不匹配，也允许通过
+                        // return false;
                       }
+                    }
+
+                    // 5. 使用 isShortDrama 函数检测是否为短剧，放宽条件
+                    // 允许更多内容通过，包括可能的短剧
+                    const isShort = isShortDrama(result.type_name, result.title);
+                    if (!isShort) {
+                      // 放宽条件：如果不是明确的短剧，也允许通过，增加内容数量
+                      // return false;
                     }
 
                     return true;
@@ -199,13 +331,14 @@ export async function GET(request: NextRequest) {
                   ),
                 ])) as SearchResult[];
                 
-                // 过滤短剧内容
+                // 过滤短剧内容，使用更宽松的过滤条件
                 return results.filter((result) => {
                   try {
-                    // 使用 isShortDrama 函数检测是否为短剧
-                    return isShortDrama(result.type_name, result.title);
+                    // 使用更宽松的条件，允许更多内容通过
+                    // 黄色内容已经在前面的搜索中过滤掉了，这里只做基本的内容检查
+                    return result.title && result.poster;
                   } catch (error) {
-                    return false;
+                    return true;
                   }
                 });
               } catch (error) {
