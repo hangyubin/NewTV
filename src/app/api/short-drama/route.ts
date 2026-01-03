@@ -206,56 +206,6 @@ export async function GET(request: NextRequest) {
       console.log(`所有关键词搜索结果总数: ${allResults.length}`);
     }
 
-    // 如果API搜索没有结果，添加一些示例短剧数据
-    if (allResults.length === 0) {
-      console.warn('API搜索没有结果，使用示例短剧数据');
-      // 添加示例短剧数据，确保页面能显示内容
-      allResults = [
-        {
-          id: '1',
-          title: '示例短剧1',
-          poster: 'https://picsum.photos/seed/short1/300/450',
-          episodes: [],
-          episodes_titles: [],
-          source: 'demo',
-          source_name: '示例源',
-          class: '短剧',
-          year: '2025',
-          desc: '这是一个示例短剧',
-          type_name: '短剧',
-          douban_id: 0,
-        },
-        {
-          id: '2',
-          title: '示例短剧2',
-          poster: 'https://picsum.photos/seed/short2/300/450',
-          episodes: [],
-          episodes_titles: [],
-          source: 'demo',
-          source_name: '示例源',
-          class: '短剧',
-          year: '2025',
-          desc: '这是另一个示例短剧',
-          type_name: '短剧',
-          douban_id: 0,
-        },
-        {
-          id: '3',
-          title: '示例短剧3',
-          poster: 'https://picsum.photos/seed/short3/300/450',
-          episodes: [],
-          episodes_titles: [],
-          source: 'demo',
-          source_name: '示例源',
-          class: '短剧',
-          year: '2025',
-          desc: '这是第三个示例短剧',
-          type_name: '短剧',
-          douban_id: 0,
-        },
-      ];
-    }
-
     // 改进去重机制，使用更高效的Set方式去重
     const seenTitles = new Set<string>();
     const uniqueResults: SearchResult[] = [];

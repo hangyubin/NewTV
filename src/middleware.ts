@@ -21,7 +21,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // 从cookie获取认证信息
-  const authInfo = getAuthInfoFromCookie(request);
+  const authInfo = await getAuthInfoFromCookie(request);
 
   if (!authInfo) {
     return handleAuthFailure(request, pathname);

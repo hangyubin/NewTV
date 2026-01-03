@@ -1,9 +1,15 @@
-import crypto from 'crypto';
 import { NextRequest } from 'next/server';
 
 // JWT相关常量
-const JWT_SECRET =
-  process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+let JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  // 使用Web Crypto API生成随机密钥
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  JWT_SECRET = Array.from(array, (byte) =>
+    byte.toString(16).padStart(2, '0')
+  ).join('');
+}
 const JWT_EXPIRATION = 3600 * 24; // 24小时
 
 // JWT Payload接口
@@ -15,10 +21,10 @@ export interface JWTPayload {
 }
 
 // 生成JWT令牌
-export function generateJWT(
+export async function generateJWT(
   username: string,
   role: 'owner' | 'admin' | 'user'
-): string {
+): Promise<string> {
   const iat = Math.floor(Date.now() / 1000);
   const exp = iat + JWT_EXPIRATION;
 
@@ -34,24 +40,55 @@ export function generateJWT(
     JSON.stringify({ alg: 'HS256', typ: 'JWT' })
   ).toString('base64url');
   const payloadStr = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const signature = crypto
-    .createHmac('sha256', JWT_SECRET)
-    .update(`${header}.${payloadStr}`)
-    .digest('base64url');
+
+  // 使用Web Crypto API生成签名
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(JWT_SECRET);
+  const messageData = encoder.encode(`${header}.${payloadStr}`);
+
+  const key = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const signatureBuffer = await crypto.subtle.sign('HMAC', key, messageData);
+
+  // 将ArrayBuffer转换为base64url
+  const signature = Buffer.from(signatureBuffer).toString('base64url');
 
   return `${header}.${payloadStr}.${signature}`;
 }
 
 // 验证JWT令牌
-export function verifyJWT(token: string): JWTPayload | null {
+export async function verifyJWT(token: string): Promise<JWTPayload | null> {
   try {
     const [header, payloadStr, signature] = token.split('.');
-    const expectedSignature = crypto
-      .createHmac('sha256', JWT_SECRET)
-      .update(`${header}.${payloadStr}`)
-      .digest('base64url');
 
-    if (signature !== expectedSignature) {
+    // 使用Web Crypto API验证签名
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(JWT_SECRET);
+    const messageData = encoder.encode(`${header}.${payloadStr}`);
+
+    const key = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify']
+    );
+
+    const signatureBuffer = Buffer.from(signature, 'base64url');
+    const isValid = await crypto.subtle.verify(
+      'HMAC',
+      key,
+      signatureBuffer,
+      messageData
+    );
+
+    if (!isValid) {
       return null;
     }
 
@@ -71,13 +108,13 @@ export function verifyJWT(token: string): JWTPayload | null {
 }
 
 // 从cookie获取认证信息 (服务端使用)
-export function getAuthInfoFromCookie(request: NextRequest): {
+export async function getAuthInfoFromCookie(request: NextRequest): Promise<{
   token?: string;
   username?: string;
   role?: 'owner' | 'admin' | 'user';
   password?: string;
   signature?: string;
-} | null {
+} | null> {
   const authCookie = request.cookies.get('auth');
 
   if (!authCookie) {
@@ -90,7 +127,7 @@ export function getAuthInfoFromCookie(request: NextRequest): {
 
     // 如果有token，验证并提取信息
     if (authData.token) {
-      const payload = verifyJWT(authData.token);
+      const payload = await verifyJWT(authData.token);
       if (payload) {
         return {
           token: authData.token,
@@ -108,13 +145,13 @@ export function getAuthInfoFromCookie(request: NextRequest): {
 }
 
 // 从cookie获取认证信息 (客户端使用)
-export function getAuthInfoFromBrowserCookie(): {
+export async function getAuthInfoFromBrowserCookie(): Promise<{
   token?: string;
   username?: string;
   role?: 'owner' | 'admin' | 'user';
   password?: string;
   signature?: string;
-} | null {
+} | null> {
   if (typeof window === 'undefined') {
     return null;
   }
@@ -153,7 +190,7 @@ export function getAuthInfoFromBrowserCookie(): {
 
     // 如果有token，验证并提取信息
     if (authData.token) {
-      const payload = verifyJWT(authData.token);
+      const payload = await verifyJWT(authData.token);
       if (payload) {
         return {
           token: authData.token,
