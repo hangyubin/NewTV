@@ -176,10 +176,13 @@ export async function GET(request: NextRequest) {
     }
 
     // 如果没有搜索到结果，尝试使用更通用的搜索关键词
-    if (allResults.length === 0) {
+    if (allResults.length === 0 && hasAvailableSites) {
       // 使用更通用的关键词再次搜索
       const generalKeywords = ['热门', '最新', '精选', '推荐'];
       const generalSearchPromises = [];
+      
+      // 使用所有可用的站点
+      const allSites = apiSites;
       
       for (const site of allSites) {
         for (const keyword of generalKeywords) {
