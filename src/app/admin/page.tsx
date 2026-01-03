@@ -3547,7 +3547,9 @@ const VideoSourceConfig = ({
           >
             {!source.disabled ? '禁用' : '启用'}
           </button>
-          {source.from !== 'config' && (
+          {/* 当有其他视频源时，默认的DBZY TV源也显示删除按钮 */}
+          {(source.from !== 'config' || 
+            (source.key === 'dbzy_tv' && sources.length > 1)) && (
             <button
               onClick={() => handleDelete(source.key)}
               disabled={isLoading(`deleteSource_${source.key}`)}

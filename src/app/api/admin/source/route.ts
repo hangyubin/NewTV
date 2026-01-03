@@ -68,39 +68,7 @@ function isValidUrl(url: string): boolean {
   }
 }
 
-// 检查是否是默认示例API
-function isDefaultExampleSource(source: any): boolean {
-  if (!source) return false;
 
-  const key = (source.key || '').toLowerCase();
-  const api = (source.api || '').toLowerCase();
-  const name = (source.name || '').toLowerCase();
-
-  // 精确匹配默认示例API
-  if (
-    (key === 'default' || name.includes('default')) &&
-    api.includes('example.com')
-  ) {
-    return true;
-  }
-
-  if (key === 'example' && api.includes('example.com')) {
-    return true;
-  }
-
-  if (
-    key === 'demo' &&
-    (api.includes('demo.') || api.includes('example.com'))
-  ) {
-    return true;
-  }
-
-  if (api.includes('api.example.com') || api.includes('example.com/api')) {
-    return true;
-  }
-
-  return false;
-}
 
 // 转换旧格式数据为新格式
 function convertLegacyToNewFormat(data: any): VideoSource[] {
@@ -845,15 +813,32 @@ export async function POST(request: NextRequest) {
           name: entry.name,
         });
 
-        // 简化的删除逻辑：
-        // 只有 from: 'custom' 的源可以删除
-        // from: 'config' 的源不能删除
+        // 允许删除逻辑：
+        // 1. from: 'custom' 的源都可以删除
+        // 2. 默认的 DBZY TV 源（key: dbzy_tv）在有其他视频源时可以删除
+        // 3. 其他 from: 'config' 的源不能删除
 
         if (entry.from === 'custom') {
           // custom 来源都可以删除
           console.log('删除 custom 来源的源:', entry.key);
+        } else if (entry.key === 'dbzy_tv') {
+          // 检查是否有其他视频源
+          const hasOtherSources = adminConfig.SourceConfig.some(
+            (source) => source.key !== entry.key
+          );
+          if (hasOtherSources) {
+            console.log('删除默认的 DBZY TV 源，因为有其他视频源');
+          } else {
+            console.log('不能删除默认的 DBZY TV 源，因为没有其他视频源');
+            return NextResponse.json(
+              {
+                error: '至少需要保留一个视频源',
+              },
+              { status: 400 }
+            );
+          }
         } else {
-          // from: 'config' 的源不能删除
+          // 其他 from: 'config' 的源不能删除
           console.log('不能删除系统配置源:', entry.key);
           return NextResponse.json(
             {
@@ -982,12 +967,31 @@ export async function POST(request: NextRequest) {
         const cannotDeleteKeys: string[] = [];
         const keysToDelete: string[] = [];
 
+        // 检查是否有默认的 DBZY TV 源
+        const hasDbzyTvSource = keys.includes('dbzy_tv');
+        // 检查是否有其他视频源
+        const hasOtherSources = adminConfig.SourceConfig.some(
+          (source) => !keys.includes(source.key) && source.key !== 'dbzy_tv'
+        );
+        // 如果删除 DBZY TV 源后至少还有一个其他视频源，则允许删除
+        const canDeleteDbzyTv = hasDbzyTvSource && (hasOtherSources || keys.length > 1);
+
         keys.forEach((key) => {
           const entry = adminConfig.SourceConfig.find((s) => s.key === key);
           if (!entry) return;
 
-          // 只有 from === 'custom' 的源才能被删除，from === 'config' 的源不能被删除
+          // 检查是否可以删除该源
+          let canDelete = false;
+
           if (entry.from === 'custom') {
+            // custom 来源都可以删除
+            canDelete = true;
+          } else if (entry.key === 'dbzy_tv') {
+            // DBZY TV 源在满足条件时可以删除
+            canDelete = canDeleteDbzyTv;
+          }
+
+          if (canDelete) {
             keysToDelete.push(key);
           } else {
             cannotDeleteKeys.push(key);
