@@ -181,6 +181,9 @@ export async function GET(request: NextRequest) {
       headers: {
         'Cache-Control': 'public, max-age=300',
         Vary: 'Accept-Encoding, User-Agent',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       },
     });
   } catch (error) {
@@ -196,7 +199,14 @@ export async function GET(request: NextRequest) {
         limit,
         hasMore: false,
       },
-      { status: 200 }
+      {
+        status: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      }
     );
   }
 }
