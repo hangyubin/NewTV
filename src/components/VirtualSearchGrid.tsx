@@ -120,9 +120,8 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
   // 网格行数计算
   const rowCount = Math.ceil(displayItemCount / columnCount);
 
-  // 优化的CellComponent，减少不必要的props和计算
-  // react-window Grid组件的cellComponent不支持data属性，所以我们需要使用闭包来传递数据
-  // 注意：react-window Grid要求每个单元格的根元素必须是绝对定位的，并且使用提供的style属性
+  // CellComponent - 极简实现，确保完全符合react-window Grid组件要求
+  // react-window Grid要求：每个单元格必须返回一个根元素，并直接使用提供的style属性（包含绝对定位）
   const CellComponent = ({ 
     ariaAttributes,
     columnIndex,
@@ -142,21 +141,18 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
     }
 
     const item = displayData[index];
-
     if (!item) {
       return <div style={style} />;
     }
 
-    // 计算交错动画延迟，基于行列位置，创造更自然的波浪效果
-    const rowDelay = rowIndex * 20;
-    const colDelay = columnIndex * 10;
-    const animationDelay = `${Math.min(rowDelay + colDelay, 300)}ms`;
+    // 计算交错动画延迟
+    const animationDelay = `${Math.min(index * 15, 300)}ms`;
 
     // 根据视图模式渲染不同内容
     if (viewMode === 'agg') {
       const [mapKey, group] = item as [string, SearchResult[]];
       
-      // 从缓存中获取统计信息，避免重复计算
+      // 从缓存中获取统计信息
       let stats = groupStatsRef.current.get(mapKey);
       if (!stats) {
         stats = computeGroupStats(group);
@@ -169,64 +165,52 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
       const { episodes, source_names, douban_id } = stats;
       const type = episodes === 1 ? 'movie' : 'tv';
 
-      // 使用style直接定位VideoCard，不添加额外容器
+      // 极简实现：直接使用div作为根元素，应用style属性，内部渲染VideoCard
       return (
-        <VideoCard
-          style={{
-            ...style,
-            opacity: 0,
-            transform: 'translateY(10px) scale(0.98)',
-            animation: `fadeIn 0.5s ease-out ${animationDelay} forwards, 
-                       slideUp 0.5s ease-out ${animationDelay} forwards, 
-                       scaleIn 0.5s ease-out ${animationDelay} forwards`,
-            willChange: 'opacity, transform',
-          }}
-          ref={getGroupRef(mapKey)}
-          from='search'
-          isAggregate={true}
-          title={title}
-          poster={poster}
-          year={year}
-          episodes={episodes}
-          source_names={source_names}
-          douban_id={douban_id}
-          query={
-            searchQuery.trim() !== title ? searchQuery.trim() : ''
-          }
-          type={type}
-        />
+        <div style={style} className="p-1">
+          <VideoCard
+            ref={getGroupRef(mapKey)}
+            from='search'
+            isAggregate={true}
+            title={title}
+            poster={poster}
+            year={year}
+            episodes={episodes}
+            source_names={source_names}
+            douban_id={douban_id}
+            query={searchQuery.trim() !== title ? searchQuery.trim() : ''}
+            type={type}
+            style={{
+              opacity: 0,
+              animation: `fadeIn 0.5s ease-out ${animationDelay} forwards`,
+            }}
+          />
+        </div>
       );
     } else {
       const searchItem = item as SearchResult;
       
-      // 使用style直接定位VideoCard，不添加额外容器
+      // 极简实现：直接使用div作为根元素，应用style属性，内部渲染VideoCard
       return (
-        <VideoCard
-          style={{
-            ...style,
-            opacity: 0,
-            transform: 'translateY(10px) scale(0.98)',
-            animation: `fadeIn 0.5s ease-out ${animationDelay} forwards, 
-                       slideUp 0.5s ease-out ${animationDelay} forwards, 
-                       scaleIn 0.5s ease-out ${animationDelay} forwards`,
-            willChange: 'opacity, transform',
-          }}
-          id={searchItem.id}
-          title={searchItem.title}
-          poster={searchItem.poster}
-          episodes={searchItem.episodes.length}
-          source={searchItem.source}
-          source_name={searchItem.source_name}
-          douban_id={searchItem.douban_id}
-          query={
-            searchQuery.trim() !== searchItem.title
-              ? searchQuery.trim()
-              : ''
-          }
-          year={searchItem.year}
-          from='search'
-          type={searchItem.episodes.length > 1 ? 'tv' : 'movie'}
-        />
+        <div style={style} className="p-1">
+          <VideoCard
+            id={searchItem.id}
+            title={searchItem.title}
+            poster={searchItem.poster}
+            episodes={searchItem.episodes.length}
+            source={searchItem.source}
+            source_name={searchItem.source_name}
+            douban_id={searchItem.douban_id}
+            query={searchQuery.trim() !== searchItem.title ? searchQuery.trim() : ''}
+            year={searchItem.year}
+            from='search'
+            type={searchItem.episodes.length > 1 ? 'tv' : 'movie'}
+            style={{
+              opacity: 0,
+              animation: `fadeIn 0.5s ease-out ${animationDelay} forwards`,
+            }}
+          />
+        </div>
       );
     }
   };
@@ -268,11 +252,13 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
           rowHeight={itemHeight}
           overscanCount={2} // 增加overscanCount，减少滚动时的白屏现象
           style={{
-            width: containerWidth, // 设置Grid组件的实际宽度
+            width: containerWidth,
+            height: gridHeight,
             overflowX: 'hidden',
             overflowY: 'auto',
-            // 确保不创建新的stacking context，让菜单能正确显示在最顶层
             isolation: 'auto',
+            // 确保Grid组件有明确的尺寸，能够正确计算单元格位置
+            position: 'relative',
           }}
           // react-window Grid组件不支持onScroll事件，移除该属性
           // 使用onCellsRendered替代来实现无限滚动
