@@ -145,74 +145,63 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
       return <div style={style} />;
     }
 
-    // 计算交错动画延迟
-    const animationDelay = `${Math.min(index * 15, 300)}ms`;
-
     // 根据视图模式渲染不同内容
-    if (viewMode === 'agg') {
-      const [mapKey, group] = item as [string, SearchResult[]];
-      
-      // 从缓存中获取统计信息
-      let stats = groupStatsRef.current.get(mapKey);
-      if (!stats) {
-        stats = computeGroupStats(group);
-        groupStatsRef.current.set(mapKey, stats);
-      }
-      
-      const title = group[0]?.title || '';
-      const poster = group[0]?.poster || '';
-      const year = group[0]?.year || 'unknown';
-      const { episodes, source_names, douban_id } = stats;
-      const type = episodes === 1 ? 'movie' : 'tv';
+      if (viewMode === 'agg') {
+        const [mapKey, group] = item as [string, SearchResult[]];
+        
+        // 从缓存中获取统计信息
+        let stats = groupStatsRef.current.get(mapKey);
+        if (!stats) {
+          stats = computeGroupStats(group);
+          groupStatsRef.current.set(mapKey, stats);
+        }
+        
+        const title = group[0]?.title || '';
+        const poster = group[0]?.poster || '';
+        const year = group[0]?.year || 'unknown';
+        const { episodes, source_names, douban_id } = stats;
+        const type = episodes === 1 ? 'movie' : 'tv';
 
-      // 极简实现：直接使用div作为根元素，应用style属性，内部渲染VideoCard
-      return (
-        <div style={style} className="p-1">
-          <VideoCard
-            ref={getGroupRef(mapKey)}
-            from='search'
-            isAggregate={true}
-            title={title}
-            poster={poster}
-            year={year}
-            episodes={episodes}
-            source_names={source_names}
-            douban_id={douban_id}
-            query={searchQuery.trim() !== title ? searchQuery.trim() : ''}
-            type={type}
-            style={{
-              opacity: 0,
-              animation: `fadeIn 0.5s ease-out ${animationDelay} forwards`,
-            }}
-          />
-        </div>
-      );
-    } else {
-      const searchItem = item as SearchResult;
-      
-      // 极简实现：直接使用div作为根元素，应用style属性，内部渲染VideoCard
-      return (
-        <div style={style} className="p-1">
-          <VideoCard
-            id={searchItem.id}
-            title={searchItem.title}
-            poster={searchItem.poster}
-            episodes={searchItem.episodes.length}
-            source={searchItem.source}
-            source_name={searchItem.source_name}
-            douban_id={searchItem.douban_id}
-            query={searchQuery.trim() !== searchItem.title ? searchQuery.trim() : ''}
-            year={searchItem.year}
-            from='search'
-            type={searchItem.episodes.length > 1 ? 'tv' : 'movie'}
-            style={{
-              opacity: 0,
-              animation: `fadeIn 0.5s ease-out ${animationDelay} forwards`,
-            }}
-          />
-        </div>
-      );
-    }
+        // 极简实现：直接使用div作为根元素，应用style属性，内部渲染VideoCard
+        return (
+          <div style={style} className="p-1">
+            <VideoCard
+              ref={getGroupRef(mapKey)}
+              from='search'
+              isAggregate={true}
+              title={title}
+              poster={poster}
+              year={year}
+              episodes={episodes}
+              source_names={source_names}
+              douban_id={douban_id}
+              query={searchQuery.trim() !== title ? searchQuery.trim() : ''}
+              type={type}
+            />
+          </div>
+        );
+      } else {
+        const searchItem = item as SearchResult;
+        
+        // 极简实现：直接使用div作为根元素，应用style属性，内部渲染VideoCard
+        return (
+          <div style={style} className="p-1">
+            <VideoCard
+              id={searchItem.id}
+              title={searchItem.title}
+              poster={searchItem.poster}
+              episodes={searchItem.episodes.length}
+              source={searchItem.source}
+              source_name={searchItem.source_name}
+              douban_id={searchItem.douban_id}
+              query={searchQuery.trim() !== searchItem.title ? searchQuery.trim() : ''}
+              year={searchItem.year}
+              from='search'
+              type={searchItem.episodes.length > 1 ? 'tv' : 'movie'}
+            />
+          </div>
+        );
+      }
   };
 
   // 计算网格高度 - 更合理的高度计算，确保足够的可视区域
@@ -250,7 +239,7 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
           defaultWidth={containerWidth}
           rowCount={rowCount}
           rowHeight={itemHeight}
-          overscanCount={2} // 增加overscanCount，减少滚动时的白屏现象
+          overscanCount={4} // 增加overscanCount到4，减少滚动时的白屏现象
           style={{
             width: containerWidth,
             height: gridHeight,

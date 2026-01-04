@@ -37,14 +37,14 @@ export const useResponsiveGrid = (
 
       let columnCount: number;
 
-      // 响应式列数计算
-      if (containerWidth >= 1536) columnCount = 8; // 2xl
-      else if (containerWidth >= 1280) columnCount = 7; // xl
-      else if (containerWidth >= 1024) columnCount = 6; // lg
-      else if (containerWidth >= 768) columnCount = 5; // md
-      else if (containerWidth >= 640) columnCount = 4; // sm
-      else if (containerWidth >= 475) columnCount = 3; // xs
-      else columnCount = 2; // mobile
+      // 响应式列数计算 - 减少列数以增加卡片宽度
+      if (containerWidth >= 1536) columnCount = 6; // 2xl
+      else if (containerWidth >= 1280) columnCount = 5; // xl
+      else if (containerWidth >= 1024) columnCount = 4; // lg
+      else if (containerWidth >= 768) columnCount = 3; // md
+      else if (containerWidth >= 640) columnCount = 2; // sm
+      else if (containerWidth >= 475) columnCount = 2; // xs
+      else columnCount = 1; // mobile
 
       // 计算项目尺寸 - 简化计算，移除动态gap，使用固定padding
       // 每个项目的固定内边距
