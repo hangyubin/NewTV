@@ -38,131 +38,168 @@ async function searchWithCache(
     }
   }
 
-  // 缓存未命中，发起网络请求
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  // 重试机制配置
+  const MAX_RETRIES = 2;
+  const RETRY_DELAY = 500; // 初始重试延迟
 
-  try {
-    const response = await fetch(url, {
-      headers: API_CONFIG.search.headers,
-      signal: controller.signal,
-    });
+  // 缓存未命中，发起网络请求，带重试机制
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    clearTimeout(timeoutId);
+    try {
+      const response = await fetch(url, {
+        headers: API_CONFIG.search.headers,
+        signal: controller.signal,
+      });
 
-    if (!response.ok) {
-      if (response.status === 403) {
-        setCachedSearchPage(apiSite.key, query, page, 'forbidden', []);
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          setCachedSearchPage(apiSite.key, query, page, 'forbidden', []);
+          return { results: [] };
+        }
+        
+        // 非403错误，尝试重试
+        if (attempt < MAX_RETRIES) {
+          // 指数退避：每次重试延迟翻倍
+          const delay = RETRY_DELAY * Math.pow(2, attempt);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        
+        return { results: [] };
       }
-      return { results: [] };
-    }
 
-    const data = await response.json();
-    if (
-      !data ||
-      !data.list ||
-      !Array.isArray(data.list) ||
-      data.list.length === 0
-    ) {
-      // 空结果不做负缓存要求，这里不写入缓存
-      return { results: [] };
-    }
+      const data = await response.json();
+      if (
+        !data ||
+        !data.list ||
+        !Array.isArray(data.list) ||
+        data.list.length === 0
+      ) {
+        // 空结果不做负缓存要求，这里不写入缓存
+        return { results: [] };
+      }
 
-    // 处理结果数据
-    const allResults = data.list.map((item: ApiSearchItem) => {
-      let episodes: string[] = [];
-      let titles: string[] = [];
+      // 处理结果数据
+      const allResults = data.list.map((item: ApiSearchItem) => {
+        let episodes: string[] = [];
+        let titles: string[] = [];
 
-      // 使用正则表达式从 vod_play_url 提取 m3u8 链接
-      if (item.vod_play_url) {
-        // 先用 $$$ 分割
-        const vod_play_url_array = item.vod_play_url.split('$$$');
-        // 分集之间#分割，标题和播放链接 $ 分割
-        vod_play_url_array.forEach((url: string) => {
-          const matchEpisodes: string[] = [];
-          const matchTitles: string[] = [];
-          const title_url_array = url.split('#');
-          title_url_array.forEach((title_url: string) => {
-            const episode_title_url = title_url.split('$');
-            if (
-              episode_title_url.length === 2 &&
-              episode_title_url[1].endsWith('.m3u8')
-            ) {
-              matchTitles.push(episode_title_url[0]);
-              matchEpisodes.push(episode_title_url[1]);
+        // 使用正则表达式从 vod_play_url 提取 m3u8 链接
+        if (item.vod_play_url) {
+          // 先用 $$$ 分割
+          const vod_play_url_array = item.vod_play_url.split('$$$');
+          // 分集之间#分割，标题和播放链接 $ 分割
+          vod_play_url_array.forEach((url: string) => {
+            const matchEpisodes: string[] = [];
+            const matchTitles: string[] = [];
+            const title_url_array = url.split('#');
+            title_url_array.forEach((title_url: string) => {
+              const episode_title_url = title_url.split('$');
+              if (
+                episode_title_url.length === 2 &&
+                episode_title_url[1].endsWith('.m3u8')
+              ) {
+                matchTitles.push(episode_title_url[0]);
+                matchEpisodes.push(episode_title_url[1]);
+              }
+            });
+            if (matchEpisodes.length > episodes.length) {
+              episodes = matchEpisodes;
+              titles = matchTitles;
             }
           });
-          if (matchEpisodes.length > episodes.length) {
-            episodes = matchEpisodes;
-            titles = matchTitles;
-          }
-        });
+        }
+
+        return {
+          id: item.vod_id.toString(),
+          title: item.vod_name.trim().replace(/\s+/g, ' '),
+          poster: item.vod_pic,
+          episodes,
+          episodes_titles: titles,
+          source: apiSite.key,
+          source_name: apiSite.name,
+          class: item.vod_class,
+          year: item.vod_year
+            ? item.vod_year.match(/\d{4}/)?.[0] || ''
+            : 'unknown',
+          desc: cleanHtmlTags(item.vod_content || ''),
+          type_name: item.type_name,
+          douban_id: item.vod_douban_id,
+        };
+      });
+
+      // 对于短剧，允许集数为 0 的结果
+      let results = allResults.filter((result: SearchResult) => {
+        // 检查是否为短剧
+        const isShortDramaResult =
+          result.type_name?.toLowerCase().includes('短剧') ||
+          result.title?.toLowerCase().includes('短剧') ||
+          result.title?.toLowerCase().includes('竖屏') ||
+          result.title?.toLowerCase().includes('微电影') ||
+          result.title?.toLowerCase().includes('小剧场') ||
+          result.title?.toLowerCase().includes('微') ||
+          result.title?.toLowerCase().includes('短');
+
+        // 短剧允许集数为 0，非短剧需要集数 > 0
+        return isShortDramaResult || result.episodes.length > 0;
+      });
+
+      // 在每个API站点返回的数据中也进行去重处理
+      const seenTitles = new Set<string>();
+      const uniqueResults: SearchResult[] = [];
+
+      for (const result of results) {
+        // 使用标题作为唯一标识进行去重
+        if (!seenTitles.has(result.title)) {
+          seenTitles.add(result.title);
+          uniqueResults.push(result);
+        }
       }
 
-      return {
-        id: item.vod_id.toString(),
-        title: item.vod_name.trim().replace(/\s+/g, ' '),
-        poster: item.vod_pic,
-        episodes,
-        episodes_titles: titles,
-        source: apiSite.key,
-        source_name: apiSite.name,
-        class: item.vod_class,
-        year: item.vod_year
-          ? item.vod_year.match(/\d{4}/)?.[0] || ''
-          : 'unknown',
-        desc: cleanHtmlTags(item.vod_content || ''),
-        type_name: item.type_name,
-        douban_id: item.vod_douban_id,
-      };
-    });
+      results = uniqueResults;
 
-    // 对于短剧，允许集数为 0 的结果
-    let results = allResults.filter((result: SearchResult) => {
-      // 检查是否为短剧
-      const isShortDramaResult =
-        result.type_name?.toLowerCase().includes('短剧') ||
-        result.title?.toLowerCase().includes('短剧') ||
-        result.title?.toLowerCase().includes('竖屏') ||
-        result.title?.toLowerCase().includes('微电影') ||
-        result.title?.toLowerCase().includes('小剧场') ||
-        result.title?.toLowerCase().includes('微') ||
-        result.title?.toLowerCase().includes('短');
-
-      // 短剧允许集数为 0，非短剧需要集数 > 0
-      return isShortDramaResult || result.episodes.length > 0;
-    });
-
-    // 在每个API站点返回的数据中也进行去重处理
-    const seenTitles = new Set<string>();
-    const uniqueResults: SearchResult[] = [];
-
-    for (const result of results) {
-      // 使用标题作为唯一标识进行去重
-      if (!seenTitles.has(result.title)) {
-        seenTitles.add(result.title);
-        uniqueResults.push(result);
+      const pageCount = page === 1 ? data.pagecount || 1 : undefined;
+      // 写入缓存（成功）
+      setCachedSearchPage(apiSite.key, query, page, 'ok', results, pageCount);
+      return { results, pageCount };
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      // 识别被 AbortController 中止（超时）
+      const aborted =
+        error?.name === 'AbortError' ||
+        error?.code === 20 ||
+        error?.message?.includes('aborted');
+      
+      if (aborted) {
+        // 超时错误，尝试重试
+        if (attempt < MAX_RETRIES) {
+          // 指数退避：每次重试延迟翻倍
+          const delay = RETRY_DELAY * Math.pow(2, attempt);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        
+        setCachedSearchPage(apiSite.key, query, page, 'timeout', []);
       }
+      
+      // 其他错误，尝试重试
+      if (attempt < MAX_RETRIES) {
+        // 指数退避：每次重试延迟翻倍
+        const delay = RETRY_DELAY * Math.pow(2, attempt);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      return { results: [] };
     }
-
-    results = uniqueResults;
-
-    const pageCount = page === 1 ? data.pagecount || 1 : undefined;
-    // 写入缓存（成功）
-    setCachedSearchPage(apiSite.key, query, page, 'ok', results, pageCount);
-    return { results, pageCount };
-  } catch (error: any) {
-    clearTimeout(timeoutId);
-    // 识别被 AbortController 中止（超时）
-    const aborted =
-      error?.name === 'AbortError' ||
-      error?.code === 20 ||
-      error?.message?.includes('aborted');
-    if (aborted) {
-      setCachedSearchPage(apiSite.key, query, page, 'timeout', []);
-    }
-    return { results: [] };
   }
+  
+  // 理论上不会执行到这里
+  return { results: [] };
 }
 
 export async function searchFromApi(

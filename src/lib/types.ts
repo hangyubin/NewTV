@@ -124,6 +124,7 @@ export interface SearchResult {
   desc?: string;
   type_name?: string;
   douban_id?: number;
+  score?: number; // 添加评分字段
 }
 
 // 豆瓣数据结构

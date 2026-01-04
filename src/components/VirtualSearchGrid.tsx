@@ -41,9 +41,9 @@ interface VirtualSearchGridProps {
 }
 
 // 渐进式加载配置
-const INITIAL_BATCH_SIZE = 12;
-const LOAD_MORE_BATCH_SIZE = 8;
-const LOAD_MORE_THRESHOLD = 5; // 距离底部还有5行时开始加载
+const INITIAL_BATCH_SIZE = 20; // 增加初始加载量，减少初始加载次数
+const LOAD_MORE_BATCH_SIZE = 15; // 增加每次加载量，减少加载次数
+const LOAD_MORE_THRESHOLD = 300; // 使用像素阈值，更直观且在不同屏幕尺寸下表现一致
 
 export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
   allResults,
@@ -120,105 +120,98 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
   // 网格行数计算
   const rowCount = Math.ceil(displayItemCount / columnCount);
 
-  // 渲染单个网格项 - react-window 2.0.0 新API格式
-  const CellComponent = useCallback(
-    ({
-      columnIndex,
-      rowIndex,
-      style,
-      displayData: cellDisplayData,
-      viewMode: cellViewMode,
-      searchQuery: cellSearchQuery,
-      columnCount: cellColumnCount,
-      displayItemCount: cellDisplayItemCount,
-      groupStatsRef: cellGroupStatsRef,
-      getGroupRef: cellGetGroupRef,
-      computeGroupStats: cellComputeGroupStats,
-    }: any) => {
-      const index = rowIndex * cellColumnCount + columnIndex;
+  // 优化的CellComponent，减少不必要的props和计算
+  // react-window Grid组件的cellComponent不支持data属性，所以我们需要使用闭包来传递数据
+  const CellComponent = ({ 
+    ariaAttributes,
+    columnIndex,
+    rowIndex,
+    style,
+  }: { 
+    ariaAttributes: { "aria-colindex": number; role: "gridcell"; }; 
+    columnIndex: number; 
+    rowIndex: number; 
+    style: React.CSSProperties;
+  }): React.ReactElement => {
+    const index = rowIndex * columnCount + columnIndex;
 
-      // 如果超出显示范围，返回空
-      if (index >= cellDisplayItemCount) {
-        return <div style={style} />;
+    // 如果超出显示范围，返回空div
+    if (index >= displayItemCount || index >= displayData.length) {
+      return <div style={style} />;
+    }
+
+    const item = displayData[index];
+
+    if (!item) {
+      return <div style={style} />;
+    }
+
+    // 根据视图模式渲染不同内容
+    if (viewMode === 'agg') {
+      const [mapKey, group] = item as [string, SearchResult[]];
+      
+      // 从缓存中获取统计信息，避免重复计算
+      let stats = groupStatsRef.current.get(mapKey);
+      if (!stats) {
+        stats = computeGroupStats(group);
+        groupStatsRef.current.set(mapKey, stats);
       }
+      
+      const title = group[0]?.title || '';
+      const poster = group[0]?.poster || '';
+      const year = group[0]?.year || 'unknown';
+      const { episodes, source_names, douban_id } = stats;
+      const type = episodes === 1 ? 'movie' : 'tv';
 
-      const item = cellDisplayData[index];
+      return (
+        <div style={{ ...style, padding: '8px' }}>
+          <VideoCard
+            ref={getGroupRef(mapKey)}
+            from='search'
+            isAggregate={true}
+            title={title}
+            poster={poster}
+            year={year}
+            episodes={episodes}
+            source_names={source_names}
+            douban_id={douban_id}
+            query={
+              searchQuery.trim() !== title ? searchQuery.trim() : ''
+            }
+            type={type}
+          />
+        </div>
+      );
+    } else {
+      const searchItem = item as SearchResult;
+      return (
+        <div style={{ ...style, padding: '8px' }}>
+          <VideoCard
+            id={searchItem.id}
+            title={searchItem.title}
+            poster={searchItem.poster}
+            episodes={searchItem.episodes.length}
+            source={searchItem.source}
+            source_name={searchItem.source_name}
+            douban_id={searchItem.douban_id}
+            query={
+              searchQuery.trim() !== searchItem.title
+                ? searchQuery.trim()
+                : ''
+            }
+            year={searchItem.year}
+            from='search'
+            type={searchItem.episodes.length > 1 ? 'tv' : 'movie'}
+          />
+        </div>
+      );
+    }
+  };
 
-      if (!item) {
-        return <div style={style} />;
-      }
-
-      // 根据视图模式渲染不同内容
-      if (cellViewMode === 'agg') {
-        const [mapKey, group] = item as [string, SearchResult[]];
-        const title = group[0]?.title || '';
-        const poster = group[0]?.poster || '';
-        const year = group[0]?.year || 'unknown';
-        const { episodes, source_names, douban_id } =
-          cellComputeGroupStats(group);
-        const type = episodes === 1 ? 'movie' : 'tv';
-
-        // 如果该聚合第一次出现，写入初始统计
-        if (!cellGroupStatsRef.current.has(mapKey)) {
-          cellGroupStatsRef.current.set(mapKey, {
-            episodes,
-            source_names,
-            douban_id,
-          });
-        }
-
-        return (
-          <div style={{ ...style, padding: '8px' }}>
-            <VideoCard
-              ref={cellGetGroupRef(mapKey)}
-              from='search'
-              isAggregate={true}
-              title={title}
-              poster={poster}
-              year={year}
-              episodes={episodes}
-              source_names={source_names}
-              douban_id={douban_id}
-              query={
-                cellSearchQuery.trim() !== title ? cellSearchQuery.trim() : ''
-              }
-              type={type}
-            />
-          </div>
-        );
-      } else {
-        const searchItem = item as SearchResult;
-        return (
-          <div style={{ ...style, padding: '8px' }}>
-            <VideoCard
-              id={searchItem.id}
-              title={searchItem.title}
-              poster={searchItem.poster}
-              episodes={searchItem.episodes.length}
-              source={searchItem.source}
-              source_name={searchItem.source_name}
-              douban_id={searchItem.douban_id}
-              query={
-                cellSearchQuery.trim() !== searchItem.title
-                  ? cellSearchQuery.trim()
-                  : ''
-              }
-              year={searchItem.year}
-              from='search'
-              type={searchItem.episodes.length > 1 ? 'tv' : 'movie'}
-            />
-          </div>
-        );
-      }
-    },
-    []
-  );
-
-  // 计算网格高度
-  const gridHeight = Math.min(
-    typeof window !== 'undefined' ? window.innerHeight - 200 : 600,
-    800
-  );
+  // 计算网格高度 - 更合理的高度计算，确保足够的可视区域
+  const gridHeight = typeof window !== 'undefined' 
+    ? Math.max(window.innerHeight - 250, 600) // 确保最小高度
+    : 600;
 
   return (
     <div ref={containerRef} className='w-full'>
@@ -243,34 +236,26 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
         <Grid
           key={`grid-${containerWidth}-${columnCount}`}
           cellComponent={CellComponent}
-          cellProps={{
-            displayData,
-            viewMode,
-            searchQuery,
-            columnCount,
-            displayItemCount,
-            groupStatsRef,
-            getGroupRef,
-            computeGroupStats,
-          }}
+          cellProps={{}}
           columnCount={columnCount}
           columnWidth={itemWidth + 16}
           defaultHeight={gridHeight}
           defaultWidth={containerWidth}
           rowCount={rowCount}
           rowHeight={itemHeight + 16}
-          overscanCount={1}
+          overscanCount={2} // 增加overscanCount，减少滚动时的白屏现象
           style={{
             overflowX: 'hidden',
             overflowY: 'auto',
             // 确保不创建新的stacking context，让菜单能正确显示在最顶层
             isolation: 'auto',
           }}
-          onCellsRendered={({ rowStartIndex, rowStopIndex }) => {
-            const visibleStopIndex = rowStopIndex;
-
+          // react-window Grid组件不支持onScroll事件，移除该属性
+          // 使用onCellsRendered替代来实现无限滚动
+          onCellsRendered={({ rowStopIndex }) => {
+            // 当可见区域接近底部时，加载更多
             if (
-              visibleStopIndex >= rowCount - LOAD_MORE_THRESHOLD &&
+              rowStopIndex >= rowCount - 1 &&
               hasNextPage &&
               !isLoadingMore
             ) {

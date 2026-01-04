@@ -67,6 +67,15 @@ function SearchPageClient() {
       { douban_id?: number; episodes?: number; source_names: string[] }
     >
   >(new Map());
+  
+  // 搜索结果缓存 - 使用 LRU 策略
+  const searchCacheRef = useRef<Map<string, {
+    results: SearchResult[];
+    timestamp: number;
+    totalSources: number;
+  }>>(new Map());
+  const CACHE_SIZE = 10; // 最大缓存10个搜索结果
+  const CACHE_TTL = 30 * 60 * 1000; // 缓存有效期30分钟
 
   const getGroupRef = (key: string) => {
     let ref = groupRefs.current.get(key);
@@ -77,46 +86,58 @@ function SearchPageClient() {
     return ref;
   };
 
+  // 优化的计算统计函数，减少不必要的计算和内存分配
   const computeGroupStats = (group: SearchResult[]) => {
-    const episodes = (() => {
-      const countMap = new Map<number, number>();
-      group.forEach((g) => {
-        const len = g.episodes?.length || 0;
-        if (len > 0) countMap.set(len, (countMap.get(len) || 0) + 1);
-      });
-      let max = 0;
-      let res = 0;
-      countMap.forEach((v, k) => {
-        if (v > max) {
-          max = v;
-          res = k;
+    // 计算集数 - 只需要遍历一次并记录最大值
+    let maxEpisodeCount = 0;
+    let maxEpisodeCountFreq = 0;
+    const episodeMap = new Map<number, number>();
+    
+    // 计算源名称 - 直接使用 Set 收集
+    const sourceNamesSet = new Set<string>();
+    
+    // 计算豆瓣ID - 遍历一次并记录出现次数最多的ID
+    let maxDoubanId = 0;
+    let maxDoubanIdFreq = 0;
+    const doubanIdMap = new Map<number, number>();
+    
+    // 单次遍历完成所有计算
+    for (const g of group) {
+      // 处理集数
+      const len = g.episodes?.length || 0;
+      if (len > 0) {
+        const freq = (episodeMap.get(len) || 0) + 1;
+        episodeMap.set(len, freq);
+        if (freq > maxEpisodeCountFreq) {
+          maxEpisodeCountFreq = freq;
+          maxEpisodeCount = len;
+        } else if (freq === maxEpisodeCountFreq && len > maxEpisodeCount) {
+          // 如果频率相同，选择较大的集数
+          maxEpisodeCount = len;
         }
-      });
-      return res;
-    })();
-    const source_names = Array.from(
-      new Set(group.map((g) => g.source_name).filter(Boolean))
-    ) as string[];
-
-    const douban_id = (() => {
-      const countMap = new Map<number, number>();
-      group.forEach((g) => {
-        if (g.douban_id && g.douban_id > 0) {
-          countMap.set(g.douban_id, (countMap.get(g.douban_id) || 0) + 1);
+      }
+      
+      // 处理源名称
+      if (g.source_name) {
+        sourceNamesSet.add(g.source_name);
+      }
+      
+      // 处理豆瓣ID
+      if (g.douban_id && g.douban_id > 0) {
+        const freq = (doubanIdMap.get(g.douban_id) || 0) + 1;
+        doubanIdMap.set(g.douban_id, freq);
+        if (freq > maxDoubanIdFreq) {
+          maxDoubanIdFreq = freq;
+          maxDoubanId = g.douban_id;
         }
-      });
-      let max = 0;
-      let res: number | undefined;
-      countMap.forEach((v, k) => {
-        if (v > max) {
-          max = v;
-          res = k;
-        }
-      });
-      return res;
-    })();
-
-    return { episodes, source_names, douban_id };
+      }
+    }
+    
+    return {
+      episodes: maxEpisodeCount,
+      source_names: Array.from(sourceNamesSet),
+      douban_id: maxDoubanId || undefined
+    };
   };
   // 过滤器：非聚合与聚合
   const [filterAll, setFilterAll] = useState<{
@@ -210,32 +231,144 @@ function SearchPageClient() {
     return order === 'asc' ? aNum - bNum : bNum - aNum;
   };
 
+  // 定义评分项目类型
+  interface ScoredItem {
+    item: SearchResult;
+    score: number;
+  }
+  
+  // 优化的搜索结果去重和排序
+  const enhancedSearchResults = useMemo(() => {
+    if (!searchResults.length) return searchResults;
+    
+    // 1. 首先进行初步去重：根据标题、年份和类型
+    const preliminaryMap = new Map<string, SearchResult[]>();
+    
+    for (const item of searchResults) {
+      const type = item.episodes.length === 1 ? 'movie' : 'tv';
+      const key = `${item.title.replace(/\s+/g, '')}-${item.year || 'unknown'}-${type}`;
+      const arr = preliminaryMap.get(key) || [];
+      arr.push(item);
+      preliminaryMap.set(key, arr);
+    }
+    
+    // 2. 对每个分组进行质量评估，选择最佳结果
+    const bestResults: SearchResult[] = [];
+    
+    // 修复：使用显式类型声明
+    const mapValues = Array.from(preliminaryMap.values());
+    for (const items of mapValues) {
+      // 对每个分组的结果进行质量评分
+      const scoredItems: ScoredItem[] = items.map((item: SearchResult) => {
+        let score = 0;
+        
+        // 评分规则：
+        // 1. 有评分的结果优先
+        if (item.score && typeof item.score === 'number') {
+          score += item.score * 10;
+        }
+        
+        // 2. 有海报的结果优先
+        if (item.poster && item.poster !== 'N/A') {
+          score += 5;
+        }
+        
+        // 3. 集数完整的结果优先
+        if (item.episodes && item.episodes.length > 0) {
+          score += item.episodes.length;
+        }
+        
+        // 4. 来源可靠性评分（可以根据实际情况调整）
+        const sourceScores: Record<string, number> = {
+          'dbzy_tv': 10,
+          'other_source': 5
+        };
+        score += sourceScores[item.source] || 3;
+        
+        // 5. 有豆瓣ID的结果优先
+        if (item.douban_id && item.douban_id > 0) {
+          score += 8;
+        }
+        
+        return { item, score };
+      });
+      
+      // 选择评分最高的结果
+      scoredItems.sort((a: ScoredItem, b: ScoredItem) => b.score - a.score);
+      bestResults.push(scoredItems[0].item);
+    }
+    
+    // 3. 最终排序：根据相关性和质量
+    const queryLower = searchQuery.toLowerCase();
+    
+    return bestResults.sort((a, b) => {
+      // 计算标题匹配度
+      const aTitleLower = a.title.toLowerCase();
+      const bTitleLower = b.title.toLowerCase();
+      
+      const aExactMatch = aTitleLower === queryLower;
+      const bExactMatch = bTitleLower === queryLower;
+      
+      if (aExactMatch && !bExactMatch) return -1;
+      if (!aExactMatch && bExactMatch) return 1;
+      
+      const aStartsWith = aTitleLower.startsWith(queryLower);
+      const bStartsWith = bTitleLower.startsWith(queryLower);
+      
+      if (aStartsWith && !bStartsWith) return -1;
+      if (!aStartsWith && bStartsWith) return 1;
+      
+      // 计算包含匹配度（查询词在标题中的位置越靠前，排名越靠前）
+      const aIndex = aTitleLower.indexOf(queryLower);
+      const bIndex = bTitleLower.indexOf(queryLower);
+      
+      if (aIndex !== -1 && bIndex !== -1) {
+        if (aIndex < bIndex) return -1;
+        if (aIndex > bIndex) return 1;
+      }
+      
+      // 有评分的结果优先
+      const aHasScore = typeof a.score === 'number';
+      const bHasScore = typeof b.score === 'number';
+      
+      if (aHasScore && bHasScore && a.score !== undefined && b.score !== undefined) {
+        return b.score - a.score;
+      } else if (aHasScore) {
+        return -1;
+      } else if (bHasScore) {
+        return 1;
+      }
+      
+      // 最后按年份排序，最新的在前
+      const aYear = parseInt(a.year || '0', 10);
+      const bYear = parseInt(b.year || '0', 10);
+      
+      return bYear - aYear;
+    });
+  }, [searchResults, searchQuery]);
+  
   // 聚合后的结果（按标题和年份分组）
   const aggregatedResults = useMemo(() => {
     const map = new Map<string, SearchResult[]>();
     const keyOrder: string[] = []; // 记录键出现的顺序
 
-    searchResults.forEach((item) => {
-      // 使用 title + year + type 作为键，year 必然存在，但依然兜底 'unknown'
-      const key = `${item.title.replaceAll(' ', '')}-${
-        item.year || 'unknown'
-      }-${item.episodes.length === 1 ? 'movie' : 'tv'}`;
-      const arr = map.get(key) || [];
-
-      // 如果是新的键，记录其顺序
-      if (arr.length === 0) {
+    enhancedSearchResults.forEach((item) => {
+      // 优化键生成，使用更高效的字符串拼接
+      const type = item.episodes.length === 1 ? 'movie' : 'tv';
+      const key = `${item.title.replace(/\s+/g, '')}-${item.year || 'unknown'}-${type}`;
+      const arr = map.get(key);
+      
+      if (arr) {
+        arr.push(item);
+      } else {
+        map.set(key, [item]);
         keyOrder.push(key);
       }
-
-      arr.push(item);
-      map.set(key, arr);
     });
 
     // 按出现顺序返回聚合结果
-    return keyOrder.map(
-      (key) => [key, map.get(key)!] as [string, SearchResult[]]
-    );
-  }, [searchResults]);
+    return keyOrder.map((key) => [key, map.get(key)!] as [string, SearchResult[]]);
+  }, [enhancedSearchResults]);
 
   // 当聚合结果变化时，如果某个聚合已存在，则调用其卡片 ref 的 set 方法增量更新
   useEffect(() => {
@@ -266,46 +399,64 @@ function SearchPageClient() {
     });
   }, [aggregatedResults]);
 
-  // 构建筛选选项
+  // 构建筛选选项 - 优化版
   const filterOptions = useMemo(() => {
+    // 使用 Set 收集数据，避免重复
     const sourcesSet = new Map<string, string>();
     const titlesSet = new Set<string>();
     const yearsSet = new Set<string>();
 
-    searchResults.forEach((item) => {
+    // 单次遍历收集所有数据
+    for (const item of searchResults) {
       if (item.source && item.source_name) {
         sourcesSet.set(item.source, item.source_name);
       }
-      if (item.title) titlesSet.add(item.title);
-      if (item.year) yearsSet.add(item.year);
-    });
+      if (item.title) {
+        titlesSet.add(item.title);
+      }
+      if (item.year) {
+        yearsSet.add(item.year);
+      }
+    }
 
-    const sourceOptions: { label: string; value: string }[] = [
+    // 优化：对于大量结果，限制显示的选项数量，避免下拉菜单过长
+    const MAX_OPTIONS = 20;
+    
+    // 来源选项 - 排序并限制数量
+    const sourceEntries = Array.from(sourcesSet.entries());
+    if (sourceEntries.length > MAX_OPTIONS) {
+      // 对于大量来源，按名称排序并只显示前N个
+      sourceEntries.sort((a, b) => a[1].localeCompare(b[1]));
+    }
+    const sourceOptions = [
       { label: '全部来源', value: 'all' },
-      ...Array.from(sourcesSet.entries())
-        .sort((a, b) => a[1].localeCompare(b[1]))
-        .map(([value, label]) => ({ label, value })),
+      ...sourceEntries.slice(0, MAX_OPTIONS).map(([value, label]) => ({ label, value })),
     ];
 
-    const titleOptions: { label: string; value: string }[] = [
+    // 标题选项 - 只在有少量结果时显示，否则只显示"全部"
+    const titleOptions = titlesSet.size <= MAX_OPTIONS ? [
       { label: '全部标题', value: 'all' },
       ...Array.from(titlesSet.values())
         .sort((a, b) => a.localeCompare(b))
         .map((t) => ({ label: t, value: t })),
+    ] : [
+      { label: '全部标题', value: 'all' },
     ];
 
-    // 年份: 将 unknown 放末尾
+    // 年份选项 - 优化排序和处理
     const years = Array.from(yearsSet.values());
     const knownYears = years
       .filter((y) => y !== 'unknown')
-      .sort((a, b) => parseInt(b) - parseInt(a));
+      .sort((a, b) => parseInt(b, 10) - parseInt(a, 10)); // 倒序排列，最新的年份在前
     const hasUnknown = years.includes('unknown');
-    const yearOptions: { label: string; value: string }[] = [
+    
+    const yearOptions = [
       { label: '全部年份', value: 'all' },
       ...knownYears.map((y) => ({ label: y, value: y })),
       ...(hasUnknown ? [{ label: '未知', value: 'unknown' }] : []),
     ];
 
+    // 复用相同的选项数组，避免重复创建
     const categoriesAll: SearchFilterCategory[] = [
       { key: 'source', label: '来源', options: sourceOptions },
       { key: 'title', label: '标题', options: titleOptions },
@@ -324,19 +475,19 @@ function SearchPageClient() {
   // 非聚合：应用筛选与排序
   const filteredAllResults = useMemo(() => {
     const { source, title, year, yearOrder } = filterAll;
-    const filtered = searchResults.filter((item) => {
+    const filtered = enhancedSearchResults.filter((item) => {
       if (source !== 'all' && item.source !== source) return false;
       if (title !== 'all' && item.title !== title) return false;
       if (year !== 'all' && item.year !== year) return false;
       return true;
     });
 
-    // 如果是无排序状态，直接返回过滤后的原始顺序
+    // 如果是无排序状态，直接返回过滤后的原始顺序（已优化）
     if (yearOrder === 'none') {
       return filtered;
     }
 
-    // 简化排序：1. 年份排序，2. 年份相同时精确匹配在前，3. 标题排序
+    // 进一步排序：1. 年份排序，2. 年份相同时精确匹配在前，3. 标题排序
     return filtered.sort((a, b) => {
       // 首先按年份排序
       const yearComp = compareYear(a.year, b.year, yearOrder);
@@ -353,7 +504,7 @@ function SearchPageClient() {
         ? a.title.localeCompare(b.title)
         : b.title.localeCompare(a.title);
     });
-  }, [searchResults, filterAll, searchQuery]);
+  }, [enhancedSearchResults, filterAll, searchQuery]);
 
   // 聚合：应用筛选与排序
   const filteredAggResults = useMemo(() => {
@@ -361,7 +512,7 @@ function SearchPageClient() {
     const filtered = aggregatedResults.filter(([_, group]) => {
       const gTitle = group[0]?.title ?? '';
       const gYear = group[0]?.year ?? 'unknown';
-      const hasSource =
+      const hasSource = 
         source === 'all' ? true : group.some((item) => item.source === source);
       if (!hasSource) return false;
       if (title !== 'all' && gTitle !== title) return false;
@@ -473,10 +624,9 @@ function SearchPageClient() {
       if (eventSourceRef.current) {
         try {
           eventSourceRef.current.close();
-        } catch {}
+        } catch {} 
         eventSourceRef.current = null;
       }
-      setSearchResults([]);
       setTotalSources(0);
       setCompletedSources(0);
       // 清理缓冲
@@ -489,6 +639,22 @@ function SearchPageClient() {
       setShowResults(true);
 
       const trimmed = query.trim();
+      
+      // 检查缓存
+      const cached = searchCacheRef.current.get(trimmed);
+      const now = Date.now();
+      
+      if (cached && (now - cached.timestamp) < CACHE_TTL) {
+        // 使用缓存结果
+        setSearchResults(cached.results);
+        setTotalSources(cached.totalSources);
+        setCompletedSources(cached.totalSources);
+        setIsLoading(false);
+        setShowSuggestions(false);
+        // 保存到搜索历史 (事件监听会自动更新界面)
+        addSearchHistory(query);
+        return;
+      }
 
       // 每次搜索时重新读取设置，确保使用最新的配置
       let currentFluidSearch = useFluidSearch;
@@ -568,8 +734,39 @@ function SearchPageClient() {
                     flushTimerRef.current = null;
                   }
                   startTransition(() => {
-                    setSearchResults((prev) => prev.concat(toAppend));
+                    setSearchResults((prev) => {
+                      const allResults = prev.concat(toAppend);
+                      // 更新缓存
+                      const cache = searchCacheRef.current;
+                      cache.set(trimmed, {
+                        results: allResults,
+                        timestamp: Date.now(),
+                        totalSources: payload.completedSources || totalSources
+                      });
+                      
+                      // 维护缓存大小，使用 LRU 策略
+                      if (cache.size > CACHE_SIZE) {
+                        const oldestKey = cache.keys().next().value;
+                        cache.delete(oldestKey);
+                      }
+                      
+                      return allResults;
+                    });
                   });
+                } else {
+                  // 如果没有缓冲，直接更新缓存
+                  const cache = searchCacheRef.current;
+                  cache.set(trimmed, {
+                    results: searchResults,
+                    timestamp: Date.now(),
+                    totalSources: payload.completedSources || totalSources
+                  });
+                  
+                  // 维护缓存大小，使用 LRU 策略
+                  if (cache.size > CACHE_SIZE) {
+                    const oldestKey = cache.keys().next().value;
+                    cache.delete(oldestKey);
+                  }
                 }
                 setIsLoading(false);
                 try {
@@ -612,9 +809,9 @@ function SearchPageClient() {
             if (currentQueryRef.current !== trimmed) return;
 
             if (data.results && Array.isArray(data.results)) {
-              const activeYearOrder =
+              const activeYearOrder = 
                 viewMode === 'agg' ? filterAgg.yearOrder : filterAll.yearOrder;
-              const results: SearchResult[] =
+              const results: SearchResult[] = 
                 activeYearOrder === 'none'
                   ? sortBatchForNoOrder(data.results as SearchResult[])
                   : (data.results as SearchResult[]);
@@ -622,6 +819,20 @@ function SearchPageClient() {
               setSearchResults(results);
               setTotalSources(1);
               setCompletedSources(1);
+              
+              // 更新缓存
+              const cache = searchCacheRef.current;
+              cache.set(trimmed, {
+                results,
+                timestamp: Date.now(),
+                totalSources: 1
+              });
+              
+              // 维护缓存大小，使用 LRU 策略
+              if (cache.size > CACHE_SIZE) {
+                const oldestKey = cache.keys().next().value;
+                cache.delete(oldestKey);
+              }
             }
             setIsLoading(false);
           })
@@ -656,16 +867,38 @@ function SearchPageClient() {
     };
   }, []);
 
+  // 搜索防抖：创建一个防抖函数
+  const debounce = <T extends (...args: any[]) => any>(
+    func: T,
+    delay: number
+  ): ((...args: Parameters<T>) => void) => {
+    let timeoutId: NodeJS.Timeout;
+    return (...args: Parameters<T>) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => func(...args), delay);
+    };
+  };
+  
+  // 防抖处理搜索建议请求
+  const debouncedHandleInputChange = React.useMemo(
+    () => 
+      debounce((value: string) => {
+        if (value.trim()) {
+          setShowSuggestions(true);
+        } else {
+          setShowSuggestions(false);
+        }
+      }, 300), // 300ms延迟，平衡响应速度和API调用次数
+    []
+  );
+  
   // 输入框内容变化时触发，显示搜索建议
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
-
-    if (value.trim()) {
-      setShowSuggestions(true);
-    } else {
-      setShowSuggestions(false);
-    }
+    
+    // 使用防抖函数处理搜索建议
+    debouncedHandleInputChange(value);
   };
 
   // 搜索框聚焦时触发，显示搜索建议
