@@ -1377,7 +1377,7 @@ const VideoCard = memo(
           )}
 
           <div
-            className='flex-1 flex flex-col justify-center px-2 py-3 text-center'
+            className='flex-1 flex flex-col justify-center px-1 py-2 text-center'
             style={
               {
                 WebkitUserSelect: 'none',
