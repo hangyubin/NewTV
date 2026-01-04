@@ -2,6 +2,7 @@ import { X } from 'lucide-react';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { DoubanDetail, SearchResult } from '@/lib/types';
 
@@ -129,12 +130,13 @@ const CombinedDetailModal: React.FC<CombinedDetailModalProps> = ({
           return oldProgress + 100 / 50; // 5s * 10 frames/s
         });
       }, 100); // update progress every 100ms
-
-      return () => {
-        clearTimers();
-      };
     }
   }, [isOpen, doubanDetail, videoDetail, isLoading, onPlay]);
+
+  // 只有在客户端渲染时才使用Portal
+  if (typeof window === 'undefined') {
+    return null;
+  }
 
   if (!isOpen) {
     return null;
@@ -166,7 +168,7 @@ const CombinedDetailModal: React.FC<CombinedDetailModalProps> = ({
     );
   };
 
-  return (
+  return createPortal(
     <div
       className='fixed inset-0 bg-black bg-opacity-75 flex items-start md:items-center justify-center z-50 p-2 md:p-4'
       onClick={(e) => {
@@ -179,11 +181,7 @@ const CombinedDetailModal: React.FC<CombinedDetailModalProps> = ({
     >
       {/* PC端布局 - 保持原有的横向布局 */}
       <div
-        className={`hidden md:block ${
-          resolvedTheme === 'light'
-            ? 'bg-white bg-opacity-95'
-            : 'bg-gray-800 bg-opacity-90'
-        } rounded-lg shadow-lg w-[90vw] max-w-4xl h-[70vh] overflow-hidden relative`}
+        className={`hidden md:block ${resolvedTheme === 'light' ? 'bg-white bg-opacity-95' : 'bg-gray-800 bg-opacity-90'} rounded-lg shadow-lg w-[90vw] max-w-4xl h-[70vh] overflow-hidden relative`}
       >
         <div className='flex h-full'>
           <button
@@ -191,11 +189,7 @@ const CombinedDetailModal: React.FC<CombinedDetailModalProps> = ({
               clearTimers();
               onClose();
             }}
-            className={`absolute top-4 right-4 ${
-              resolvedTheme === 'light'
-                ? 'text-gray-600 hover:text-gray-900 bg-white bg-opacity-70'
-                : 'text-gray-400 hover:text-white bg-black bg-opacity-50'
-            } z-20 rounded-full p-1`}
+            className={`absolute top-4 right-4 ${resolvedTheme === 'light' ? 'text-gray-600 hover:text-gray-900 bg-white bg-opacity-70' : 'text-gray-400 hover:text-white bg-black bg-opacity-50'} z-20 rounded-full p-1`}
           >
             <X size={24} />
           </button>
@@ -208,11 +202,7 @@ const CombinedDetailModal: React.FC<CombinedDetailModalProps> = ({
               style={{ objectFit: 'cover' }}
               className='rounded-l-lg'
               onError={(e) => {
-                console.error(
-                  `海报图片加载失败 (第${fallbackIndex + 1}个URL):`,
-                  posterUrl,
-                  e
-                );
+                console.error(`海报图片加载失败 (第${fallbackIndex + 1}个URL):`, posterUrl, e);
                 if (fallbackIndex < fallbackUrls.length - 1) {
                   console.log(`尝试第${fallbackIndex + 2}个fallback URL`);
                   setFallbackIndex((prev) => prev + 1);
@@ -221,101 +211,56 @@ const CombinedDetailModal: React.FC<CombinedDetailModalProps> = ({
                 }
               }}
               onLoad={() => {
-                console.log(
-                  `海报图片加载成功 (第${fallbackIndex + 1}个URL):`,
-                  posterUrl
-                );
+                console.log(`海报图片加载成功 (第${fallbackIndex + 1}个URL):`, posterUrl);
               }}
             />
           </div>
 
           <div className='w-2/3 relative z-10 h-full'>
             <div className='absolute inset-0 p-8 pb-40 overflow-y-auto'>
-              <h2
-                className={`text-3xl font-bold ${
-                  resolvedTheme === 'light' ? 'text-gray-900' : 'text-white'
-                } mb-6`}
-              >
+              <h2 className={`text-3xl font-bold ${resolvedTheme === 'light' ? 'text-gray-900' : 'text-white'} mb-6`}>
                 {doubanDetail?.title || videoDetail?.title || title}
               </h2>
 
               {isLoading && !doubanDetail && !videoDetail ? (
                 <div className='flex flex-col items-center justify-center h-full'>
                   <div className='loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4'></div>
-                  <div
-                    className={`${
-                      resolvedTheme === 'light' ? 'text-gray-700' : 'text-white'
-                    } text-base text-center`}
-                  >
+                  <div className={`${resolvedTheme === 'light' ? 'text-gray-700' : 'text-white'} text-base text-center`}>
                     影片信息获取中，请稍等片刻
                   </div>
                 </div>
               ) : (
                 <>
                   <div className='grid grid-cols-2 gap-y-2 mb-4 text-sm'>
-                    {renderDetailItem(
-                      '年份',
-                      doubanDetail?.year || videoDetail?.year
-                    )}
+                    {renderDetailItem('年份', doubanDetail?.year || videoDetail?.year)}
                     {renderDetailItem('豆瓣评分', doubanDetail?.rate)}
-                    {renderDetailItem(
-                      '类型',
-                      doubanDetail?.genres || videoDetail?.type_name
-                    )}
+                    {renderDetailItem('类型', doubanDetail?.genres || videoDetail?.type_name)}
                     {renderDetailItem('制片国家/地区', doubanDetail?.countries)}
                     {renderDetailItem('语言', doubanDetail?.languages)}
-                    {videoDetail?.source_name &&
-                      renderDetailItem('来源', videoDetail.source_name)}
+                    {videoDetail?.source_name && renderDetailItem('来源', videoDetail.source_name)}
                   </div>
 
-                  <h3
-                    className={`text-lg font-semibold ${
-                      resolvedTheme === 'light' ? 'text-gray-900' : 'text-white'
-                    } mt-6 mb-1`}
-                  >
+                  <h3 className={`text-lg font-semibold ${resolvedTheme === 'light' ? 'text-gray-900' : 'text-white'} mt-6 mb-1`}>
                     简介
                   </h3>
                   <div className='mb-4 h-32 overflow-y-auto'>
-                    <p
-                      className={`${
-                        resolvedTheme === 'light'
-                          ? 'text-gray-700'
-                          : 'text-gray-300'
-                      } text-sm leading-relaxed`}
-                    >
-                      {doubanDetail?.plot_summary ||
-                        videoDetail?.desc ||
-                        '暂无简介信息'}
+                    <p className={`${resolvedTheme === 'light' ? 'text-gray-700' : 'text-gray-300'} text-sm leading-relaxed`}>
+                      {doubanDetail?.plot_summary || videoDetail?.desc || '暂无简介信息'}
                     </p>
                   </div>
                 </>
               )}
             </div>
 
-            <div
-              className={`absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t ${
-                resolvedTheme === 'light'
-                  ? 'from-white to-transparent'
-                  : 'from-gray-800 to-transparent'
-              }`}
-            >
+            <div className={`absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t ${resolvedTheme === 'light' ? 'from-white to-transparent' : 'from-gray-800 to-transparent'}`}>
               {(doubanDetail || videoDetail) && !isLoading && (
                 <div className='w-full mb-4'>
-                  <div
-                    className={`flex justify-between text-xs ${
-                      resolvedTheme === 'light'
-                        ? 'text-gray-600'
-                        : 'text-gray-400'
-                    } mb-1`}
-                  >
+                  <div className={`flex justify-between text-xs ${resolvedTheme === 'light' ? 'text-gray-600' : 'text-gray-400'} mb-1`}>
                     <span>{countdown}s 后自动播放</span>
                     <span>{Math.round(progress)}%</span>
                   </div>
                   <div className='w-full bg-gray-600 rounded-full h-1.5'>
-                    <div
-                      className='bg-blue-500 h-1.5 rounded-full'
-                      style={{ width: `${progress}%` }}
-                    ></div>
+                    <div className='bg-blue-500 h-1.5 rounded-full' style={{ width: `${progress}%` }}></div>
                   </div>
                 </div>
               )}
@@ -345,23 +290,13 @@ const CombinedDetailModal: React.FC<CombinedDetailModalProps> = ({
       </div>
 
       {/* 移动端布局 - 4段式垂直布局 */}
-      <div
-        className={`block md:hidden ${
-          resolvedTheme === 'light'
-            ? 'bg-white bg-opacity-95'
-            : 'bg-gray-800 bg-opacity-90'
-        } rounded-lg shadow-lg w-[90vw] h-[70vh] flex flex-col overflow-hidden relative mt-[10vh]`}
-      >
+      <div className={`block md:hidden ${resolvedTheme === 'light' ? 'bg-white bg-opacity-95' : 'bg-gray-800 bg-opacity-90'} rounded-lg shadow-lg w-[90vw] h-[70vh] flex flex-col overflow-hidden relative mt-[10vh]`}>
         <button
           onClick={() => {
             clearTimers();
             onClose();
           }}
-          className={`absolute top-2 right-2 ${
-            resolvedTheme === 'light'
-              ? 'text-gray-600 hover:text-gray-900 bg-white bg-opacity-70'
-              : 'text-gray-400 hover:text-white bg-black bg-opacity-50'
-          } z-20 rounded-full p-1`}
+          className={`absolute top-2 right-2 ${resolvedTheme === 'light' ? 'text-gray-600 hover:text-gray-900 bg-white bg-opacity-70' : 'text-gray-400 hover:text-white bg-black bg-opacity-50'} z-20 rounded-full p-1`}
         >
           <X size={20} />
         </button>
@@ -375,11 +310,7 @@ const CombinedDetailModal: React.FC<CombinedDetailModalProps> = ({
             style={{ objectFit: 'cover' }}
             className='rounded-t-lg'
             onError={(e) => {
-              console.error(
-                `海报图片加载失败 (第${fallbackIndex + 1}个URL):`,
-                posterUrl,
-                e
-              );
+              console.error(`海报图片加载失败 (第${fallbackIndex + 1}个URL):`, posterUrl, e);
               if (fallbackIndex < fallbackUrls.length - 1) {
                 console.log(`尝试第${fallbackIndex + 2}个fallback URL`);
                 setFallbackIndex((prev) => prev + 1);
@@ -388,68 +319,40 @@ const CombinedDetailModal: React.FC<CombinedDetailModalProps> = ({
               }
             }}
             onLoad={() => {
-              console.log(
-                `海报图片加载成功 (第${fallbackIndex + 1}个URL):`,
-                posterUrl
-              );
+              console.log(`海报图片加载成功 (第${fallbackIndex + 1}个URL):`, posterUrl);
             }}
           />
         </div>
 
         {/* 第2段：影片信息内容区域 - 可滚动，自适应高度 */}
         <div className='flex-1 p-3 overflow-y-auto'>
-          <h2
-            className={`text-base font-bold ${
-              resolvedTheme === 'light' ? 'text-gray-900' : 'text-white'
-            } mb-2`}
-          >
+          <h2 className={`text-base font-bold ${resolvedTheme === 'light' ? 'text-gray-900' : 'text-white'} mb-2`}>
             {doubanDetail?.title || videoDetail?.title || title}
           </h2>
 
           {isLoading && !doubanDetail && !videoDetail ? (
             <div className='flex flex-col items-center justify-center h-full'>
               <div className='loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-8 w-8 mb-4'></div>
-              <div
-                className={`${
-                  resolvedTheme === 'light' ? 'text-gray-700' : 'text-white'
-                } text-sm text-center`}
-              >
+              <div className={`${resolvedTheme === 'light' ? 'text-gray-700' : 'text-white'} text-sm text-center`}>
                 影片信息获取中，请稍等片刻
               </div>
             </div>
           ) : (
             <>
               <div className='grid grid-cols-2 gap-x-2 gap-y-1 mb-3 text-xs'>
-                {renderDetailItem(
-                  '年份',
-                  doubanDetail?.year || videoDetail?.year
-                )}
+                {renderDetailItem('年份', doubanDetail?.year || videoDetail?.year)}
                 {renderDetailItem('豆瓣评分', doubanDetail?.rate)}
-                {renderDetailItem(
-                  '类型',
-                  doubanDetail?.genres || videoDetail?.type_name
-                )}
+                {renderDetailItem('类型', doubanDetail?.genres || videoDetail?.type_name)}
                 {renderDetailItem('制片国家/地区', doubanDetail?.countries)}
                 {renderDetailItem('语言', doubanDetail?.languages)}
-                {videoDetail?.source_name &&
-                  renderDetailItem('来源', videoDetail.source_name)}
+                {videoDetail?.source_name && renderDetailItem('来源', videoDetail.source_name)}
               </div>
 
-              <h3
-                className={`text-xs font-semibold ${
-                  resolvedTheme === 'light' ? 'text-gray-900' : 'text-white'
-                } mb-2`}
-              >
+              <h3 className={`text-xs font-semibold ${resolvedTheme === 'light' ? 'text-gray-900' : 'text-white'} mb-2`}>
                 简介
               </h3>
-              <p
-                className={`${
-                  resolvedTheme === 'light' ? 'text-gray-700' : 'text-gray-300'
-                } text-xs leading-tight`}
-              >
-                {doubanDetail?.plot_summary ||
-                  videoDetail?.desc ||
-                  '暂无简介信息'}
+              <p className={`${resolvedTheme === 'light' ? 'text-gray-700' : 'text-gray-300'} text-xs leading-tight`}>
+                {doubanDetail?.plot_summary || videoDetail?.desc || '暂无简介信息'}
               </p>
             </>
           )}
@@ -457,34 +360,19 @@ const CombinedDetailModal: React.FC<CombinedDetailModalProps> = ({
 
         {/* 第3段：进度条区域 - 固定高度 */}
         {(doubanDetail || videoDetail) && !isLoading && (
-          <div
-            className={`flex-shrink-0 px-3 py-2 ${
-              resolvedTheme === 'light' ? 'bg-gray-100' : 'bg-gray-800'
-            }`}
-          >
-            <div
-              className={`flex justify-between text-xs ${
-                resolvedTheme === 'light' ? 'text-gray-600' : 'text-gray-400'
-              } mb-1`}
-            >
+          <div className={`flex-shrink-0 px-3 py-2 ${resolvedTheme === 'light' ? 'bg-gray-100' : 'bg-gray-800'}`}>
+            <div className={`flex justify-between text-xs ${resolvedTheme === 'light' ? 'text-gray-600' : 'text-gray-400'} mb-1`}>
               <span>{countdown}s 后自动播放</span>
               <span>{Math.round(progress)}%</span>
             </div>
             <div className='w-full bg-gray-600 rounded-full h-1.5'>
-              <div
-                className='bg-blue-500 h-1.5 rounded-full'
-                style={{ width: `${progress}%` }}
-              ></div>
+              <div className='bg-blue-500 h-1.5 rounded-full' style={{ width: `${progress}%` }}></div>
             </div>
           </div>
         )}
 
         {/* 第4段：按钮区域 - 固定高度 */}
-        <div
-          className={`flex-shrink-0 p-3 ${
-            resolvedTheme === 'light' ? 'bg-gray-100' : 'bg-gray-800'
-          } rounded-b-lg`}
-        >
+        <div className={`flex-shrink-0 p-3 ${resolvedTheme === 'light' ? 'bg-gray-100' : 'bg-gray-800'} rounded-b-lg`}>
           <div className='flex flex-row space-x-2'>
             <button
               onClick={() => {
@@ -518,7 +406,8 @@ const CombinedDetailModal: React.FC<CombinedDetailModalProps> = ({
           }
         }
       `}</style>
-    </div>
+    </div>,
+    document.body
   );
 };
 
