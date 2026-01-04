@@ -268,6 +268,7 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
           rowHeight={itemHeight}
           overscanCount={2} // 增加overscanCount，减少滚动时的白屏现象
           style={{
+            width: containerWidth, // 设置Grid组件的实际宽度
             overflowX: 'hidden',
             overflowY: 'auto',
             // 确保不创建新的stacking context，让菜单能正确显示在最顶层
