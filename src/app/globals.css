@@ -240,7 +240,7 @@ html:not(.dark) body {
 
 @keyframes slideUp {
   from {
-    transform: translateY(15px);
+    transform: translateY(20px);
   }
   to {
     transform: translateY(0);
@@ -249,10 +249,19 @@ html:not(.dark) body {
 
 @keyframes scaleIn {
   from {
-    transform: scale(0.97);
+    transform: scale(0.95);
   }
   to {
     transform: scale(1);
+  }
+}
+
+@keyframes rotateIn {
+  from {
+    transform: rotateX(5deg);
+  }
+  to {
+    transform: rotateX(0deg);
   }
 }
 

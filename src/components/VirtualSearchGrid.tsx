@@ -135,16 +135,31 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
   }): React.ReactElement => {
     const index = rowIndex * columnCount + columnIndex;
 
-    // 如果超出显示范围，返回空div
+    // 计算交错动画延迟，基于行列位置，创造更自然的波浪效果
+    const rowDelay = rowIndex * 30;
+    const colDelay = columnIndex * 15;
+    const animationDelay = `${Math.min(rowDelay + colDelay, 400)}ms`;
+
+    // 动态计算动画持续时间，根据位置调整，创造更有层次感的动画
+    const animationDuration = `0.65s`;
+
+    // 如果超出显示范围，返回带骨架屏的占位符
     if (index >= displayItemCount || index >= displayData.length) {
       return (
         <div 
           style={{ 
             ...style, 
-            padding: '8px',
-            opacity: 0
+            padding: '8px'
           }}
-        />
+        >
+          <div className='w-full h-full rounded-lg overflow-hidden'>
+            <div className='aspect-[3/4] bg-gray-200 dark:bg-gray-800 animate-pulse rounded-t-lg' />
+            <div className='p-2 space-y-1.5'>
+              <div className='h-4 bg-gray-300 dark:bg-gray-700 rounded animate-pulse w-3/4' />
+              <div className='h-3 bg-gray-300 dark:bg-gray-700 rounded animate-pulse w-1/2' />
+            </div>
+          </div>
+        </div>
       );
     }
 
@@ -155,29 +170,32 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
         <div 
           style={{ 
             ...style, 
-            padding: '8px',
-            opacity: 0
+            padding: '8px'
           }}
-        />
+        >
+          <div className='w-full h-full rounded-lg overflow-hidden'>
+            <div className='aspect-[3/4] bg-gray-200 dark:bg-gray-800 animate-pulse rounded-t-lg' />
+            <div className='p-2 space-y-1.5'>
+              <div className='h-4 bg-gray-300 dark:bg-gray-700 rounded animate-pulse w-3/4' />
+              <div className='h-3 bg-gray-300 dark:bg-gray-700 rounded animate-pulse w-1/2' />
+            </div>
+          </div>
+        </div>
       );
     }
-
-    // 添加交错动画延迟，让卡片逐个出现，更自然的视觉效果
-    const animationDelay = `${Math.min(index * 15, 300)}ms`;
-
-    // 动态计算动画持续时间，让卡片加载更流畅
-    const animationDuration = `0.6s`;
 
     // 卡片容器样式，包含动画和过渡效果
     const cardContainerStyle = {
       ...style,
       padding: '8px',
       opacity: 0,
-      transform: 'translateY(15px) scale(0.97)',
-      animation: `fadeIn ${animationDuration} cubic-bezier(0.23, 1, 0.32, 1) ${animationDelay} forwards, 
-                 slideUp ${animationDuration} cubic-bezier(0.23, 1, 0.32, 1) ${animationDelay} forwards, 
-                 scaleIn ${animationDuration} cubic-bezier(0.23, 1, 0.32, 1) ${animationDelay} forwards`,
+      transform: 'translateY(20px) scale(0.95) rotateX(5deg)',
+      animation: `fadeIn ${animationDuration} cubic-bezier(0.215, 0.61, 0.355, 1) ${animationDelay} forwards, 
+                 slideUp ${animationDuration} cubic-bezier(0.215, 0.61, 0.355, 1) ${animationDelay} forwards, 
+                 scaleIn ${animationDuration} cubic-bezier(0.215, 0.61, 0.355, 1) ${animationDelay} forwards, 
+                 rotateIn ${animationDuration} cubic-bezier(0.215, 0.61, 0.355, 1) ${animationDelay} forwards`,
       willChange: 'opacity, transform', // 优化动画性能
+      perspective: '1000px', // 为3D变换提供透视效果
     };
 
     // 根据视图模式渲染不同内容
@@ -200,8 +218,12 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
       return (
         <div 
           style={cardContainerStyle}
-          className="transform transition-all duration-350 hover:scale-[1.04] hover:shadow-xl dark:hover:shadow-green-900/40 hover:-translate-y-1 group"
+          className="transform transition-all duration-400 hover:scale-[1.05] hover:shadow-2xl dark:hover:shadow-green-900/50 hover:-translate-y-2 hover:rotateX(0deg) group relative overflow-hidden"
         >
+          {/* 卡片装饰效果 */}
+          <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500 to-blue-500 opacity-0 group-hover:opacity-30 blur-sm transition-opacity duration-500 pointer-events-none" />
+          
           <VideoCard
             ref={getGroupRef(mapKey)}
             from='search'
@@ -224,8 +246,12 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
       return (
         <div 
           style={cardContainerStyle}
-          className="transform transition-all duration-350 hover:scale-[1.04] hover:shadow-xl dark:hover:shadow-green-900/40 hover:-translate-y-1 group"
+          className="transform transition-all duration-400 hover:scale-[1.05] hover:shadow-2xl dark:hover:shadow-green-900/50 hover:-translate-y-2 hover:rotateX(0deg) group relative overflow-hidden"
         >
+          {/* 卡片装饰效果 */}
+          <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500 to-blue-500 opacity-0 group-hover:opacity-30 blur-sm transition-opacity duration-500 pointer-events-none" />
+          
           <VideoCard
             id={searchItem.id}
             title={searchItem.title}
