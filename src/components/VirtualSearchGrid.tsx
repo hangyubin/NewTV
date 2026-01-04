@@ -122,6 +122,7 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
 
   // 优化的CellComponent，减少不必要的props和计算
   // react-window Grid组件的cellComponent不支持data属性，所以我们需要使用闭包来传递数据
+  // 注意：react-window Grid要求每个单元格的根元素必须是绝对定位的，并且使用提供的style属性
   const CellComponent = ({ 
     ariaAttributes,
     columnIndex,
@@ -135,62 +136,21 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
   }): React.ReactElement => {
     const index = rowIndex * columnCount + columnIndex;
 
-    // 计算交错动画延迟，基于行列位置，创造更自然的波浪效果
-    const rowDelay = rowIndex * 30;
-    const colDelay = columnIndex * 15;
-    const animationDelay = `${Math.min(rowDelay + colDelay, 400)}ms`;
-
-    // 动态计算动画持续时间，根据位置调整，创造更有层次感的动画
-    const animationDuration = `0.65s`;
-
-    // 如果超出显示范围，返回带骨架屏的占位符，使用与实际卡片相同的布局
+    // 如果超出显示范围，返回空div
     if (index >= displayItemCount || index >= displayData.length) {
-      return (
-        <div 
-          style={style}
-          className="p-1 h-full"
-        >
-          <div className='w-full h-full rounded-lg overflow-hidden'>
-            <div className='aspect-[3/4] bg-gray-200 dark:bg-gray-800 animate-pulse rounded-t-lg' />
-            <div className='p-2 space-y-1.5'>
-              <div className='h-4 bg-gray-300 dark:bg-gray-700 rounded animate-pulse w-3/4' />
-              <div className='h-3 bg-gray-300 dark:bg-gray-700 rounded animate-pulse w-1/2' />
-            </div>
-          </div>
-        </div>
-      );
+      return <div style={style} />;
     }
 
     const item = displayData[index];
 
     if (!item) {
-      return (
-        <div 
-          style={style}
-          className="p-1 h-full"
-        >
-          <div className='w-full h-full rounded-lg overflow-hidden'>
-            <div className='aspect-[3/4] bg-gray-200 dark:bg-gray-800 animate-pulse rounded-t-lg' />
-            <div className='p-2 space-y-1.5'>
-              <div className='h-4 bg-gray-300 dark:bg-gray-700 rounded animate-pulse w-3/4' />
-              <div className='h-3 bg-gray-300 dark:bg-gray-700 rounded animate-pulse w-1/2' />
-            </div>
-          </div>
-        </div>
-      );
+      return <div style={style} />;
     }
 
-    // 卡片容器样式，包含动画和过渡效果
-    const cardContainerStyle = {
-      ...style,
-      // 移除额外padding，使用style中的定位
-      opacity: 0,
-      transform: 'translateY(15px) scale(0.98)',
-      animation: `fadeIn ${animationDuration} cubic-bezier(0.23, 1, 0.32, 1) ${animationDelay} forwards, 
-                 slideUp ${animationDuration} cubic-bezier(0.23, 1, 0.32, 1) ${animationDelay} forwards, 
-                 scaleIn ${animationDuration} cubic-bezier(0.23, 1, 0.32, 1) ${animationDelay} forwards`,
-      willChange: 'opacity, transform', // 优化动画性能
-    };
+    // 计算交错动画延迟，基于行列位置，创造更自然的波浪效果
+    const rowDelay = rowIndex * 20;
+    const colDelay = columnIndex * 10;
+    const animationDelay = `${Math.min(rowDelay + colDelay, 300)}ms`;
 
     // 根据视图模式渲染不同内容
     if (viewMode === 'agg') {
@@ -209,53 +169,64 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
       const { episodes, source_names, douban_id } = stats;
       const type = episodes === 1 ? 'movie' : 'tv';
 
+      // 使用style直接定位VideoCard，不添加额外容器
       return (
-        <div 
-          style={cardContainerStyle}
-          className="p-1 h-full"
-        >
-          <VideoCard
-            ref={getGroupRef(mapKey)}
-            from='search'
-            isAggregate={true}
-            title={title}
-            poster={poster}
-            year={year}
-            episodes={episodes}
-            source_names={source_names}
-            douban_id={douban_id}
-            query={
-              searchQuery.trim() !== title ? searchQuery.trim() : ''
-            }
-            type={type}
-          />
-        </div>
+        <VideoCard
+          style={{
+            ...style,
+            opacity: 0,
+            transform: 'translateY(10px) scale(0.98)',
+            animation: `fadeIn 0.5s ease-out ${animationDelay} forwards, 
+                       slideUp 0.5s ease-out ${animationDelay} forwards, 
+                       scaleIn 0.5s ease-out ${animationDelay} forwards`,
+            willChange: 'opacity, transform',
+          }}
+          ref={getGroupRef(mapKey)}
+          from='search'
+          isAggregate={true}
+          title={title}
+          poster={poster}
+          year={year}
+          episodes={episodes}
+          source_names={source_names}
+          douban_id={douban_id}
+          query={
+            searchQuery.trim() !== title ? searchQuery.trim() : ''
+          }
+          type={type}
+        />
       );
     } else {
       const searchItem = item as SearchResult;
+      
+      // 使用style直接定位VideoCard，不添加额外容器
       return (
-        <div 
-          style={cardContainerStyle}
-          className="p-1 h-full"
-        >
-          <VideoCard
-            id={searchItem.id}
-            title={searchItem.title}
-            poster={searchItem.poster}
-            episodes={searchItem.episodes.length}
-            source={searchItem.source}
-            source_name={searchItem.source_name}
-            douban_id={searchItem.douban_id}
-            query={
-              searchQuery.trim() !== searchItem.title
-                ? searchQuery.trim()
-                : ''
-            }
-            year={searchItem.year}
-            from='search'
-            type={searchItem.episodes.length > 1 ? 'tv' : 'movie'}
-          />
-        </div>
+        <VideoCard
+          style={{
+            ...style,
+            opacity: 0,
+            transform: 'translateY(10px) scale(0.98)',
+            animation: `fadeIn 0.5s ease-out ${animationDelay} forwards, 
+                       slideUp 0.5s ease-out ${animationDelay} forwards, 
+                       scaleIn 0.5s ease-out ${animationDelay} forwards`,
+            willChange: 'opacity, transform',
+          }}
+          id={searchItem.id}
+          title={searchItem.title}
+          poster={searchItem.poster}
+          episodes={searchItem.episodes.length}
+          source={searchItem.source}
+          source_name={searchItem.source_name}
+          douban_id={searchItem.douban_id}
+          query={
+            searchQuery.trim() !== searchItem.title
+              ? searchQuery.trim()
+              : ''
+          }
+          year={searchItem.year}
+          from='search'
+          type={searchItem.episodes.length > 1 ? 'tv' : 'movie'}
+        />
       );
     }
   };

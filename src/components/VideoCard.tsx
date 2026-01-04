@@ -60,6 +60,7 @@ export interface VideoCardProps {
   isBangumi?: boolean;
   isAggregate?: boolean;
   origin?: 'vod' | 'live';
+  style?: React.CSSProperties;
 }
 
 export type VideoCardHandle = {
@@ -90,6 +91,7 @@ const VideoCard = memo(
       isBangumi = false,
       isAggregate = false,
       origin = 'vod',
+      style,
     }: VideoCardProps,
     ref
   ) {
@@ -797,6 +799,8 @@ const VideoCard = memo(
               touchAction: 'manipulation',
               // 禁用右键菜单和长按菜单
               pointerEvents: 'auto',
+              // 应用外部传递的样式
+              ...style,
             } as React.CSSProperties
           }
           onContextMenu={(e) => {
