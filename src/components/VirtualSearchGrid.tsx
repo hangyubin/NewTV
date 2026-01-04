@@ -143,14 +143,12 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
     // 动态计算动画持续时间，根据位置调整，创造更有层次感的动画
     const animationDuration = `0.65s`;
 
-    // 如果超出显示范围，返回带骨架屏的占位符
+    // 如果超出显示范围，返回带骨架屏的占位符，使用与实际卡片相同的布局
     if (index >= displayItemCount || index >= displayData.length) {
       return (
         <div 
-          style={{ 
-            ...style, 
-            padding: '8px'
-          }}
+          style={style}
+          className="p-1 h-full"
         >
           <div className='w-full h-full rounded-lg overflow-hidden'>
             <div className='aspect-[3/4] bg-gray-200 dark:bg-gray-800 animate-pulse rounded-t-lg' />
@@ -168,10 +166,8 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
     if (!item) {
       return (
         <div 
-          style={{ 
-            ...style, 
-            padding: '8px'
-          }}
+          style={style}
+          className="p-1 h-full"
         >
           <div className='w-full h-full rounded-lg overflow-hidden'>
             <div className='aspect-[3/4] bg-gray-200 dark:bg-gray-800 animate-pulse rounded-t-lg' />
@@ -187,15 +183,13 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
     // 卡片容器样式，包含动画和过渡效果
     const cardContainerStyle = {
       ...style,
-      padding: '8px',
+      // 移除额外padding，使用style中的定位
       opacity: 0,
-      transform: 'translateY(20px) scale(0.95) rotateX(5deg)',
-      animation: `fadeIn ${animationDuration} cubic-bezier(0.215, 0.61, 0.355, 1) ${animationDelay} forwards, 
-                 slideUp ${animationDuration} cubic-bezier(0.215, 0.61, 0.355, 1) ${animationDelay} forwards, 
-                 scaleIn ${animationDuration} cubic-bezier(0.215, 0.61, 0.355, 1) ${animationDelay} forwards, 
-                 rotateIn ${animationDuration} cubic-bezier(0.215, 0.61, 0.355, 1) ${animationDelay} forwards`,
+      transform: 'translateY(15px) scale(0.98)',
+      animation: `fadeIn ${animationDuration} cubic-bezier(0.23, 1, 0.32, 1) ${animationDelay} forwards, 
+                 slideUp ${animationDuration} cubic-bezier(0.23, 1, 0.32, 1) ${animationDelay} forwards, 
+                 scaleIn ${animationDuration} cubic-bezier(0.23, 1, 0.32, 1) ${animationDelay} forwards`,
       willChange: 'opacity, transform', // 优化动画性能
-      perspective: '1000px', // 为3D变换提供透视效果
     };
 
     // 根据视图模式渲染不同内容
@@ -218,12 +212,8 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
       return (
         <div 
           style={cardContainerStyle}
-          className="transform transition-all duration-400 hover:scale-[1.05] hover:shadow-2xl dark:hover:shadow-green-900/50 hover:-translate-y-2 hover:rotateX(0deg) group relative overflow-hidden"
+          className="p-1 h-full"
         >
-          {/* 卡片装饰效果 */}
-          <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500 to-blue-500 opacity-0 group-hover:opacity-30 blur-sm transition-opacity duration-500 pointer-events-none" />
-          
           <VideoCard
             ref={getGroupRef(mapKey)}
             from='search'
@@ -246,12 +236,8 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
       return (
         <div 
           style={cardContainerStyle}
-          className="transform transition-all duration-400 hover:scale-[1.05] hover:shadow-2xl dark:hover:shadow-green-900/50 hover:-translate-y-2 hover:rotateX(0deg) group relative overflow-hidden"
+          className="p-1 h-full"
         >
-          {/* 卡片装饰效果 */}
-          <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500 to-blue-500 opacity-0 group-hover:opacity-30 blur-sm transition-opacity duration-500 pointer-events-none" />
-          
           <VideoCard
             id={searchItem.id}
             title={searchItem.title}
@@ -304,11 +290,11 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
           cellComponent={CellComponent}
           cellProps={{}}
           columnCount={columnCount}
-          columnWidth={itemWidth + 16}
+          columnWidth={itemWidth}
           defaultHeight={gridHeight}
           defaultWidth={containerWidth}
           rowCount={rowCount}
-          rowHeight={itemHeight + 16}
+          rowHeight={itemHeight}
           overscanCount={2} // 增加overscanCount，减少滚动时的白屏现象
           style={{
             overflowX: 'hidden',

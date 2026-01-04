@@ -46,12 +46,15 @@ export const useResponsiveGrid = (
       else if (containerWidth >= 475) columnCount = 3; // xs
       else columnCount = 2; // mobile
 
-      // 计算项目尺寸
-      const gap = columnCount > 3 ? 32 : 8; // 大屏更大间距
-      const totalGapWidth = gap * (columnCount - 1);
-      const itemWidth = Math.floor(
-        (containerWidth - totalGapWidth) / columnCount
-      );
+      // 计算项目尺寸 - 简化计算，移除动态gap，使用固定padding
+      // 每个项目的固定内边距
+      const itemPadding = 8;
+      
+      // 计算实际可用宽度（减去左右内边距）
+      const availableWidth = containerWidth - (itemPadding * 2);
+      
+      // 计算项目宽度 - 不考虑gap，因为react-window Grid组件会处理间距
+      const itemWidth = Math.floor(availableWidth / columnCount);
 
       // 根据海报比例计算高度 (2:3) + 标题和来源信息高度
       const posterHeight = Math.floor(itemWidth * 1.5);
