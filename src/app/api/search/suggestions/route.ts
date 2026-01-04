@@ -54,14 +54,17 @@ export async function GET(request: NextRequest) {
 }
 
 // 搜索建议缓存
-const suggestionCache = new Map<string, {
-  suggestions: Array<{
-    text: string;
-    type: 'exact' | 'related' | 'suggestion';
-    score: number;
-  }>;
-  timestamp: number;
-}>();
+const suggestionCache = new Map<
+  string,
+  {
+    suggestions: Array<{
+      text: string;
+      type: 'exact' | 'related' | 'suggestion';
+      score: number;
+    }>;
+    timestamp: number;
+  }
+>();
 
 // 缓存有效期：5分钟
 const SUGGESTION_CACHE_TTL = 5 * 60 * 1000;
@@ -79,16 +82,16 @@ async function generateSuggestions(
 > {
   const queryLower = query.toLowerCase();
   const cacheKey = `${username}-${queryLower}`;
-  
+
   // 检查缓存
   const cached = suggestionCache.get(cacheKey);
   const now = Date.now();
-  if (cached && (now - cached.timestamp) < SUGGESTION_CACHE_TTL) {
+  if (cached && now - cached.timestamp < SUGGESTION_CACHE_TTL) {
     return cached.suggestions;
   }
 
   const apiSites = await getAvailableApiSites(username);
-  let allTitles: string[] = [];
+  const allTitles: string[] = [];
 
   if (apiSites.length > 0) {
     // 使用多个数据源，但限制并发数
@@ -97,16 +100,18 @@ async function generateSuggestions(
     for (let i = 0; i < apiSites.length; i += CONCURRENCY_LIMIT) {
       siteBatches.push(apiSites.slice(i, i + CONCURRENCY_LIMIT));
     }
-    
+
     // 分批次执行搜索
     for (const batch of siteBatches) {
-      const batchPromises = batch.map((site) => 
+      const batchPromises = batch.map((site) =>
         Promise.race([
           searchFromApi(site, query),
-          new Promise((_, reject) => setTimeout(() => reject(new Error(`${site.name} timeout`)), 5000))
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`${site.name} timeout`)), 5000)
+          ),
         ]).catch(() => [])
       );
-      
+
       const batchResults = await Promise.all(batchPromises);
       for (const results of batchResults) {
         if (results && Array.isArray(results)) {
@@ -120,11 +125,11 @@ async function generateSuggestions(
             )
             .map((r: any) => r.title)
             .filter(Boolean);
-          
+
           allTitles.push(...filteredTitles);
         }
       }
-      
+
       // 如果已经收集到足够的标题，提前结束
       if (allTitles.length >= 50) {
         break;
@@ -134,11 +139,11 @@ async function generateSuggestions(
 
   // 从所有标题中提取关键词
   const keywordsMap = new Map<string, number>();
-  
+
   for (const title of allTitles) {
     // 提取标题中的关键词
     const words = title.split(/[\s-:：·、-]/);
-    
+
     for (const word of words) {
       const wordLower = word.toLowerCase();
       // 过滤条件：长度大于1，包含查询词
@@ -149,9 +154,9 @@ async function generateSuggestions(
       }
     }
   }
-  
+
   // 转换为数组并排序
-  let realKeywords = Array.from(keywordsMap.entries())
+  const realKeywords = Array.from(keywordsMap.entries())
     .sort((a, b) => b[1] - a[1]) // 按词频降序
     .map(([word]) => word)
     .slice(0, 20); // 最多提取20个关键词
@@ -162,9 +167,9 @@ async function generateSuggestions(
     const queryWords = queryLower.split(/[\s-:：·、-]/);
 
     // 计算匹配分数：完全匹配得分更高，词频也影响分数
-    let baseScore = keywordsMap.get(word) || 1;
+    const baseScore = keywordsMap.get(word) || 1;
     let matchScore = 0;
-    
+
     if (wordLower === queryLower) {
       matchScore = 3.0; // 完全匹配
     } else if (wordLower.startsWith(queryLower)) {
@@ -176,9 +181,9 @@ async function generateSuggestions(
     } else {
       matchScore = 1.0; // 弱匹配
     }
-    
+
     // 综合词频和匹配程度计算最终分数
-    let score = baseScore * matchScore;
+    const score = baseScore * matchScore;
 
     // 根据匹配程度确定类型
     let type: 'exact' | 'related' | 'suggestion' = 'suggestion';
@@ -196,21 +201,23 @@ async function generateSuggestions(
   });
 
   // 按分数降序排列，相同分数按类型优先级排列
-  const sortedSuggestions = realSuggestions.sort((a, b) => {
-    if (a.score !== b.score) {
-      return b.score - a.score; // 分数高的在前
-    }
-    // 分数相同时，按类型优先级：exact > related > suggestion
-    const typePriority = { exact: 3, related: 2, suggestion: 1 };
-    return typePriority[b.type] - typePriority[a.type];
-  }).slice(0, 8); // 最多返回8个建议
+  const sortedSuggestions = realSuggestions
+    .sort((a, b) => {
+      if (a.score !== b.score) {
+        return b.score - a.score; // 分数高的在前
+      }
+      // 分数相同时，按类型优先级：exact > related > suggestion
+      const typePriority = { exact: 3, related: 2, suggestion: 1 };
+      return typePriority[b.type] - typePriority[a.type];
+    })
+    .slice(0, 8); // 最多返回8个建议
 
   // 更新缓存
   suggestionCache.set(cacheKey, {
     suggestions: sortedSuggestions,
-    timestamp: now
+    timestamp: now,
   });
-  
+
   // 限制缓存大小，最多保存50个缓存项
   if (suggestionCache.size > 50) {
     const oldestKey = suggestionCache.keys().next().value;
