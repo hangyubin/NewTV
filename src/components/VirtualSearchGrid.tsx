@@ -137,14 +137,48 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
 
     // 如果超出显示范围，返回空div
     if (index >= displayItemCount || index >= displayData.length) {
-      return <div style={style} />;
+      return (
+        <div 
+          style={{ 
+            ...style, 
+            padding: '8px',
+            opacity: 0
+          }}
+        />
+      );
     }
 
     const item = displayData[index];
 
     if (!item) {
-      return <div style={style} />;
+      return (
+        <div 
+          style={{ 
+            ...style, 
+            padding: '8px',
+            opacity: 0
+          }}
+        />
+      );
     }
+
+    // 添加交错动画延迟，让卡片逐个出现，更自然的视觉效果
+    const animationDelay = `${Math.min(index * 15, 300)}ms`;
+
+    // 动态计算动画持续时间，让卡片加载更流畅
+    const animationDuration = `0.6s`;
+
+    // 卡片容器样式，包含动画和过渡效果
+    const cardContainerStyle = {
+      ...style,
+      padding: '8px',
+      opacity: 0,
+      transform: 'translateY(15px) scale(0.97)',
+      animation: `fadeIn ${animationDuration} cubic-bezier(0.23, 1, 0.32, 1) ${animationDelay} forwards, 
+                 slideUp ${animationDuration} cubic-bezier(0.23, 1, 0.32, 1) ${animationDelay} forwards, 
+                 scaleIn ${animationDuration} cubic-bezier(0.23, 1, 0.32, 1) ${animationDelay} forwards`,
+      willChange: 'opacity, transform', // 优化动画性能
+    };
 
     // 根据视图模式渲染不同内容
     if (viewMode === 'agg') {
@@ -164,7 +198,10 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
       const type = episodes === 1 ? 'movie' : 'tv';
 
       return (
-        <div style={{ ...style, padding: '8px' }}>
+        <div 
+          style={cardContainerStyle}
+          className="transform transition-all duration-350 hover:scale-[1.04] hover:shadow-xl dark:hover:shadow-green-900/40 hover:-translate-y-1 group"
+        >
           <VideoCard
             ref={getGroupRef(mapKey)}
             from='search'
@@ -185,7 +222,10 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
     } else {
       const searchItem = item as SearchResult;
       return (
-        <div style={{ ...style, padding: '8px' }}>
+        <div 
+          style={cardContainerStyle}
+          className="transform transition-all duration-350 hover:scale-[1.04] hover:shadow-xl dark:hover:shadow-green-900/40 hover:-translate-y-1 group"
+        >
           <VideoCard
             id={searchItem.id}
             title={searchItem.title}
