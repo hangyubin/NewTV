@@ -12,6 +12,31 @@
     display: none; /* Chrome, Safari and Opera */
   }
 
+  /* Modern Gradient Utilities */
+  .bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+
+  .bg-gradient-secondary {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  }
+
+  .bg-gradient-tertiary {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  }
+
+  .bg-gradient-success {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  }
+
+  .bg-gradient-warning {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  }
+
+  .bg-gradient-info {
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+  }
+
   /* Glass Morphism Utilities */
   .glass {
     background: var(--glass-bg);
@@ -49,6 +74,82 @@
     @apply glass;
     backdrop-filter: blur(var(--glass-blur-strong));
     -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+  }
+
+  /* Enhanced Hover Effects */
+  .hover-lift {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18);
+  }
+
+  /* Smooth Transitions */
+  .smooth-transition {
+    transition: all var(--duration-normal) var(--transition-smooth);
+  }
+
+  .smooth-transition-fast {
+    transition: all var(--duration-fast) var(--transition-smooth);
+  }
+
+  .smooth-transition-slow {
+    transition: all var(--duration-slow) var(--transition-smooth);
+  }
+
+  /* Enhanced Card Styles */
+  .card-enhanced {
+    @apply rounded-apple-xl overflow-hidden shadow-lg hover-lift smooth-transition;
+  }
+
+  /* Custom Animations */
+  @keyframes card-shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  @keyframes hover-pulse {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Animation Classes */
+  .animate-fade-in-up {
+    animation: fade-in-up 0.6s ease-out forwards;
+  }
+
+  /* Text Gradients */
+  .text-gradient-primary {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600;
+  }
+
+  .text-gradient-secondary {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-orange-500;
+  }
+
+  .text-gradient-success {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-green-500 to-teal-500;
   }
 }
 

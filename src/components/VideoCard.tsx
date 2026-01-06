@@ -836,9 +836,9 @@ const VideoCard = memo(
             return false;
           }}
         >
-          {/* 海报容器 */}
+          {/* 海报容器 - 增强的玻璃态和渐变效果 */}
           <div
-            className={`relative aspect-[3/4] overflow-hidden rounded-t-lg bg-gray-100 dark:bg-gray-800 transition-all duration-300 ease-in-out group-hover:shadow-lg group-hover:shadow-black/20 dark:group-hover:shadow-black/20 ${
+            className={`relative aspect-[3/4] overflow-hidden rounded-t-lg bg-gray-100 dark:bg-gray-800 transition-all duration-400 ease-in-out group-hover:shadow-2xl group-hover:shadow-black/30 dark:group-hover:shadow-black/40 ${
               origin === 'live'
                 ? 'ring-1 ring-gray-300/80 dark:ring-gray-600/80'
                 : ''
@@ -855,31 +855,31 @@ const VideoCard = memo(
               return false;
             }}
           >
-            {/* 渐变光泽动画层 */}
+            {/* 渐变光泽动画层 - 增强效果 */}
             <div
-              className='absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10'
+              className='absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-600 pointer-events-none z-10'
               style={{
-                background: 'linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.15) 45%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0.15) 55%, transparent 70%)',
+                background: 'linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.2) 45%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.2) 55%, transparent 70%)',
                 backgroundSize: '200% 100%',
                 animation: 'card-shimmer 2.5s ease-in-out infinite',
               }}
             />
 
-            {/* 骨架屏 */}
+            {/* 骨架屏 - 更精致的设计 */}
             {!isLoading && (
               <ImagePlaceholder
                 aspectRatio='aspect-[2/3]'
-                className='animate-pulse'
+                className='animate-pulse rounded-t-lg'
               />
             )}
-            {/* 图片 */}
+            {/* 图片 - 增强的过渡效果 */}
             <Image
               src={processImageUrl(actualPoster)}
               alt={actualTitle}
               fill
               className={`${
                 origin === 'live' ? 'object-contain' : 'object-cover'
-              } transition-all duration-500 ease-in-out ${
+              } transition-all duration-600 ease-in-out ${
                 isLoading ? 'opacity-100 blur-0 scale-100' : 'opacity-0 blur-md scale-105'
               }`}
               referrerPolicy='no-referrer'
@@ -919,9 +919,9 @@ const VideoCard = memo(
               }}
             />
 
-            {/* 悬浮遮罩 - 玻璃态效果 */}
+            {/* 悬浮遮罩 - 增强的玻璃态效果 */}
             <div
-              className='absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent transition-all duration-300 ease-in-out opacity-0 group-hover:opacity-100 backdrop-blur-[2px]'
+              className='absolute inset-0 bg-linear-to-t from-black/90 via-black/30 to-transparent transition-all duration-400 ease-in-out opacity-0 group-hover:opacity-100 backdrop-blur-sm'
               style={
                 {
                   WebkitUserSelect: 'none',

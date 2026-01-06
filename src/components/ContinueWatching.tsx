@@ -1,17 +1,17 @@
 /* eslint-disable no-console */
 'use client';
 
+import { Clock, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import type { PlayRecord } from '@/lib/db.client';
 import {
   clearAllPlayRecords,
   getAllPlayRecords,
-  subscribeToDataUpdates,
 } from '@/lib/db.client';
 
 import ScrollableRow from '@/components/ScrollableRow';
+import SectionTitle from '@/components/SectionTitle';
 import VideoCard from '@/components/VideoCard';
 
 interface ContinueWatchingProps {
@@ -45,24 +45,12 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
       try {
         setLoading(true);
 
-        // 检查用户是否已认证
-        const authInfo = getAuthInfoFromBrowserCookie();
-        if (!authInfo || !authInfo.username) {
-          // 用户未认证，清空播放记录
-          setPlayRecords([]);
-          setLoading(false);
-          return;
-        }
-
         // 从缓存或API获取所有播放记录
         const allRecords = await getAllPlayRecords();
         updatePlayRecords(allRecords);
       } catch (error) {
         console.error('获取播放记录失败:', error);
-        // 如果是401错误，清空播放记录
-        if (error instanceof Error && error.message.includes('401')) {
-          setPlayRecords([]);
-        }
+        setPlayRecords([]);
       } finally {
         setLoading(false);
       }
@@ -71,14 +59,16 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
     fetchPlayRecords();
 
     // 监听播放记录更新事件
-    const unsubscribe = subscribeToDataUpdates(
-      'playRecordsUpdated',
-      (newRecords: Record<string, PlayRecord>) => {
-        updatePlayRecords(newRecords);
-      }
-    );
+    const handlePlayRecordsUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent<Record<string, PlayRecord>>;
+      updatePlayRecords(customEvent.detail);
+    };
 
-    return unsubscribe;
+    window.addEventListener('playRecordsUpdated', handlePlayRecordsUpdate);
+
+    return () => {
+      window.removeEventListener('playRecordsUpdated', handlePlayRecordsUpdate);
+    };
   }, []);
 
   // 如果没有播放记录，则不渲染组件
@@ -98,21 +88,23 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
     return { source, id };
   };
 
+  // 处理清空所有记录
+  const handleClearAll = async () => {
+    await clearAllPlayRecords();
+    setPlayRecords([]);
+  };
+
   return (
     <section className={`mb-8 ${className || ''}`}>
       <div className='mb-4 flex items-center justify-between'>
-        <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-          继续观看
-        </h2>
+        <SectionTitle title="继续观看" icon={Clock} iconColor="text-green-500" />
         {!loading && playRecords.length > 0 && (
           <button
-            className='text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-            onClick={async () => {
-              await clearAllPlayRecords();
-              setPlayRecords([]);
-            }}
+            className='flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 hover:text-white hover:bg-red-600 dark:text-red-400 dark:hover:text-white dark:hover:bg-red-500 border border-red-300 dark:border-red-700 hover:border-red-600 dark:hover:border-red-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md'
+            onClick={handleClearAll}
           >
-            清空
+            <Trash2 className='w-4 h-4' />
+            <span>清空</span>
           </button>
         )}
       </div>
@@ -122,7 +114,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
             Array.from({ length: 6 }).map((_, index) => (
               <div
                 key={index}
-                className='min-w-[102px] w-[102px] sm:min-w-[180px] sm:w-44'
+                className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
               >
                 <div className='relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800'>
                   <div className='absolute inset-0 bg-gray-300 dark:bg-gray-700'></div>
@@ -132,32 +124,30 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
               </div>
             ))
           : // 显示真实数据
-            playRecords.map((record) => {
+            playRecords.map((record, index) => {
               const { source, id } = parseKey(record.key);
               return (
                 <div
                   key={record.key}
-                  className='min-w-[102px] w-[102px] sm:min-w-[180px] sm:w-44'
+                  className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44 relative group/card'
                 >
-                  <VideoCard
-                    id={id}
-                    title={record.title}
-                    poster={record.cover}
-                    year={record.year}
-                    source={source}
-                    source_name={record.source_name}
-                    progress={getProgress(record)}
-                    episodes={record.total_episodes}
-                    currentEpisode={record.index}
-                    query={record.search_title}
-                    from='playrecord'
-                    onDelete={() =>
-                      setPlayRecords((prev) =>
-                        prev.filter((r) => r.key !== record.key)
-                      )
-                    }
-                    type={record.total_episodes > 1 ? 'tv' : ''}
-                  />
+                  <div className='relative group-hover/card:z-5 transition-all duration-300'>
+                    <VideoCard
+                      id={id}
+                      title={record.title}
+                      poster={record.cover}
+                      year={record.year}
+                      source={source}
+                      source_name={record.source_name}
+                      progress={getProgress(record)}
+                      episodes={record.total_episodes}
+                      currentEpisode={record.index}
+                      query={record.search_title}
+                      from='playrecord'
+                      type={record.total_episodes > 1 ? 'tv' : ''}
+                      priority={index < 4}
+                    />
+                  </div>
                 </div>
               );
             })}
