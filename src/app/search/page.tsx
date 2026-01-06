@@ -19,6 +19,7 @@ import {
   getSearchHistory,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
+import { rankSearchResults } from '@/lib/search-ranking';
 import { SearchResult } from '@/lib/types';
 
 import PageLayout from '@/components/PageLayout';
@@ -57,6 +58,8 @@ function SearchPageClient() {
     }
     return false;
   });
+  // 搜索类型
+  const [searchType, setSearchType] = useState<'video'>('video');
   // 聚合卡片 refs 与聚合统计缓存
   const groupRefs = useRef<Map<string, React.RefObject<VideoCardHandle>>>(
     new Map()
@@ -653,8 +656,9 @@ function SearchPageClient() {
           lastUsed: now
         });
         
-        // 使用缓存结果
-        setSearchResults(cached.results);
+        // 使用缓存结果，应用相关性排序
+        const rankedCachedResults = rankSearchResults(cached.results, trimmed);
+        setSearchResults(rankedCachedResults);
         setTotalSources(cached.totalSources);
         setCompletedSources(cached.totalSources);
         setIsLoading(false);
@@ -720,7 +724,11 @@ function SearchPageClient() {
                       const toAppend = pendingResultsRef.current;
                       pendingResultsRef.current = [];
                       startTransition(() => {
-                        setSearchResults((prev) => prev.concat(toAppend));
+                        setSearchResults((prev) => {
+                          const allResults = prev.concat(toAppend);
+                          // 应用相关性排序
+                          return rankSearchResults(allResults, trimmed);
+                        });
                       });
                       flushTimerRef.current = null;
                     }, 80);
@@ -744,11 +752,14 @@ function SearchPageClient() {
                   startTransition(() => {
                     setSearchResults((prev) => {
                       const allResults = prev.concat(toAppend);
+                      // 应用相关性排序
+                      const rankedResults = rankSearchResults(allResults, trimmed);
+                      
                       // 更新缓存
                       const cache = searchCacheRef.current;
                       const now = Date.now();
                       cache.set(trimmed, {
-                        results: allResults,
+                        results: rankedResults,
                         timestamp: now,
                         lastUsed: now,
                         totalSources: payload.completedSources || totalSources
@@ -771,7 +782,7 @@ function SearchPageClient() {
                         }
                       }
                       
-                      return allResults;
+                      return rankedResults;
                     });
                   });
                 } else {
@@ -850,15 +861,17 @@ function SearchPageClient() {
                   ? sortBatchForNoOrder(data.results as SearchResult[])
                   : (data.results as SearchResult[]);
 
-              setSearchResults(results);
+              // 应用相关性排序
+              const rankedResults = rankSearchResults(results, trimmed);
+              setSearchResults(rankedResults);
               setTotalSources(1);
               setCompletedSources(1);
               
-              // 更新缓存
+              // 更新缓存，使用排序后的结果
               const cache = searchCacheRef.current;
               const now = Date.now();
               cache.set(trimmed, {
-                results,
+                results: rankedResults,
                 timestamp: now,
                 lastUsed: now,
                 totalSources: 1
@@ -998,25 +1011,43 @@ function SearchPageClient() {
   };
 
   return (
-    <PageLayout>
-      <div className='px-4 sm:px-10 py-4 sm:py-8 overflow-visible mb-10'>
-        {/* 搜索框 */}
+    <PageLayout activePath='/search'>
+      <div className='overflow-visible mb-10 -mt-6 md:mt-0'>
+        {/* 搜索框区域 - 美化版 */}
         <div className='mb-8'>
+          {/* 搜索类型选项卡 - 美化版 */}
+          <div className='max-w-2xl mx-auto mb-6'>
+            <div className='flex items-center justify-center'>
+              <div className='inline-flex items-center bg-linear-to-r from-gray-50 via-white to-gray-50 dark:from-gray-800 dark:via-gray-750 dark:to-gray-800 rounded-xl p-1.5 space-x-2 shadow-lg border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm'>
+                <button
+                  type='button'
+                  onClick={() => {
+                    setSearchType('video');
+                  }}
+                  className={`px-5 py-2.5 text-sm font-semibold rounded-lg transition-all duration-300 relative overflow-hidden ${searchType === 'video' ? 'bg-linear-to-br from-green-400 via-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/30 scale-105' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/50'}`}
+                >
+                  🎬 影视资源
+                </button>
+              </div>
+            </div>
+          </div>
+
           <form onSubmit={handleSearch} className='max-w-2xl mx-auto'>
-            <div className='relative'>
-              <Search className='absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-gray-500' />
+            <div className='relative group'>
+              {/* 搜索图标 - 增强动画 */}
+              <Search className='absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-gray-500 transition-all duration-300 group-focus-within:text-green-500 dark:group-focus-within:text-green-400 group-focus-within:scale-110' />
               <input
                 id='searchInput'
                 type='text'
                 value={searchQuery}
                 onChange={handleInputChange}
                 onFocus={handleInputFocus}
-                placeholder='搜索电影、电视剧...'
+                placeholder={searchType === 'video' ? '🎬 搜索电影、电视剧...' : ''}
                 autoComplete='off'
-                className='w-full h-12 rounded-lg bg-gray-50/80 py-3 pl-10 pr-12 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white border border-gray-200/50 shadow-sm dark:bg-gray-800 dark:text-gray-300 dark:placeholder-gray-500 dark:focus:bg-gray-700 dark:border-gray-700'
+                className='w-full h-14 rounded-xl bg-white/90 py-4 pl-12 pr-14 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white border-2 border-gray-200/80 shadow-lg hover:shadow-xl focus:shadow-2xl focus:border-green-400 transition-all duration-300 dark:bg-gray-800/90 dark:text-gray-300 dark:placeholder-gray-500 dark:focus:bg-gray-800 dark:border-gray-700 dark:focus:border-green-500 backdrop-blur-sm'
               />
 
-              {/* 清除按钮 */}
+              {/* 清除按钮 - 美化版 */}
               {searchQuery && (
                 <button
                   type='button'
@@ -1025,10 +1056,10 @@ function SearchPageClient() {
                     setShowSuggestions(false);
                     document.getElementById('searchInput')?.focus();
                   }}
-                  className='absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors dark:text-gray-500 dark:hover:text-gray-300'
+                  className='absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full bg-gray-200/80 hover:bg-red-500 text-gray-500 hover:text-white transition-all duration-300 hover:scale-110 hover:rotate-90 dark:bg-gray-700/80 dark:text-gray-400 dark:hover:bg-red-600 shadow-sm hover:shadow-md'
                   aria-label='清除搜索内容'
                 >
-                  <X className='h-5 w-5' />
+                  <X className='h-4 w-4' />
                 </button>
               )}
 
