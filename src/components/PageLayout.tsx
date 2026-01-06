@@ -38,7 +38,7 @@ const PageLayout = ({  children,  activePath,  defaultSidebarCollapsed,}: PageLa
               paddingBottom: 'calc(3.5rem + env(safe-area-inset-bottom))',
             }}
           >
-            <div className='max-w-[1400px] mx-auto'>
+            <div className='w-full max-w-[1400px] mx-auto px-2 sm:px-0'>
               {children}
             </div>
           </main>
