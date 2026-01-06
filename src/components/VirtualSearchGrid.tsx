@@ -270,14 +270,6 @@ export const VirtualSearchGrid = React.forwardRef<VirtualSearchGridRef, VirtualS
     }
   }, []);
 
-  // 计算网格高度 - 优化动态调整，确保良好的滚动体验
-  const gridHeight = typeof window !== 'undefined' 
-    ? Math.max(
-        window.innerHeight - 240, // 优化高度计算，与页面布局更协调
-        500 // 确保最小高度，避免内容过少时的不良体验
-      )
-    : 500;
-
   return (
     <div ref={containerRef} className='w-full'>
       {totalItemCount === 0 ? (
@@ -324,19 +316,10 @@ export const VirtualSearchGrid = React.forwardRef<VirtualSearchGridRef, VirtualS
           aria-rowcount={rowCount}
           aria-colcount={columnCount}
           style={{
-            width: containerWidth,
-            height: gridHeight,
-            overflowX: 'hidden',
-            overflowY: 'auto',
             // 确保不创建新的stacking context，让菜单能正确显示在最顶层
             isolation: 'auto',
             // 平滑滚动优化
             scrollBehavior: 'smooth',
-            // 优化滚动性能
-            willChange: 'transform',
-            // 优化滚动条样式
-            scrollbarWidth: 'thin',
-            scrollbarColor: 'rgba(156, 163, 175, 0.5) transparent',
             // 单行网格优化：防止高度异常
             ...(isSingleRow && {
               minHeight: itemHeight + 16,

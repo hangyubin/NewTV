@@ -921,9 +921,9 @@ const VideoCard = memo(
               }}
             />
 
-            {/* 悬浮遮罩 - 增强的玻璃态效果 */}
+            {/* 悬浮遮罩 - 增强的效果 */}
             <div
-              className='absolute inset-0 bg-linear-to-t from-black/90 via-black/30 to-transparent transition-all duration-400 ease-in-out opacity-0 group-hover:opacity-100 backdrop-blur-sm'
+              className='absolute inset-0 bg-linear-to-t from-black/90 via-black/30 to-transparent transition-all duration-400 ease-in-out opacity-0 group-hover:opacity-100'
               style={
                 {
                   WebkitUserSelect: 'none',
@@ -1002,7 +1002,7 @@ const VideoCard = memo(
                       </div>
                     </div>
                     {/* 百分比文字 */}
-                    <div className='text-sm font-semibold bg-black/50 px-2 py-1 rounded-full backdrop-blur-sm'>
+                    <div className='text-sm font-semibold bg-black/50 px-2 py-1 rounded-full'>
                       {Math.round(progress)}%
                     </div>
                   </div>
