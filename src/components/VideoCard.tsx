@@ -123,7 +123,7 @@ const VideoCard = memo(
     const autoPlayTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     // 悬停相关状态（仅豆瓣卡片）
-    const [isHovering, setIsHovering] = useState(false);
+    const [_isHovering, setIsHovering] = useState(false);
 
     // AI聊天模态框状态
 
@@ -391,8 +391,7 @@ const VideoCard = memo(
             }
             return { success: false, data: null };
           })
-          .catch((error) => {
-            console.error('获取豆瓣详情失败:', error);
+          .catch((_error) => {
             return { success: false, data: null };
           });
         promises.push(doubanPromise);
@@ -412,8 +411,7 @@ const VideoCard = memo(
           }
           return { success: false, results: [] };
         })
-        .catch((error) => {
-          console.error('搜索视频源失败:', error);
+        .catch((_error) => {
           return { success: false, results: [] };
         });
       promises.push(searchPromise);
@@ -862,7 +860,8 @@ const VideoCard = memo(
             <div
               className='absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-600 pointer-events-none z-10'
               style={{
-                background: 'linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.2) 45%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.2) 55%, transparent 70%)',
+                background:
+                  'linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.2) 45%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.2) 55%, transparent 70%)',
                 backgroundSize: '200% 100%',
                 animation: 'card-shimmer 2.5s ease-in-out infinite',
               }}
@@ -899,7 +898,7 @@ const VideoCard = memo(
                       img.src = '/icons/icon-192x192.png';
                       setIsLoading(true);
                     } catch (err) {
-                      console.error('图片加载失败:', err);
+                      // 忽略图片加载失败
                     }
                   }, 2000);
                 }
@@ -1287,7 +1286,8 @@ const VideoCard = memo(
                           maxDisplayCount
                         );
                         const hasMore = sortedSources.length > maxDisplayCount;
-                        const remainingCount = sortedSources.length - maxDisplayCount;
+                        const remainingCount =
+                          sortedSources.length - maxDisplayCount;
 
                         return (
                           <div
@@ -1358,23 +1358,11 @@ const VideoCard = memo(
                 );
               })()}
             {/* 相同标题统计指示器（非聚合视图下显示） */}
-            {!isAggregate && sameTitleStats && sameTitleStats.totalCount > 1 && (
-              <div
-                className='absolute bottom-2 right-2 opacity-0 transition-all duration-300 ease-in-out delay-75 sm:group-hover:opacity-100'
-                style={
-                  {
-                    WebkitUserSelect: 'none',
-                    userSelect: 'none',
-                    WebkitTouchCallout: 'none',
-                  } as React.CSSProperties
-                }
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  return false;
-                }}
-              >
+            {!isAggregate &&
+              sameTitleStats &&
+              sameTitleStats.totalCount > 1 && (
                 <div
-                  className='relative group/same-title'
+                  className='absolute bottom-2 right-2 opacity-0 transition-all duration-300 ease-in-out delay-75 sm:group-hover:opacity-100'
                   style={
                     {
                       WebkitUserSelect: 'none',
@@ -1382,9 +1370,13 @@ const VideoCard = memo(
                       WebkitTouchCallout: 'none',
                     } as React.CSSProperties
                   }
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    return false;
+                  }}
                 >
                   <div
-                    className='bg-purple-500/80 text-white text-xs font-bold w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shadow-glass hover:scale-[1.1] transition-all duration-300 ease-out cursor-pointer backdrop-blur-sm'
+                    className='relative group/same-title'
                     style={
                       {
                         WebkitUserSelect: 'none',
@@ -1392,31 +1384,9 @@ const VideoCard = memo(
                         WebkitTouchCallout: 'none',
                       } as React.CSSProperties
                     }
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      return false;
-                    }}
-                  >
-                    {sameTitleStats.totalCount}
-                  </div>
-
-                  {/* 相同标题详情悬浮框 */}
-                  <div
-                    className='absolute bottom-full mb-2 opacity-0 invisible group-hover/same-title:opacity-100 group-hover/same-title:visible transition-all duration-200 ease-out delay-100 pointer-events-none z-50 right-0 sm:right-0 -translate-x-0 sm:translate-x-0'
-                    style={
-                      {
-                        WebkitUserSelect: 'none',
-                        userSelect: 'none',
-                        WebkitTouchCallout: 'none',
-                      } as React.CSSProperties
-                    }
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      return false;
-                    }}
                   >
                     <div
-                      className='glass-strong text-white text-xs sm:text-xs rounded-apple-lg shadow-floating border border-white/20 p-1.5 sm:p-2 min-w-[120px] sm:min-w-[150px] max-w-[180px] sm:max-w-[220px] overflow-hidden'
+                      className='bg-purple-500/80 text-white text-xs font-bold w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shadow-glass hover:scale-[1.1] transition-all duration-300 ease-out cursor-pointer backdrop-blur-sm'
                       style={
                         {
                           WebkitUserSelect: 'none',
@@ -1429,44 +1399,80 @@ const VideoCard = memo(
                         return false;
                       }}
                     >
-                      <div className='mb-2 text-sm font-semibold text-center text-purple-300'>相同片名</div>
-                      
-                      {/* 单列布局 */}
-                      <div className='space-y-0.5 sm:space-y-1'>
-                        {sameTitleStats.uniqueSources.slice(0, 8).map((sourceName, index) => (
-                          <div
-                            key={index}
-                            className='flex items-center gap-1 sm:gap-1.5'
-                          >
-                            <div className='w-0.5 h-0.5 sm:w-1 sm:h-1 bg-purple-400 rounded-full flex-shrink-0'></div>
-                            <span
-                              className='truncate text-[10px] sm:text-xs leading-tight'
-                              title={sourceName}
-                            >
-                              {sourceName}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                      {sameTitleStats.totalCount}
+                    </div>
 
-                      {/* 显示更多提示 */}
-                      {sameTitleStats.uniqueSources.length > 8 && (
-                        <div className='mt-1 sm:mt-2 pt-1 sm:pt-1.5 border-t border-gray-700/50'>
-                          <div className='flex items-center justify-center text-gray-400'>
-                            <span className='text-[10px] sm:text-xs font-medium'>
-                              +{sameTitleStats.uniqueSources.length - 8} 来源
-                            </span>
-                          </div>
+                    {/* 相同标题详情悬浮框 */}
+                    <div
+                      className='absolute bottom-full mb-2 opacity-0 invisible group-hover/same-title:opacity-100 group-hover/same-title:visible transition-all duration-200 ease-out delay-100 pointer-events-none z-50 right-0 sm:right-0 -translate-x-0 sm:translate-x-0'
+                      style={
+                        {
+                          WebkitUserSelect: 'none',
+                          userSelect: 'none',
+                          WebkitTouchCallout: 'none',
+                        } as React.CSSProperties
+                      }
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        return false;
+                      }}
+                    >
+                      <div
+                        className='glass-strong text-white text-xs sm:text-xs rounded-apple-lg shadow-floating border border-white/20 p-1.5 sm:p-2 min-w-[120px] sm:min-w-[150px] max-w-[180px] sm:max-w-[220px] overflow-hidden'
+                        style={
+                          {
+                            WebkitUserSelect: 'none',
+                            userSelect: 'none',
+                            WebkitTouchCallout: 'none',
+                          } as React.CSSProperties
+                        }
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          return false;
+                        }}
+                      >
+                        <div className='mb-2 text-sm font-semibold text-center text-purple-300'>
+                          相同片名
                         </div>
-                      )}
 
-                      {/* 小箭头 */}
-                      <div className='absolute top-full right-2 sm:right-3 w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] sm:border-l-[6px] sm:border-r-[6px] sm:border-t-[6px] border-transparent border-t-gray-800/90'></div>
+                        {/* 单列布局 */}
+                        <div className='space-y-0.5 sm:space-y-1'>
+                          {sameTitleStats.uniqueSources
+                            .slice(0, 8)
+                            .map((sourceName, index) => (
+                              <div
+                                key={index}
+                                className='flex items-center gap-1 sm:gap-1.5'
+                              >
+                                <div className='w-0.5 h-0.5 sm:w-1 sm:h-1 bg-purple-400 rounded-full flex-shrink-0'></div>
+                                <span
+                                  className='truncate text-[10px] sm:text-xs leading-tight'
+                                  title={sourceName}
+                                >
+                                  {sourceName}
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+
+                        {/* 显示更多提示 */}
+                        {sameTitleStats.uniqueSources.length > 8 && (
+                          <div className='mt-1 sm:mt-2 pt-1 sm:pt-1.5 border-t border-gray-700/50'>
+                            <div className='flex items-center justify-center text-gray-400'>
+                              <span className='text-[10px] sm:text-xs font-medium'>
+                                +{sameTitleStats.uniqueSources.length - 8} 来源
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 小箭头 */}
+                        <div className='absolute top-full right-2 sm:right-3 w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] sm:border-l-[6px] sm:border-r-[6px] sm:border-t-[6px] border-transparent border-t-gray-800/90'></div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
 
           {/* 进度条 */}
