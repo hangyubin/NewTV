@@ -225,7 +225,7 @@ export const VirtualSearchGrid = React.forwardRef<VirtualSearchGridRef, VirtualS
       }
 
       return (
-        <div style={{ ...style, padding: '8px' }} {...ariaAttributes}>
+        <div style={{ ...style }} {...ariaAttributes}>
           <VideoCard
             ref={cellGetGroupRef(mapKey)}
             from='search'
@@ -249,7 +249,7 @@ export const VirtualSearchGrid = React.forwardRef<VirtualSearchGridRef, VirtualS
       const sameTitleStats = cellSameTitleStatsMap ? cellSameTitleStatsMap.get(`${searchItem.source}-${searchItem.id}`) : undefined;
       
       return (
-        <div style={{ ...style, padding: '8px' }} {...ariaAttributes}>
+        <div style={{ ...style }} {...ariaAttributes}>
           <VideoCard
             id={searchItem.id}
             title={searchItem.title}
