@@ -41,9 +41,9 @@ interface VirtualSearchGridProps {
 }
 
 // 渐进式加载配置
-const INITIAL_BATCH_SIZE = 12; // 减少初始加载量，提高首屏加载速度
-const LOAD_MORE_BATCH_SIZE = 8; // 减少每次加载量，平衡性能和体验
-const LOAD_MORE_THRESHOLD = 5; // 使用行数阈值，距离底部还有5行时开始加载
+const INITIAL_BATCH_SIZE = 16; // 优化初始加载量，平衡性能和首屏体验
+const LOAD_MORE_BATCH_SIZE = 12; // 优化每次加载量，减少单次渲染压力
+const LOAD_MORE_THRESHOLD = 3; // 优化触发阈值，更早开始加载，减少滚动白屏
 
 export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
   allResults,
@@ -202,13 +202,13 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
     }
   };
 
-  // 计算网格高度 - 动态调整，根据屏幕尺寸和内容高度
+  // 计算网格高度 - 优化动态调整，确保良好的滚动体验
   const gridHeight = typeof window !== 'undefined' 
-    ? Math.min(
-        Math.max(window.innerHeight - 200, 400), // 动态计算，最小400px，最大视窗高度减200px
-        Math.ceil(displayItemCount / columnCount) * itemHeight + 20 // 或根据内容高度计算，加20px的padding
+    ? Math.max(
+        window.innerHeight - 240, // 优化高度计算，与页面布局更协调
+        500 // 确保最小高度，避免内容过少时的不良体验
       )
-    : 400;
+    : 500;
 
   return (
     <div ref={containerRef} className='w-full'>
@@ -240,7 +240,7 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
           defaultWidth={containerWidth}
           rowCount={rowCount}
           rowHeight={itemHeight}
-          overscanCount={5} // 增加overscanCount到5，进一步减少滚动时的白屏现象
+          overscanCount={4} // 优化overscanCount，平衡性能和滚动体验
           style={{
             width: containerWidth,
             height: gridHeight,
@@ -249,8 +249,13 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
             isolation: 'auto',
             // 确保Grid组件有明确的尺寸，能够正确计算单元格位置
             position: 'relative',
-            // 平滑滚动
+            // 优化滚动体验
             scrollBehavior: 'smooth',
+            // 优化滚动性能
+            willChange: 'transform',
+            // 优化滚动条样式
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'rgba(156, 163, 175, 0.5) transparent',
           }}
           // react-window Grid组件不支持onScroll事件，移除该属性
           // 使用onCellsRendered替代来实现无限滚动

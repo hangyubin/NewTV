@@ -68,14 +68,16 @@ function SearchPageClient() {
     >
   >(new Map());
   
-  // 搜索结果缓存 - 使用 LRU 策略
+  // 搜索结果缓存 - 优化的LRU策略
   const searchCacheRef = useRef<Map<string, {
     results: SearchResult[];
     timestamp: number;
+    lastUsed: number;
     totalSources: number;
   }>>(new Map());
-  const CACHE_SIZE = 10; // 最大缓存10个搜索结果
-  const CACHE_TTL = 30 * 60 * 1000; // 缓存有效期30分钟
+  const CACHE_SIZE = 15; // 优化缓存大小，支持更多搜索结果
+  const CACHE_TTL = 60 * 60 * 1000; // 延长缓存有效期到1小时
+  const CACHE_FLUSH_DELAY = 500; // 优化缓存刷新延迟，平衡实时性和性能
 
   const getGroupRef = (key: string) => {
     let ref = groupRefs.current.get(key);
@@ -645,6 +647,12 @@ function SearchPageClient() {
       const now = Date.now();
       
       if (cached && (now - cached.timestamp) < CACHE_TTL) {
+        // 更新缓存的最后使用时间，实现LRU
+        searchCacheRef.current.set(trimmed, {
+          ...cached,
+          lastUsed: now
+        });
+        
         // 使用缓存结果
         setSearchResults(cached.results);
         setTotalSources(cached.totalSources);
@@ -738,16 +746,29 @@ function SearchPageClient() {
                       const allResults = prev.concat(toAppend);
                       // 更新缓存
                       const cache = searchCacheRef.current;
+                      const now = Date.now();
                       cache.set(trimmed, {
                         results: allResults,
-                        timestamp: Date.now(),
+                        timestamp: now,
+                        lastUsed: now,
                         totalSources: payload.completedSources || totalSources
                       });
                       
-                      // 维护缓存大小，使用 LRU 策略
+                      // 维护缓存大小，实现真正的LRU策略
                       if (cache.size > CACHE_SIZE) {
-                        const oldestKey = cache.keys().next().value;
-                        cache.delete(oldestKey);
+                        // 找出最久未使用的缓存项
+                        let oldestKey = '';
+                        let oldestTime = Infinity;
+                        cache.forEach((value, key) => {
+                          if (value.lastUsed < oldestTime) {
+                            oldestTime = value.lastUsed;
+                            oldestKey = key;
+                          }
+                        });
+                        // 删除最久未使用的缓存项
+                        if (oldestKey) {
+                          cache.delete(oldestKey);
+                        }
                       }
                       
                       return allResults;
@@ -756,16 +777,29 @@ function SearchPageClient() {
                 } else {
                   // 如果没有缓冲，直接更新缓存
                   const cache = searchCacheRef.current;
+                  const now = Date.now();
                   cache.set(trimmed, {
                     results: searchResults,
-                    timestamp: Date.now(),
+                    timestamp: now,
+                    lastUsed: now,
                     totalSources: payload.completedSources || totalSources
                   });
                   
-                  // 维护缓存大小，使用 LRU 策略
+                  // 维护缓存大小，实现真正的LRU策略
                   if (cache.size > CACHE_SIZE) {
-                    const oldestKey = cache.keys().next().value;
-                    cache.delete(oldestKey);
+                    // 找出最久未使用的缓存项
+                    let oldestKey = '';
+                    let oldestTime = Infinity;
+                    cache.forEach((value, key) => {
+                      if (value.lastUsed < oldestTime) {
+                        oldestTime = value.lastUsed;
+                        oldestKey = key;
+                      }
+                    });
+                    // 删除最久未使用的缓存项
+                    if (oldestKey) {
+                      cache.delete(oldestKey);
+                    }
                   }
                 }
                 setIsLoading(false);
@@ -822,16 +856,29 @@ function SearchPageClient() {
               
               // 更新缓存
               const cache = searchCacheRef.current;
+              const now = Date.now();
               cache.set(trimmed, {
                 results,
-                timestamp: Date.now(),
+                timestamp: now,
+                lastUsed: now,
                 totalSources: 1
               });
               
-              // 维护缓存大小，使用 LRU 策略
+              // 维护缓存大小，实现真正的LRU策略
               if (cache.size > CACHE_SIZE) {
-                const oldestKey = cache.keys().next().value;
-                cache.delete(oldestKey);
+                // 找出最久未使用的缓存项
+                let oldestKey = '';
+                let oldestTime = Infinity;
+                cache.forEach((value, key) => {
+                  if (value.lastUsed < oldestTime) {
+                    oldestTime = value.lastUsed;
+                    oldestKey = key;
+                  }
+                });
+                // 删除最久未使用的缓存项
+                if (oldestKey) {
+                  cache.delete(oldestKey);
+                }
               }
             }
             setIsLoading(false);

@@ -72,63 +72,28 @@ export const useResponsiveGrid = (
   );
 
   useLayoutEffect(() => {
-    console.log(
-      'useResponsiveGrid effect - containerRef.current:',
-      !!containerRef?.current
-    );
-
-    // 使用递归重试机制
-    let cleanup: (() => void) | null = null;
-    let retryCount = 0;
-    const maxRetries = 20; // 减少到20次，200ms足够
-
+    // 使用更高效的初始化方式，减少不必要的重试
+    let resizeObserver: ResizeObserver | null = null;
+    
     const setupObserver = () => {
-      retryCount++;
-
       if (!containerRef?.current) {
-        if (retryCount < maxRetries) {
-          console.log(
-            `containerRef not ready, retry ${retryCount}/${maxRetries}...`
-          );
-          setTimeout(setupObserver, 10);
-        } else {
-          console.log('Max retries reached, using fallback');
-          calculateDimensions();
-        }
+        // 容器未准备好，使用默认值初始化
+        calculateDimensions();
         return;
       }
 
       const element = containerRef.current;
-
-      console.log('useResponsiveGrid element info:', {
-        offsetWidth: element.offsetWidth,
-        clientWidth: element.clientWidth,
-        scrollWidth: element.scrollWidth,
-        getBoundingClientRect: element.getBoundingClientRect().width,
-      });
-
-      // 如果宽度为0，延迟重试
-      if (element.offsetWidth === 0) {
-        if (retryCount < maxRetries) {
-          console.log(
-            `Element width is 0, retry ${retryCount}/${maxRetries}...`
-          );
-          setTimeout(setupObserver, 10);
-        } else {
-          console.log('Max retries reached for width, using fallback');
-          calculateDimensions();
-        }
-        return;
-      }
-
-      console.log('Setting up ResizeObserver with width:', element.offsetWidth);
-      calculateDimensions(element.offsetWidth);
+      
+      // 使用getBoundingClientRect获取更精确的宽度
+      const rect = element.getBoundingClientRect();
+      const initialWidth = rect.width || element.offsetWidth || element.clientWidth;
+      
+      calculateDimensions(initialWidth);
 
       // 使用ResizeObserver监听尺寸变化
-      const resizeObserver = new ResizeObserver((entries) => {
+      resizeObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const { width } = entry.contentRect;
-          console.log('ResizeObserver triggered, width:', width);
           calculateDimensions(width);
         }
       });
@@ -136,21 +101,27 @@ export const useResponsiveGrid = (
       resizeObserver.observe(element);
 
       // 窗口resize处理
-      const handleResize = () => calculateDimensions(element.offsetWidth);
+      const handleResize = () => {
+        const currentRect = element.getBoundingClientRect();
+        calculateDimensions(currentRect.width || element.offsetWidth || element.clientWidth);
+      };
       window.addEventListener('resize', handleResize);
 
       // 设置清理函数
-      cleanup = () => {
-        resizeObserver.disconnect();
+      return () => {
+        resizeObserver?.disconnect();
         window.removeEventListener('resize', handleResize);
       };
     };
 
-    // 立即开始尝试
-    setupObserver();
+    // 立即开始尝试，使用requestAnimationFrame确保DOM已渲染
+    const cleanup = requestAnimationFrame(() => {
+      setupObserver();
+    });
 
     return () => {
-      if (cleanup) cleanup();
+      cancelAnimationFrame(cleanup);
+      resizeObserver?.disconnect();
     };
   }, [containerRef, calculateDimensions]);
 
