@@ -44,6 +44,9 @@ interface VirtualSearchGridProps {
   groupStatsRef: React.MutableRefObject<Map<string, any>>;
   getGroupRef: (key: string) => React.RefObject<any>;
   computeGroupStats: (group: SearchResult[]) => any;
+  
+  // 相同标题统计信息映射
+  sameTitleStatsMap?: Map<string, { totalCount: number; uniqueSources: string[] }>;
 }
 
 // 渐进式加载配置
@@ -63,6 +66,7 @@ export const VirtualSearchGrid = React.forwardRef<VirtualSearchGridRef, VirtualS
   groupStatsRef,
   getGroupRef,
   computeGroupStats,
+  sameTitleStatsMap,
 }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<any>(null); // Grid ref for imperative scroll
@@ -230,26 +234,30 @@ export const VirtualSearchGrid = React.forwardRef<VirtualSearchGridRef, VirtualS
         </div>
       );
     } else {
-      const searchItem = item as SearchResult;
-      
-      return (
-        <div style={{ ...style, padding: '8px' }} {...ariaAttributes}>
-          <VideoCard
-              id={searchItem.id}
-              title={searchItem.title}
-              poster={searchItem.poster}
-              episodes={searchItem.episodes.length}
-              source={searchItem.source}
-              source_name={searchItem.source_name}
-              douban_id={searchItem.douban_id}
-              query={searchQuery.trim() !== searchItem.title ? searchQuery.trim() : ''}
-              year={searchItem.year}
-              from='search'
-              type={searchItem.episodes.length > 1 ? 'tv' : 'movie'}
-            />
-        </div>
-      );
-    }
+        const searchItem = item as SearchResult;
+        
+        // 获取相同标题的统计信息
+        const sameTitleStats = sameTitleStatsMap ? sameTitleStatsMap.get(`${searchItem.source}-${searchItem.id}`) : undefined;
+        
+        return (
+          <div style={{ ...style, padding: '8px' }} {...ariaAttributes}>
+            <VideoCard
+                id={searchItem.id}
+                title={searchItem.title}
+                poster={searchItem.poster}
+                episodes={searchItem.episodes.length}
+                source={searchItem.source}
+                source_name={searchItem.source_name}
+                douban_id={searchItem.douban_id}
+                query={searchQuery.trim() !== searchItem.title ? searchQuery.trim() : ''}
+                year={searchItem.year}
+                from='search'
+                type={searchItem.episodes.length > 1 ? 'tv' : 'movie'}
+                sameTitleStats={sameTitleStats}
+              />
+          </div>
+        );
+      }
   };
 
   // 计算网格高度 - 优化动态调整，确保良好的滚动体验

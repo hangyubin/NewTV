@@ -477,6 +477,36 @@ function SearchPageClient() {
     return { categoriesAll, categoriesAgg };
   }, [searchResults]);
 
+  // 计算同标题统计信息
+  const calculateSameTitleStats = useMemo(() => {
+    // 按标题和年份分组，计算每个组的统计信息
+    const titleYearMap = new Map<string, SearchResult[]>();
+    
+    enhancedSearchResults.forEach(item => {
+      const key = `${item.title}-${item.year || 'unknown'}`;
+      if (!titleYearMap.has(key)) {
+        titleYearMap.set(key, []);
+      }
+      titleYearMap.get(key)!.push(item);
+    });
+    
+    // 创建一个映射，从结果项到其同标题统计信息
+    const statsMap = new Map<string, { totalCount: number; uniqueSources: string[] }>();
+    
+    titleYearMap.forEach((items, key) => {
+      const totalCount = items.length;
+      const uniqueSources = Array.from(new Set(items.map(item => item.source_name || ''))).filter(Boolean);
+      
+      items.forEach(item => {
+        // 使用 source + id 作为唯一标识
+        const itemKey = `${item.source}-${item.id}`;
+        statsMap.set(itemKey, { totalCount, uniqueSources });
+      });
+    });
+    
+    return statsMap;
+  }, [enhancedSearchResults]);
+
   // 非聚合：应用筛选与排序
   const filteredAllResults = useMemo(() => {
     const { source, title, year, yearOrder } = filterAll;
@@ -1179,6 +1209,7 @@ function SearchPageClient() {
                   groupStatsRef={groupStatsRef}
                   getGroupRef={getGroupRef}
                   computeGroupStats={computeGroupStats}
+                  sameTitleStatsMap={calculateSameTitleStats}
                 />
               ) : // 传统网格渲染（保持原有逻辑）
               searchResults.length === 0 ? (
@@ -1201,8 +1232,7 @@ function SearchPageClient() {
                         const title = group[0]?.title || '';
                         const poster = group[0]?.poster || '';
                         const year = group[0]?.year || 'unknown';
-                        const { episodes, source_names, douban_id } =
-                          computeGroupStats(group);
+                        const { episodes, source_names, douban_id } = computeGroupStats(group);
                         const type = episodes === 1 ? 'movie' : 'tv';
 
                         // 如果该聚合第一次出现，写入初始统计
@@ -1226,40 +1256,38 @@ function SearchPageClient() {
                               episodes={episodes}
                               source_names={source_names}
                               douban_id={douban_id}
-                              query={
-                                searchQuery.trim() !== title
-                                  ? searchQuery.trim()
-                                  : ''
-                              }
+                              query={searchQuery.trim() !== title ? searchQuery.trim() : ''}
                               type={type}
                             />
                           </div>
                         );
                       })
-                    : filteredAllResults.map((item) => (
-                        <div
-                          key={`all-${item.source}-${item.id}`}
-                          className='w-full'
-                        >
-                          <VideoCard
-                            id={item.id}
-                            title={item.title}
-                            poster={item.poster}
-                            episodes={item.episodes.length}
-                            source={item.source}
-                            source_name={item.source_name}
-                            douban_id={item.douban_id}
-                            query={
-                              searchQuery.trim() !== item.title
-                                ? searchQuery.trim()
-                                : ''
-                            }
-                            year={item.year}
-                            from='search'
-                            type={item.episodes.length > 1 ? 'tv' : 'movie'}
-                          />
-                        </div>
-                      ))}
+                    : filteredAllResults.map((item) => {
+                        // 获取相同标题的统计信息
+                        const sameTitleStats = calculateSameTitleStats.get(`${item.source}-${item.id}`);
+                        
+                        return (
+                          <div
+                            key={`all-${item.source}-${item.id}`}
+                            className='w-full'
+                          >
+                            <VideoCard
+                              id={item.id}
+                              title={item.title}
+                              poster={item.poster}
+                              episodes={item.episodes.length}
+                              source={item.source}
+                              source_name={item.source_name}
+                              douban_id={item.douban_id}
+                              query={searchQuery.trim() !== item.title ? searchQuery.trim() : ''}
+                              year={item.year}
+                              from='search'
+                              type={item.episodes.length > 1 ? 'tv' : 'movie'}
+                              sameTitleStats={sameTitleStats}
+                            />
+                          </div>
+                        );
+                      })}
                 </div>
               )}
             </section>

@@ -61,6 +61,11 @@ export interface VideoCardProps {
   isAggregate?: boolean;
   origin?: 'vod' | 'live';
   style?: React.CSSProperties;
+  // 新增：相同片名的统计信息
+  sameTitleStats?: {
+    totalCount: number;
+    uniqueSources: string[];
+  };
 }
 
 export type VideoCardHandle = {
@@ -92,6 +97,7 @@ const VideoCard = memo(
       isAggregate = false,
       origin = 'vod',
       style,
+      sameTitleStats,
     }: VideoCardProps,
     ref
   ) {
@@ -1269,8 +1275,7 @@ const VideoCard = memo(
                           maxDisplayCount
                         );
                         const hasMore = sortedSources.length > maxDisplayCount;
-                        const remainingCount =
-                          sortedSources.length - maxDisplayCount;
+                        const remainingCount = sortedSources.length - maxDisplayCount;
 
                         return (
                           <div
@@ -1340,6 +1345,116 @@ const VideoCard = memo(
                   </div>
                 );
               })()}
+            {/* 相同标题统计指示器（非聚合视图下显示） */}
+            {!isAggregate && sameTitleStats && sameTitleStats.totalCount > 1 && (
+              <div
+                className='absolute bottom-2 right-2 opacity-0 transition-all duration-300 ease-in-out delay-75 sm:group-hover:opacity-100'
+                style={
+                  {
+                    WebkitUserSelect: 'none',
+                    userSelect: 'none',
+                    WebkitTouchCallout: 'none',
+                  } as React.CSSProperties
+                }
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  return false;
+                }}
+              >
+                <div
+                  className='relative group/same-title'
+                  style={
+                    {
+                      WebkitUserSelect: 'none',
+                      userSelect: 'none',
+                      WebkitTouchCallout: 'none',
+                    } as React.CSSProperties
+                  }
+                >
+                  <div
+                    className='bg-purple-500/80 text-white text-xs font-bold w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shadow-glass hover:scale-[1.1] transition-all duration-300 ease-out cursor-pointer backdrop-blur-sm'
+                    style={
+                      {
+                        WebkitUserSelect: 'none',
+                        userSelect: 'none',
+                        WebkitTouchCallout: 'none',
+                      } as React.CSSProperties
+                    }
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      return false;
+                    }}
+                  >
+                    {sameTitleStats.totalCount}
+                  </div>
+
+                  {/* 相同标题详情悬浮框 */}
+                  <div
+                    className='absolute bottom-full mb-2 opacity-0 invisible group-hover/same-title:opacity-100 group-hover/same-title:visible transition-all duration-200 ease-out delay-100 pointer-events-none z-50 right-0 sm:right-0 -translate-x-0 sm:translate-x-0'
+                    style={
+                      {
+                        WebkitUserSelect: 'none',
+                        userSelect: 'none',
+                        WebkitTouchCallout: 'none',
+                      } as React.CSSProperties
+                    }
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      return false;
+                    }}
+                  >
+                    <div
+                      className='glass-strong text-white text-xs sm:text-xs rounded-apple-lg shadow-floating border border-white/20 p-1.5 sm:p-2 min-w-[120px] sm:min-w-[150px] max-w-[180px] sm:max-w-[220px] overflow-hidden'
+                      style={
+                        {
+                          WebkitUserSelect: 'none',
+                          userSelect: 'none',
+                          WebkitTouchCallout: 'none',
+                        } as React.CSSProperties
+                      }
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        return false;
+                      }}
+                    >
+                      <div className='mb-2 text-sm font-semibold text-center text-purple-300'>相同片名</div>
+                      
+                      {/* 单列布局 */}
+                      <div className='space-y-0.5 sm:space-y-1'>
+                        {sameTitleStats.uniqueSources.slice(0, 8).map((sourceName, index) => (
+                          <div
+                            key={index}
+                            className='flex items-center gap-1 sm:gap-1.5'
+                          >
+                            <div className='w-0.5 h-0.5 sm:w-1 sm:h-1 bg-purple-400 rounded-full flex-shrink-0'></div>
+                            <span
+                              className='truncate text-[10px] sm:text-xs leading-tight'
+                              title={sourceName}
+                            >
+                              {sourceName}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* 显示更多提示 */}
+                      {sameTitleStats.uniqueSources.length > 8 && (
+                        <div className='mt-1 sm:mt-2 pt-1 sm:pt-1.5 border-t border-gray-700/50'>
+                          <div className='flex items-center justify-center text-gray-400'>
+                            <span className='text-[10px] sm:text-xs font-medium'>
+                              +{sameTitleStats.uniqueSources.length - 8} 来源
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 小箭头 */}
+                      <div className='absolute top-full right-2 sm:right-3 w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] sm:border-l-[6px] sm:border-r-[6px] sm:border-t-[6px] border-transparent border-t-gray-800/90'></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 进度条 */}

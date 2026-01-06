@@ -2250,7 +2250,7 @@ function PlayPageClient() {
                 
                 // 致命错误处理
                 switch (data.type) {
-                  case Hls.ErrorTypes.NETWORK_ERROR:
+                  case Hls.ErrorTypes.NETWORK_ERROR: {
                     console.log('致命网络错误，尝试恢复...');
                     // 检查是否有重试次数限制
                     const retryCount = (hls as any).retryCount || 0;
@@ -2265,14 +2265,15 @@ function PlayPageClient() {
                       // 可以在这里添加备用播放方案
                     }
                     break;
-                    
+                  }
+                  
                   case Hls.ErrorTypes.MEDIA_ERROR:
                     console.log('致命媒体错误，尝试恢复...');
                     // 尝试恢复媒体错误
                     hls.recoverMediaError();
                     break;
                     
-                  case Hls.ErrorTypes.MUX_ERROR:
+                  case Hls.ErrorTypes.MUX_ERROR: {
                     console.log('致命MUX错误，尝试恢复...');
                     // 重置缓冲区并重新加载
                     hls.destroy();
@@ -2281,7 +2282,8 @@ function PlayPageClient() {
                     newHls.attachMedia(video);
                     video.hls = newHls;
                     break;
-                    
+                  }
+                  
                   case Hls.ErrorTypes.KEY_SYSTEM_ERROR:
                     console.log('密钥系统错误，尝试降级播放...');
                     // 可以在这里添加降级播放逻辑
