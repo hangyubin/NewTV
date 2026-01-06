@@ -61,6 +61,8 @@ export interface VideoCardProps {
   isAggregate?: boolean;
   origin?: 'vod' | 'live';
   style?: React.CSSProperties;
+  // 新增：图片优先加载属性
+  priority?: boolean;
   // 新增：相同片名的统计信息
   sameTitleStats?: {
     totalCount: number;
@@ -97,6 +99,7 @@ const VideoCard = memo(
       isAggregate = false,
       origin = 'vod',
       style,
+      priority = false,
       sameTitleStats,
     }: VideoCardProps,
     ref
