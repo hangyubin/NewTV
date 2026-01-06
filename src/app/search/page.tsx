@@ -28,6 +28,7 @@ import SearchResultFilter, {
 } from '@/components/SearchResultFilter';
 import SearchSuggestions from '@/components/SearchSuggestions';
 import VideoCard, { VideoCardHandle } from '@/components/VideoCard';
+import VirtualSearchGrid from '@/components/VirtualSearchGrid';
 
 function SearchPageClient() {
   // 搜索历史
@@ -70,7 +71,6 @@ function SearchPageClient() {
   }>>(new Map());
   const CACHE_SIZE = 15; // 优化缓存大小，支持更多搜索结果
   const CACHE_TTL = 60 * 60 * 1000; // 延长缓存有效期到1小时
-  const CACHE_FLUSH_DELAY = 500; // 优化缓存刷新延迟，平衡实时性和性能
 
   const getGroupRef = (key: string) => {
     let ref = groupRefs.current.get(key);
@@ -1147,90 +1147,23 @@ function SearchPageClient() {
 
               {/* 搜索结果 */}
               <div className='relative'>
-                {/* 非聚合结果 */}
-                {!isLoading && searchResults.length > 0 && viewMode === 'all' && (
-                  <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-7 gap-3 md:gap-4'>
-                    {filteredAllResults.map((result, index) => (
-                      <VideoCard
-                        key={`${result.source}-${result.id}`}
-                        from="search"
-                        id={result.id}
-                        source={result.source}
-                        title={result.title}
-                        poster={result.poster}
-                        episodes={result.episodes?.length || 0}
-                        source_name={result.source_name}
-                        source_names={[result.source_name]}
-                        year={result.year}
-                        douban_id={result.douban_id}
-                        priority={index < 12}
-                        query={searchQuery}
-                        type={result.episodes.length === 1 ? 'movie' : 'tv'}
-                      />
-                    ))}
-                  </div>
-                )}
+                {/* 虚拟滚动网格 */}
+                <VirtualSearchGrid
+                  allResults={searchResults}
+                  filteredResults={filteredAllResults}
+                  aggregatedResults={aggregatedResults}
+                  filteredAggResults={filteredAggResults}
+                  viewMode={viewMode}
+                  searchQuery={searchQuery}
+                  isLoading={isLoading}
+                  groupRefs={groupRefs}
+                  groupStatsRef={groupStatsRef}
+                  getGroupRef={getGroupRef}
+                  computeGroupStats={computeGroupStats}
+                  sameTitleStatsMap={calculateSameTitleStats}
+                />
 
-                {/* 聚合结果 */}
-                {!isLoading && searchResults.length > 0 && viewMode === 'agg' && (
-                  <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-7 gap-3 md:gap-4'>
-                    {filteredAggResults.map(([key, group]) => {
-                      const stats = computeGroupStats(group);
-                      const firstItem = group[0];
-                      return (
-                        <VideoCard
-                          key={key}
-                          from="search"
-                          ref={getGroupRef(key)}
-                          title={firstItem.title}
-                          poster={firstItem.poster}
-                          episodes={stats.episodes}
-                          source_names={stats.source_names}
-                          year={firstItem.year}
-                          douban_id={stats.douban_id}
-                          priority={group.indexOf(firstItem) < 12}
-                          query={searchQuery}
-                          type={group[0].episodes.length === 1 ? 'movie' : 'tv'}
-                          isAggregate={true}
-                        />
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* 加载中状态 */}
-                {isLoading && (
-                  <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-7 gap-3 md:gap-4'>
-                    {Array.from({ length: 14 }).map((_, index) => (
-                      <div
-                        key={index}
-                        className='bg-white/80 dark:bg-gray-800/80 rounded-lg overflow-hidden shadow-md dark:shadow-gray-700 h-64 animate-pulse border border-gray-200 dark:border-gray-700'
-                      >
-                        <div className='h-36 bg-gray-300 dark:bg-gray-700'></div>
-                        <div className='p-3'>
-                          <div className='h-5 bg-gray-300 dark:bg-gray-700 rounded w-3/4 mb-2'></div>
-                          <div className='h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2 mb-2'></div>
-                          <div className='h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/4'></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* 无结果状态 */}
-                {!isLoading && searchResults.length === 0 && (
-                  <div className='text-center py-16'>
-                    <div className='text-gray-400 dark:text-gray-500 mb-4'>
-                      <Search className='mx-auto h-12 w-12' />
-                    </div>
-                    <h3 className='text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2'>
-                      未找到相关结果
-                    </h3>
-                    <p className='text-gray-500 dark:text-gray-400'>
-                      请尝试调整搜索关键词或筛选条件
-                    </p>
-                  </div>
-                )}
+                {/* 无结果状态 - 由VirtualSearchGrid内部处理 */}
               </div>
             </section>
           ) : (

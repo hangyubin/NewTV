@@ -793,7 +793,7 @@ const VideoCard = memo(
     return (
       <>
         <div
-          className='group relative w-full glass-card cursor-pointer transition-transform duration-200 ease-out hover:scale-105 hover:shadow-elevated hover:z-10 flex flex-col h-full'
+          className='group relative w-full rounded-apple-xl cursor-pointer transition-transform duration-200 ease-out hover:scale-105 hover:shadow-elevated hover:z-10 flex flex-col h-full'
           onClick={handleClick}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
@@ -841,7 +841,7 @@ const VideoCard = memo(
         >
           {/* 海报容器 - 增强的玻璃态和渐变效果 */}
           <div
-            className={`relative aspect-[3/4] overflow-hidden rounded-t-lg bg-gray-100 dark:bg-gray-800 transition-all duration-400 ease-in-out group-hover:shadow-2xl group-hover:shadow-black/30 dark:group-hover:shadow-black/40 ${
+            className={`relative aspect-[3/4] overflow-hidden rounded-t-lg bg-gray-100 dark:bg-gray-800 transition-all duration-400 ease-in-out group-hover:shadow-2xl group-hover:shadow-black/30 dark:group-hover:shadow-black/40 glass ${
               origin === 'live'
                 ? 'ring-1 ring-gray-300/80 dark:ring-gray-600/80'
                 : ''
@@ -1305,7 +1305,7 @@ const VideoCard = memo(
                             }}
                           >
                             <div
-                              className='glass-strong text-white text-xs sm:text-xs rounded-apple-lg shadow-floating border border-white/20 p-1.5 sm:p-2 min-w-[100px] sm:min-w-[120px] max-w-[140px] sm:max-w-[200px] overflow-hidden'
+                              className='glass-strong text-white text-xs sm:text-xs rounded-apple-lg shadow-floating border border-white/30 p-1.5 sm:p-2 min-w-[100px] sm:min-w-[120px] max-w-[140px] sm:max-w-[200px] overflow-hidden bg-black/90 dark:bg-gray-900/90'
                               style={
                                 {
                                   WebkitUserSelect: 'none',
@@ -1327,7 +1327,7 @@ const VideoCard = memo(
                                   >
                                     <div className='w-0.5 h-0.5 sm:w-1 sm:h-1 bg-blue-400 rounded-full flex-shrink-0'></div>
                                     <span
-                                      className='truncate text-[10px] sm:text-xs leading-tight'
+                                      className='truncate text-[10px] sm:text-xs leading-tight font-medium text-white dark:text-white'
                                       title={sourceName}
                                     >
                                       {sourceName}
@@ -1338,9 +1338,9 @@ const VideoCard = memo(
 
                               {/* 显示更多提示 */}
                               {hasMore && (
-                                <div className='mt-1 sm:mt-2 pt-1 sm:pt-1.5 border-t border-gray-700/50'>
-                                  <div className='flex items-center justify-center text-gray-400'>
-                                    <span className='text-[10px] sm:text-xs font-medium'>
+                                <div className='mt-1 sm:mt-2 pt-1 sm:pt-1.5 border-t border-gray-600/70'>
+                                  <div className='flex items-center justify-center'>
+                                    <span className='text-[10px] sm:text-xs font-medium text-white/90 dark:text-white/90'>
                                       +{remainingCount} 播放源
                                     </span>
                                   </div>
