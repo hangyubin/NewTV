@@ -41,9 +41,9 @@ interface VirtualSearchGridProps {
 }
 
 // 渐进式加载配置
-const INITIAL_BATCH_SIZE = 20; // 增加初始加载量，减少初始加载次数
-const LOAD_MORE_BATCH_SIZE = 15; // 增加每次加载量，减少加载次数
-const LOAD_MORE_THRESHOLD = 300; // 使用像素阈值，更直观且在不同屏幕尺寸下表现一致
+const INITIAL_BATCH_SIZE = 12; // 减少初始加载量，提高首屏加载速度
+const LOAD_MORE_BATCH_SIZE = 8; // 减少每次加载量，平衡性能和体验
+const LOAD_MORE_THRESHOLD = 5; // 使用行数阈值，距离底部还有5行时开始加载
 
 export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
   allResults,
@@ -120,17 +120,17 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
   // 网格行数计算
   const rowCount = Math.ceil(displayItemCount / columnCount);
 
-  // CellComponent - 极简实现，确保完全符合react-window Grid组件要求
-  // react-window Grid要求：每个单元格必须返回一个根元素，并直接使用提供的style属性（包含绝对定位）
+  // CellComponent - 优化实现
+  // 注意：react-window v2.2.3不支持cellProps.data，所以直接从外部作用域访问数据
   const CellComponent = ({ 
     ariaAttributes,
     columnIndex,
     rowIndex,
     style,
   }: { 
-    ariaAttributes: { "aria-colindex": number; role: "gridcell"; }; 
-    columnIndex: number; 
-    rowIndex: number; 
+    ariaAttributes: { "aria-colindex": number; role: "gridcell"; };
+    columnIndex: number;
+    rowIndex: number;
     style: React.CSSProperties;
   }): React.ReactElement => {
     const index = rowIndex * columnCount + columnIndex;
@@ -146,68 +146,69 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
     }
 
     // 根据视图模式渲染不同内容
-      if (viewMode === 'agg') {
-        const [mapKey, group] = item as [string, SearchResult[]];
-        
-        // 从缓存中获取统计信息
-        let stats = groupStatsRef.current.get(mapKey);
-        if (!stats) {
-          stats = computeGroupStats(group);
-          groupStatsRef.current.set(mapKey, stats);
-        }
-        
-        const title = group[0]?.title || '';
-        const poster = group[0]?.poster || '';
-        const year = group[0]?.year || 'unknown';
-        const { episodes, source_names, douban_id } = stats;
-        const type = episodes === 1 ? 'movie' : 'tv';
-
-        // 极简实现：直接使用div作为根元素，应用style属性，内部渲染VideoCard
-        return (
-          <div style={style} className="p-1">
-            <VideoCard
-              ref={getGroupRef(mapKey)}
-              from='search'
-              isAggregate={true}
-              title={title}
-              poster={poster}
-              year={year}
-              episodes={episodes}
-              source_names={source_names}
-              douban_id={douban_id}
-              query={searchQuery.trim() !== title ? searchQuery.trim() : ''}
-              type={type}
-            />
-          </div>
-        );
-      } else {
-        const searchItem = item as SearchResult;
-        
-        // 极简实现：直接使用div作为根元素，应用style属性，内部渲染VideoCard
-        return (
-          <div style={style} className="p-1">
-            <VideoCard
-              id={searchItem.id}
-              title={searchItem.title}
-              poster={searchItem.poster}
-              episodes={searchItem.episodes.length}
-              source={searchItem.source}
-              source_name={searchItem.source_name}
-              douban_id={searchItem.douban_id}
-              query={searchQuery.trim() !== searchItem.title ? searchQuery.trim() : ''}
-              year={searchItem.year}
-              from='search'
-              type={searchItem.episodes.length > 1 ? 'tv' : 'movie'}
-            />
-          </div>
-        );
+    if (viewMode === 'agg') {
+      const [mapKey, group] = item as [string, SearchResult[]];
+      
+      // 从缓存中获取统计信息
+      let stats = groupStatsRef.current.get(mapKey);
+      if (!stats) {
+        stats = computeGroupStats(group);
+        groupStatsRef.current.set(mapKey, stats);
       }
+      
+      const title = group[0]?.title || '';
+      const poster = group[0]?.poster || '';
+      const year = group[0]?.year || 'unknown';
+      const { episodes, source_names, douban_id } = stats;
+      const type = episodes === 1 ? 'movie' : 'tv';
+
+      return (
+        <div style={style} className="p-1">
+          <VideoCard
+            ref={getGroupRef(mapKey)}
+            from='search'
+            isAggregate={true}
+            title={title}
+            poster={poster}
+            year={year}
+            episodes={episodes}
+            source_names={source_names}
+            douban_id={douban_id}
+            query={searchQuery.trim() !== title ? searchQuery.trim() : ''}
+            type={type}
+          />
+        </div>
+      );
+    } else {
+      const searchItem = item as SearchResult;
+      
+      return (
+        <div style={style} className="p-1">
+          <VideoCard
+            id={searchItem.id}
+            title={searchItem.title}
+            poster={searchItem.poster}
+            episodes={searchItem.episodes.length}
+            source={searchItem.source}
+            source_name={searchItem.source_name}
+            douban_id={searchItem.douban_id}
+            query={searchQuery.trim() !== searchItem.title ? searchQuery.trim() : ''}
+            year={searchItem.year}
+            from='search'
+            type={searchItem.episodes.length > 1 ? 'tv' : 'movie'}
+          />
+        </div>
+      );
+    }
   };
 
-  // 计算网格高度 - 更合理的高度计算，确保足够的可视区域
+  // 计算网格高度 - 动态调整，根据屏幕尺寸和内容高度
   const gridHeight = typeof window !== 'undefined' 
-    ? Math.max(window.innerHeight - 250, 600) // 确保最小高度
-    : 600;
+    ? Math.min(
+        Math.max(window.innerHeight - 200, 400), // 动态计算，最小400px，最大视窗高度减200px
+        Math.ceil(displayItemCount / columnCount) * itemHeight + 20 // 或根据内容高度计算，加20px的padding
+      )
+    : 400;
 
   return (
     <div ref={containerRef} className='w-full'>
@@ -232,14 +233,14 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
         <Grid
           key={`grid-${containerWidth}-${columnCount}`}
           cellComponent={CellComponent}
-          cellProps={{}}
+          cellProps={{}} // react-window v2.2.3要求必须提供cellProps
           columnCount={columnCount}
           columnWidth={itemWidth}
           defaultHeight={gridHeight}
           defaultWidth={containerWidth}
           rowCount={rowCount}
           rowHeight={itemHeight}
-          overscanCount={4} // 增加overscanCount到4，减少滚动时的白屏现象
+          overscanCount={5} // 增加overscanCount到5，进一步减少滚动时的白屏现象
           style={{
             width: containerWidth,
             height: gridHeight,
@@ -248,13 +249,15 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
             isolation: 'auto',
             // 确保Grid组件有明确的尺寸，能够正确计算单元格位置
             position: 'relative',
+            // 平滑滚动
+            scrollBehavior: 'smooth',
           }}
           // react-window Grid组件不支持onScroll事件，移除该属性
           // 使用onCellsRendered替代来实现无限滚动
           onCellsRendered={({ rowStopIndex }) => {
             // 当可见区域接近底部时，加载更多
             if (
-              rowStopIndex >= rowCount - 1 &&
+              rowStopIndex >= rowCount - LOAD_MORE_THRESHOLD &&
               hasNextPage &&
               !isLoadingMore
             ) {
@@ -265,12 +268,16 @@ export const VirtualSearchGrid: React.FC<VirtualSearchGridProps> = ({
       )}
 
       {/* 加载更多指示器 */}
-      {containerWidth > 100 && isLoadingMore && (
+      {containerWidth > 100 && (
         <div className='flex justify-center items-center py-4'>
-          <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-green-500'></div>
-          <span className='ml-2 text-sm text-gray-500 dark:text-gray-400'>
-            加载更多...
-          </span>
+          {isLoadingMore && (
+            <>
+              <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-green-500'></div>
+              <span className='ml-2 text-sm text-gray-500 dark:text-gray-400'>
+                加载更多...
+              </span>
+            </>
+          )}
         </div>
       )}
 
