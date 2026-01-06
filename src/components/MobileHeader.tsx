@@ -9,12 +9,18 @@ import { UserMenu } from './UserMenu';
 
 interface MobileHeaderProps {
   showBackButton?: boolean;
+  className?: string;
 }
 
-const MobileHeader = ({ showBackButton = false }: MobileHeaderProps) => {
+const MobileHeader = ({
+  showBackButton = false,
+  className = '',
+}: MobileHeaderProps) => {
   const { siteName } = useSite();
   return (
-    <header className='md:hidden fixed top-0 left-0 right-0 z-[999] w-full glass-nav border-b border-white/20 shadow-glass dark:border-white/10'>
+    <header
+      className={`md:hidden fixed top-0 left-0 right-0 z-[999] w-full glass-nav border-b border-white/20 shadow-glass dark:border-white/10 ${className}`}
+    >
       <div className='h-12 flex items-center justify-between px-4'>
         {/* 左侧：搜索按钮、返回按钮 */}
         <div className='flex items-center gap-2'>
