@@ -855,6 +855,16 @@ const VideoCard = memo(
               return false;
             }}
           >
+            {/* 渐变光泽动画层 */}
+            <div
+              className='absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10'
+              style={{
+                background: 'linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.15) 45%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0.15) 55%, transparent 70%)',
+                backgroundSize: '200% 100%',
+                animation: 'card-shimmer 2.5s ease-in-out infinite',
+              }}
+            />
+
             {/* 骨架屏 */}
             {!isLoading && (
               <ImagePlaceholder
@@ -870,18 +880,18 @@ const VideoCard = memo(
               className={`${
                 origin === 'live' ? 'object-contain' : 'object-cover'
               } transition-all duration-500 ease-in-out ${
-                isLoading ? 'opacity-100' : 'opacity-0'
+                isLoading ? 'opacity-100 blur-0 scale-100' : 'opacity-0 blur-md scale-105'
               }`}
               referrerPolicy='no-referrer'
               loading='lazy'
+              priority={priority}
+              quality={75}
               onLoadingComplete={() => setIsLoading(true)}
               onError={(e) => {
-                // 图片加载失败时的处理
                 const img = e.target as HTMLImageElement;
                 if (!img.dataset.retried) {
                   img.dataset.retried = 'true';
                   setTimeout(() => {
-                    // 重试加载失败后显示默认占位图
                     try {
                       img.src = '/icons/icon-192x192.png';
                       setIsLoading(true);
@@ -893,11 +903,10 @@ const VideoCard = memo(
               }}
               style={
                 {
-                  // 禁用图片的默认长按效果
                   WebkitUserSelect: 'none',
                   userSelect: 'none',
                   WebkitTouchCallout: 'none',
-                  pointerEvents: 'none', // 图片不响应任何指针事件
+                  pointerEvents: 'none',
                 } as React.CSSProperties
               }
               onContextMenu={(e) => {
@@ -910,9 +919,9 @@ const VideoCard = memo(
               }}
             />
 
-            {/* 悬浮遮罩 */}
+            {/* 悬浮遮罩 - 玻璃态效果 */}
             <div
-              className='absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity duration-300 ease-in-out opacity-0 group-hover:opacity-100'
+              className='absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent transition-all duration-300 ease-in-out opacity-0 group-hover:opacity-100 backdrop-blur-[2px]'
               style={
                 {
                   WebkitUserSelect: 'none',
@@ -1506,7 +1515,7 @@ const VideoCard = memo(
             }}
           >
             <div
-              className='relative'
+              className='relative px-1'
               style={
                 {
                   WebkitUserSelect: 'none',
@@ -1515,9 +1524,12 @@ const VideoCard = memo(
                 } as React.CSSProperties
               }
             >
+              {/* 背景高亮效果 */}
+              <div className='absolute inset-0 bg-linear-to-r from-transparent via-green-50/0 to-transparent dark:via-green-900/0 group-hover:via-green-50/50 dark:group-hover:via-green-900/30 transition-all duration-300 rounded-md'></div>
+
               {/* 标题文字 */}
               <span
-                className={`block font-semibold text-gray-900 dark:text-gray-100 transition-all duration-300 ease-in-out group-hover:text-black dark:group-hover:text-white peer ${
+                className={`block font-semibold text-gray-900 dark:text-gray-100 transition-all duration-300 ease-in-out group-hover:text-black dark:group-hover:text-white peer relative z-10 group-hover:bg-linear-to-r group-hover:from-green-600 group-hover:via-emerald-600 group-hover:to-teal-600 dark:group-hover:from-green-400 dark:group-hover:via-emerald-400 dark:group-hover:to-teal-400 group-hover:bg-clip-text group-hover:text-transparent group-hover:drop-shadow-[0_2px_8px_rgba(16,185,129,0.3)] ${
                   from === 'douban' && actualTitle.length > 8
                     ? 'text-xs'
                     : 'text-sm'
@@ -1527,6 +1539,11 @@ const VideoCard = memo(
                     WebkitUserSelect: 'none',
                     userSelect: 'none',
                     WebkitTouchCallout: 'none',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    lineHeight: '1.4',
                   } as React.CSSProperties
                 }
                 onContextMenu={(e) => {
