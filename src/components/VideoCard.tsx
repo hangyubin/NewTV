@@ -883,7 +883,7 @@ const VideoCard = memo(
               className={`${
                 origin === 'live' ? 'object-contain' : 'object-cover'
               } transition-all duration-600 ease-in-out ${
-                isLoading ? 'opacity-100 blur-0 scale-100' : 'opacity-0 blur-md scale-105'
+                isLoading ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
               }`}
               referrerPolicy='no-referrer'
               loading='lazy'
