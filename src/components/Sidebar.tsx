@@ -5,7 +5,6 @@
 import {
   Cat,
   Clapperboard,
-  Cloud,
   Clover,
   Film,
   Home,
@@ -202,14 +201,6 @@ const Sidebar = ({ onToggle, defaultCollapsed }: SidebarProps) => {
         icon: Star,
         label: '纪录',
         href: '/douban?type=custom',
-      });
-    }
-
-    if (runtimeConfig?.CLOUD_DISK_CONFIG?.enabled) {
-      newItems.push({
-        icon: Cloud,
-        label: runtimeConfig.CLOUD_DISK_CONFIG.name || '网盘',
-        href: '/cloud-disk',
       });
     }
 

@@ -37,8 +37,9 @@ export const useResponsiveGrid = (
 
       let columnCount: number;
 
-      // 响应式列数计算 - 增加列数以缩小卡片宽度，与首页保持一致
-      if (containerWidth >= 1536) columnCount = 8; // 2xl
+      // 响应式列数计算 - 针对27英寸显示器优化，充分利用屏幕空间
+      if (containerWidth >= 1920) columnCount = 10; // 3xl (27英寸及以上)
+      else if (containerWidth >= 1536) columnCount = 8; // 2xl
       else if (containerWidth >= 1280) columnCount = 7; // xl
       else if (containerWidth >= 1024) columnCount = 6; // lg
       else if (containerWidth >= 768) columnCount = 5; // md
