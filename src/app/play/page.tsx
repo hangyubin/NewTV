@@ -8,7 +8,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
-// import artplayerPluginChromecast from '@/lib/artplayer-plugin-chromecast';
+import artplayerPluginChromecast from '@/lib/artplayer-plugin-chromecast';
+import artplayerPluginLiquidGlass from '@/lib/artplayer-plugin-liquid-glass';
 import {
   deleteFavorite,
   deletePlayRecord,
@@ -2160,29 +2161,60 @@ function PlayPageClient() {
               if (video.hls) {
                 video.hls.destroy();
               }
+              // 获取缓冲模式配置（standard、enhanced、max）
+              const bufferMode = typeof window !== 'undefined' 
+                ? localStorage.getItem('hlsBufferMode') || 'standard'
+                : 'standard';
+              
+              // 根据缓冲模式和设备类型设置缓冲参数
+              const getBufferParams = () => {
+                // 基础参数
+                const baseParams = {
+                  standard: { maxBufferLength: 30, maxBufferSize: 60 * 1000 * 1000 },
+                  enhanced: { maxBufferLength: 60, maxBufferSize: 120 * 1000 * 1000 },
+                  max: { maxBufferLength: 90, maxBufferSize: 180 * 1000 * 1000 },
+                };
+                
+                // 设备调整
+                const deviceMultiplier = isMobile ? 0.5 : 1;
+                const iosAdjustment = isIOS ? 0.8 : 1;
+                
+                const params = baseParams[bufferMode as keyof typeof baseParams];
+                
+                return {
+                  maxBufferLength: Math.round(params.maxBufferLength * deviceMultiplier * iosAdjustment),
+                  maxBufferSize: Math.round(params.maxBufferSize * deviceMultiplier * iosAdjustment),
+                  backBufferLength: Math.round(params.maxBufferLength * 0.3 * deviceMultiplier * iosAdjustment),
+                };
+              };
+              
+              const bufferParams = getBufferParams();
+              
               const hls = new Hls({
                 debug: false,
                 enableWorker: true,
                 lowLatencyMode: !isMobile, // 移动设备关闭低延迟模式以节省资源
-
-                /* 缓冲/内存相关 - 移动设备优化 */
-                maxBufferLength: isMobile ? (isIOS ? 8 : 12) : 30, // iOS更保守的缓冲
-                backBufferLength: isMobile ? (isIOS ? 5 : 8) : 30, // 减少已播放内容缓存
-                maxBufferSize: isMobile
-                  ? isIOS
-                    ? 15 * 1000 * 1000
-                    : 25 * 1000 * 1000 // iOS: 15MB, Android: 25MB
-                  : 60 * 1000 * 1000, // 桌面: 60MB
-
-                /* 网络优化 */
-                maxLoadingDelay: isMobile ? 2 : 4, // 移动设备更快的加载超时
-                maxBufferHole: isMobile ? 0.3 : 0.5, // 减少缓冲洞
-
-                /* Fragment管理 */
-                liveDurationInfinity: false, // 避免无限缓冲
-                liveBackBufferLength: isMobile ? 3 : 10, // 减少直播回放缓冲
-
-                /* 自定义loader */
+                
+                // 缓冲/内存相关优化
+                maxBufferLength: bufferParams.maxBufferLength,
+                backBufferLength: bufferParams.backBufferLength,
+                maxBufferSize: bufferParams.maxBufferSize,
+                
+                // 网络优化
+                maxLoadingDelay: isMobile ? 2 : 4,
+                maxBufferHole: isMobile ? 0.3 : 0.5,
+                
+                // ABR（自适应码率）优化
+                abrEwmaFastLive: isMobile ? 2 : 3,
+                abrEwmaSlowLive: isMobile ? 9 : 15,
+                abrBandWidthFactor: isMobile ? 0.8 : 0.95,
+                abrBandWidthUpFactor: isMobile ? 1.5 : 1.25,
+                
+                // Fragment管理
+                liveDurationInfinity: false,
+                liveBackBufferLength: isMobile ? 3 : 10,
+                
+                // 自定义loader
                 loader: blockAdEnabledRef.current
                   ? CustomHlsJsLoader
                   : Hls.DefaultConfig.loader,
@@ -2196,21 +2228,69 @@ function PlayPageClient() {
 
               hls.on(Hls.Events.ERROR, function (event: any, data: any) {
                 console.error('HLS Error:', event, data);
-                if (data.fatal) {
+                
+                // 非致命错误处理
+                if (!data.fatal) {
                   switch (data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
-                      console.log('网络错误，尝试恢复...');
-                      hls.startLoad();
+                      console.log('非致命网络错误，忽略:', data.details);
                       break;
                     case Hls.ErrorTypes.MEDIA_ERROR:
-                      console.log('媒体错误，尝试恢复...');
-                      hls.recoverMediaError();
+                      console.log('非致命媒体错误，忽略:', data.details);
+                      break;
+                    case Hls.ErrorTypes.MUX_ERROR:
+                      console.log('非致命MUX错误，忽略:', data.details);
                       break;
                     default:
-                      console.log('无法恢复的错误');
-                      hls.destroy();
+                      console.log('非致命错误，忽略:', data.details);
                       break;
                   }
+                  return;
+                }
+                
+                // 致命错误处理
+                switch (data.type) {
+                  case Hls.ErrorTypes.NETWORK_ERROR:
+                    console.log('致命网络错误，尝试恢复...');
+                    // 检查是否有重试次数限制
+                    const retryCount = (hls as any).retryCount || 0;
+                    if (retryCount < 3) {
+                      (hls as any).retryCount = retryCount + 1;
+                      // 延迟重试，避免立即重试
+                      setTimeout(() => {
+                        hls.startLoad();
+                      }, 1000 * retryCount);
+                    } else {
+                      console.log('网络错误重试次数已达上限，切换备用方案...');
+                      // 可以在这里添加备用播放方案
+                    }
+                    break;
+                    
+                  case Hls.ErrorTypes.MEDIA_ERROR:
+                    console.log('致命媒体错误，尝试恢复...');
+                    // 尝试恢复媒体错误
+                    hls.recoverMediaError();
+                    break;
+                    
+                  case Hls.ErrorTypes.MUX_ERROR:
+                    console.log('致命MUX错误，尝试恢复...');
+                    // 重置缓冲区并重新加载
+                    hls.destroy();
+                    const newHls = new Hls(hls.config);
+                    newHls.loadSource(url);
+                    newHls.attachMedia(video);
+                    video.hls = newHls;
+                    break;
+                    
+                  case Hls.ErrorTypes.KEY_SYSTEM_ERROR:
+                    console.log('密钥系统错误，尝试降级播放...');
+                    // 可以在这里添加降级播放逻辑
+                    break;
+                    
+                  default:
+                    console.log('无法恢复的致命错误:', data.type);
+                    hls.destroy();
+                    break;
                 }
               });
             },
@@ -2328,6 +2408,8 @@ function PlayPageClient() {
           ],
           // 🚀 性能优化的弹幕插件配置 - 保持弹幕数量，优化渲染性能
           plugins: [
+            artplayerPluginLiquidGlass(),
+            artplayerPluginChromecast(),
             artplayerPluginDanmuku(
               (() => {
                 // 🎯 设备性能检测
