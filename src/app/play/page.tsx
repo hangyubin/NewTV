@@ -7,9 +7,9 @@ import { Heart } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 
-import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import artplayerPluginChromecast from '@/lib/artplayer-plugin-chromecast';
 import artplayerPluginLiquidGlass from '@/lib/artplayer-plugin-liquid-glass';
+import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import {
   deleteFavorite,
   deletePlayRecord,
@@ -83,11 +83,11 @@ function PlayPageClient() {
   // -----------------------------------------------------------------------------
   // 状态变量（State）
   // -----------------------------------------------------------------------------
-  const [loading, setLoading] = useState(false);
-  const [loadingStage, setLoadingStage] = useState<
+  const [loading, _setLoading] = useState(false);
+  const [loadingStage, _setLoadingStage] = useState<
     'searching' | 'preferring' | 'fetching' | 'ready'
   >('searching');
-  const [loadingMessage, setLoadingMessage] = useState('正在搜索播放源...');
+  const [loadingMessage, _setLoadingMessage] = useState('正在搜索播放源...');
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<SearchResult | null>(null);
 
@@ -1363,7 +1363,22 @@ function PlayPageClient() {
           throw new Error('获取视频详情失败');
         }
         const detailData = (await detailResponse.json()) as SearchResult;
-        setAvailableSources([detailData]);
+        // 不要覆盖所有可用源，而是更新availableSources数组，添加新源
+        setAvailableSources((prev) => {
+          // 检查是否已存在相同的源
+          const existingIndex = prev.findIndex(
+            (s) => s.source === source && s.id === id
+          );
+          if (existingIndex >= 0) {
+            // 更新现有源
+            const updated = [...prev];
+            updated[existingIndex] = detailData;
+            return updated;
+          } else {
+            // 添加新源
+            return [...prev, detailData];
+          }
+        });
         return [detailData];
       } catch (err) {
         console.error('获取视频详情失败:', err);
@@ -1386,8 +1401,12 @@ function PlayPageClient() {
         // 处理搜索结果，根据规则过滤
         const results = data.results.filter(
           (result: SearchResult) =>
-            result.title.replaceAll(' ', '').toLowerCase() ===
-              videoTitleRef.current.replaceAll(' ', '').toLowerCase() &&
+            result.title
+              .replaceAll(' ', '')
+              .toLowerCase()
+              .includes(
+                videoTitleRef.current.replaceAll(' ', '').toLowerCase()
+              ) &&
             (videoYearRef.current
               ? result.year.toLowerCase() === videoYearRef.current.toLowerCase()
               : true) &&
@@ -1421,7 +1440,12 @@ function PlayPageClient() {
           (source) => source.source === currentSource && source.id === currentId
         )
       ) {
-        sourcesInfo = await fetchSourceDetail(currentSource, currentId);
+        // 如果当前源不在搜索结果中，添加它而不是替换整个数组
+        const currentSourceDetail = await fetchSourceDetail(
+          currentSource,
+          currentId
+        );
+        sourcesInfo = [...sourcesInfo, ...currentSourceDetail];
       }
       if (sourcesInfo.length === 0) {
         setError('未找到匹配结果');
@@ -2162,58 +2186,78 @@ function PlayPageClient() {
                 video.hls.destroy();
               }
               // 获取缓冲模式配置（standard、enhanced、max）
-              const bufferMode = typeof window !== 'undefined' 
-                ? localStorage.getItem('hlsBufferMode') || 'standard'
-                : 'standard';
-              
+              const bufferMode =
+                typeof window !== 'undefined'
+                  ? localStorage.getItem('hlsBufferMode') || 'standard'
+                  : 'standard';
+
               // 根据缓冲模式和设备类型设置缓冲参数
               const getBufferParams = () => {
                 // 基础参数
                 const baseParams = {
-                  standard: { maxBufferLength: 30, maxBufferSize: 60 * 1000 * 1000 },
-                  enhanced: { maxBufferLength: 60, maxBufferSize: 120 * 1000 * 1000 },
-                  max: { maxBufferLength: 90, maxBufferSize: 180 * 1000 * 1000 },
+                  standard: {
+                    maxBufferLength: 30,
+                    maxBufferSize: 60 * 1000 * 1000,
+                  },
+                  enhanced: {
+                    maxBufferLength: 60,
+                    maxBufferSize: 120 * 1000 * 1000,
+                  },
+                  max: {
+                    maxBufferLength: 90,
+                    maxBufferSize: 180 * 1000 * 1000,
+                  },
                 };
-                
+
                 // 设备调整
                 const deviceMultiplier = isMobile ? 0.5 : 1;
                 const iosAdjustment = isIOS ? 0.8 : 1;
-                
-                const params = baseParams[bufferMode as keyof typeof baseParams];
-                
+
+                const params =
+                  baseParams[bufferMode as keyof typeof baseParams];
+
                 return {
-                  maxBufferLength: Math.round(params.maxBufferLength * deviceMultiplier * iosAdjustment),
-                  maxBufferSize: Math.round(params.maxBufferSize * deviceMultiplier * iosAdjustment),
-                  backBufferLength: Math.round(params.maxBufferLength * 0.3 * deviceMultiplier * iosAdjustment),
+                  maxBufferLength: Math.round(
+                    params.maxBufferLength * deviceMultiplier * iosAdjustment
+                  ),
+                  maxBufferSize: Math.round(
+                    params.maxBufferSize * deviceMultiplier * iosAdjustment
+                  ),
+                  backBufferLength: Math.round(
+                    params.maxBufferLength *
+                      0.3 *
+                      deviceMultiplier *
+                      iosAdjustment
+                  ),
                 };
               };
-              
+
               const bufferParams = getBufferParams();
-              
+
               const hls = new Hls({
                 debug: false,
                 enableWorker: true,
                 lowLatencyMode: !isMobile, // 移动设备关闭低延迟模式以节省资源
-                
+
                 // 缓冲/内存相关优化
                 maxBufferLength: bufferParams.maxBufferLength,
                 backBufferLength: bufferParams.backBufferLength,
                 maxBufferSize: bufferParams.maxBufferSize,
-                
+
                 // 网络优化
                 maxLoadingDelay: isMobile ? 2 : 4,
                 maxBufferHole: isMobile ? 0.3 : 0.5,
-                
+
                 // ABR（自适应码率）优化
                 abrEwmaFastLive: isMobile ? 2 : 3,
                 abrEwmaSlowLive: isMobile ? 9 : 15,
                 abrBandWidthFactor: isMobile ? 0.8 : 0.95,
                 abrBandWidthUpFactor: isMobile ? 1.5 : 1.25,
-                
+
                 // Fragment管理
                 liveDurationInfinity: false,
                 liveBackBufferLength: isMobile ? 3 : 10,
-                
+
                 // 自定义loader
                 loader: blockAdEnabledRef.current
                   ? CustomHlsJsLoader
@@ -2228,7 +2272,7 @@ function PlayPageClient() {
 
               hls.on(Hls.Events.ERROR, function (event: any, data: any) {
                 console.error('HLS Error:', event, data);
-                
+
                 // 非致命错误处理
                 if (!data.fatal) {
                   switch (data.type) {
@@ -2247,7 +2291,7 @@ function PlayPageClient() {
                   }
                   return;
                 }
-                
+
                 // 致命错误处理
                 switch (data.type) {
                   case Hls.ErrorTypes.NETWORK_ERROR: {
@@ -2266,13 +2310,13 @@ function PlayPageClient() {
                     }
                     break;
                   }
-                  
+
                   case Hls.ErrorTypes.MEDIA_ERROR:
                     console.log('致命媒体错误，尝试恢复...');
                     // 尝试恢复媒体错误
                     hls.recoverMediaError();
                     break;
-                    
+
                   case Hls.ErrorTypes.MUX_ERROR: {
                     console.log('致命MUX错误，尝试恢复...');
                     // 重置缓冲区并重新加载
@@ -2283,12 +2327,12 @@ function PlayPageClient() {
                     video.hls = newHls;
                     break;
                   }
-                  
+
                   case Hls.ErrorTypes.KEY_SYSTEM_ERROR:
                     console.log('密钥系统错误，尝试降级播放...');
                     // 可以在这里添加降级播放逻辑
                     break;
-                    
+
                   default:
                     console.log('无法恢复的致命错误:', data.type);
                     hls.destroy();
@@ -3926,7 +3970,14 @@ function PlayPageClient() {
       <div className='flex flex-col gap-3 py-4 px-5 lg:px-[3rem] 2xl:px-20'>
         {/* 第一行：影片标题 */}
         <div className='py-1'>
-          <h1 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
+          <h1 className='text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center'>
+            <span
+              className='mr-3 text-2xl font-bold cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors'
+              onClick={() => router.back()}
+              aria-label='返回上一页'
+            >
+              ←
+            </span>
             {videoTitle || '影片标题'}
             {totalEpisodes > 1 && (
               <span className='text-gray-500 dark:text-gray-400'>
@@ -4071,13 +4122,6 @@ function PlayPageClient() {
             <div className='p-6 flex flex-col min-h-0'>
               {/* 标题 */}
               <h1 className='text-3xl font-bold mb-2 tracking-wide flex items-center flex-shrink-0 text-center md:text-left w-full'>
-                <span
-                  className='mr-3 text-4xl font-bold cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors'
-                  onClick={() => router.back()}
-                  aria-label='返回上一页'
-                >
-                  ←
-                </span>
                 {videoTitle || '影片标题'}
                 <button
                   onClick={(e) => {
