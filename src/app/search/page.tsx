@@ -74,7 +74,7 @@ const TraditionalSearchList = ({
   }
 
   return (
-    <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4'>
+    <div className='justify-start grid grid-cols-2 gap-x-3 gap-y-10 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-14 md:grid-cols-4 md:gap-x-6 lg:grid-cols-5 lg:gap-x-8 px-0 sm:px-2'>
       {currentData.map((item, index) => {
         if (viewMode === 'agg') {
           const [mapKey, group] = item as [string, SearchResult[]];
@@ -95,7 +95,7 @@ const TraditionalSearchList = ({
           }
 
           return (
-            <div key={mapKey} className='p-2'>
+            <div key={mapKey}>
               <VideoCard
                 ref={getGroupRef(mapKey)}
                 from='search'
@@ -119,7 +119,7 @@ const TraditionalSearchList = ({
           );
 
           return (
-            <div key={`${searchItem.source}-${searchItem.id}`} className='p-2'>
+            <div key={`${searchItem.source}-${searchItem.id}`}>
               <VideoCard
                 id={searchItem.id}
                 title={searchItem.title}

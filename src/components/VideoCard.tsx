@@ -839,7 +839,7 @@ const VideoCard = memo(
         >
           {/* 海报容器 - 增强的玻璃态和渐变效果 */}
           <div
-            className={`relative aspect-[3/4] overflow-hidden rounded-t-lg bg-gray-100 dark:bg-gray-800 transition-all duration-400 ease-in-out group-hover:shadow-2xl group-hover:shadow-black/30 dark:group-hover:shadow-black/40 glass ${
+            className={`relative aspect-[2/3] overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800 transition-all duration-400 ease-in-out group-hover:shadow-2xl group-hover:shadow-black/30 dark:group-hover:shadow-black/40 glass ${
               origin === 'live'
                 ? 'ring-1 ring-gray-300/80 dark:ring-gray-600/80'
                 : ''
@@ -871,7 +871,7 @@ const VideoCard = memo(
             {!isLoading && (
               <ImagePlaceholder
                 aspectRatio='aspect-[2/3]'
-                className='animate-pulse rounded-t-lg'
+                className='animate-pulse rounded-lg'
               />
             )}
             {/* 图片 - 增强的过渡效果 */}
@@ -1510,7 +1510,7 @@ const VideoCard = memo(
           )}
 
           <div
-            className='flex-1 flex flex-col justify-center px-1 py-2 text-center'
+            className='mt-2 text-center'
             style={
               {
                 WebkitUserSelect: 'none',
@@ -1538,11 +1538,7 @@ const VideoCard = memo(
 
               {/* 标题文字 */}
               <span
-                className={`block font-semibold text-gray-900 dark:text-gray-100 transition-all duration-300 ease-in-out group-hover:text-black dark:group-hover:text-white peer relative z-10 ${
-                  from === 'douban' && actualTitle.length > 8
-                    ? 'text-xs'
-                    : 'text-sm'
-                }`}
+                className='block text-xs sm:text-sm font-bold line-clamp-2 text-gray-900 dark:text-gray-100 transition-all duration-300 ease-in-out group-hover:scale-[1.02] peer relative z-10 group-hover:bg-linear-to-r group-hover:from-green-600 group-hover:via-emerald-600 group-hover:to-teal-600 dark:group-hover:from-green-400 dark:group-hover:via-emerald-400 dark:group-hover:to-teal-400 group-hover:bg-clip-text group-hover:text-transparent group-hover:drop-shadow-[0_2px_8px_rgba(16,185,129,0.3)]'
                 style={
                   {
                     WebkitUserSelect: 'none',
@@ -1560,9 +1556,7 @@ const VideoCard = memo(
                   return false;
                 }}
               >
-                {actualTitle.length <= 10
-                  ? actualTitle
-                  : `${actualTitle.slice(0, 10)}...`}
+                {actualTitle}
               </span>
 
               {/* 自定义 tooltip */}

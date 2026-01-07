@@ -37,26 +37,25 @@ export const useResponsiveGrid = (
 
       let columnCount: number;
 
-      // 响应式列数计算 - 与传统网格布局保持一致
-      if (containerWidth >= 1024) columnCount = 6; // xl
-      else if (containerWidth >= 768) columnCount = 5; // lg
-      else if (containerWidth >= 640) columnCount = 4; // md
-      else if (containerWidth >= 475) columnCount = 3; // sm
+      // 响应式列数计算 - 与首页网格布局保持一致
+      if (containerWidth >= 1024) columnCount = 5; // lg
+      else if (containerWidth >= 768) columnCount = 4; // md
+      else if (containerWidth >= 640) columnCount = 3; // sm
       else columnCount = 2; // xs and mobile
 
       // 计算项目尺寸 - 简化计算，移除动态gap，使用固定padding
       // 每个项目的固定内边距
       const itemPadding = 8;
-      
+
       // 计算实际可用宽度（减去左右内边距）
-      const availableWidth = containerWidth - (itemPadding * 2);
-      
+      const availableWidth = containerWidth - itemPadding * 2;
+
       // 计算项目宽度 - 不考虑gap，因为react-window Grid组件会处理间距
       const itemWidth = Math.floor(availableWidth / columnCount);
 
       // 根据海报比例计算高度 (2:3) + 标题和来源信息高度，与首页保持一致
       const posterHeight = Math.floor(itemWidth * 1.5);
-      const textHeight = 60; // 标题 + 来源信息
+      const textHeight = 40; // 标题 + 来源信息，调整为与LunaTV一致
       const itemHeight = posterHeight + textHeight;
 
       setDimensions({
@@ -72,7 +71,7 @@ export const useResponsiveGrid = (
   useLayoutEffect(() => {
     // 使用更高效的初始化方式，减少不必要的重试
     let resizeObserver: ResizeObserver | null = null;
-    
+
     const setupObserver = () => {
       if (!containerRef?.current) {
         // 容器未准备好，使用默认值初始化
@@ -81,11 +80,12 @@ export const useResponsiveGrid = (
       }
 
       const element = containerRef.current;
-      
+
       // 使用getBoundingClientRect获取更精确的宽度
       const rect = element.getBoundingClientRect();
-      const initialWidth = rect.width || element.offsetWidth || element.clientWidth;
-      
+      const initialWidth =
+        rect.width || element.offsetWidth || element.clientWidth;
+
       calculateDimensions(initialWidth);
 
       // 使用ResizeObserver监听尺寸变化
@@ -101,7 +101,9 @@ export const useResponsiveGrid = (
       // 窗口resize处理
       const handleResize = () => {
         const currentRect = element.getBoundingClientRect();
-        calculateDimensions(currentRect.width || element.offsetWidth || element.clientWidth);
+        calculateDimensions(
+          currentRect.width || element.offsetWidth || element.clientWidth
+        );
       };
       window.addEventListener('resize', handleResize);
 
