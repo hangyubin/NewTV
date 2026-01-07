@@ -37,10 +37,10 @@ export const useResponsiveGrid = (
 
       let columnCount: number;
 
-      // 响应式列数计算 - 与首页网格布局保持一致
-      if (containerWidth >= 1024) columnCount = 5; // lg
-      else if (containerWidth >= 768) columnCount = 4; // md
-      else if (containerWidth >= 640) columnCount = 3; // sm
+      // 响应式列数计算 - 与传统搜索列表网格布局保持一致
+      if (containerWidth >= 1024) columnCount = 6; // lg
+      else if (containerWidth >= 768) columnCount = 5; // md
+      else if (containerWidth >= 640) columnCount = 4; // sm
       else columnCount = 2; // xs and mobile
 
       // 计算项目尺寸 - 简化计算，移除动态gap，使用固定padding

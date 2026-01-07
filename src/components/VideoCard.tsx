@@ -1538,7 +1538,7 @@ const VideoCard = memo(
 
               {/* 标题文字 */}
               <span
-                className='block text-xs sm:text-sm font-bold line-clamp-2 text-gray-900 dark:text-gray-100 transition-all duration-300 ease-in-out group-hover:scale-[1.02] peer relative z-10'
+                className='block text-xs sm:text-sm font-bold line-clamp-2 text-gray-900 dark:text-gray-100 transition-all duration-300 ease-in-out peer relative z-10'
                 style={
                   {
                     WebkitUserSelect: 'none',
@@ -1549,6 +1549,9 @@ const VideoCard = memo(
                     WebkitBoxOrient: 'vertical',
                     overflow: 'hidden',
                     lineHeight: '1.4',
+                    // 提高文字渲染清晰度
+                    WebkitFontSmoothing: 'antialiased',
+                    textRendering: 'optimizeLegibility',
                   } as React.CSSProperties
                 }
                 onContextMenu={(e) => {
