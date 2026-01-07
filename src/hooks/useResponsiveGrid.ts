@@ -44,7 +44,7 @@ export const useResponsiveGrid = (
       else if (containerWidth >= 640) columnCount = 4; // sm
       else columnCount = 2; // xs and mobile
 
-      // 计算项目尺寸 - 减小卡片大小，与首页保持一致
+      // 计算项目尺寸 - 精确优化卡片大小和行高
       // 每个项目的固定内边距
       const itemPadding = 8;
       // 卡片之间的间距
@@ -53,13 +53,13 @@ export const useResponsiveGrid = (
       // 计算实际可用宽度（减去左右内边距和总间距）
       const availableWidth = containerWidth - itemPadding * 2 - gap * (columnCount - 1);
 
-      // 计算项目宽度 - 使卡片更小
+      // 计算项目宽度 - 精确分配可用空间
       const itemWidth = Math.floor(availableWidth / columnCount);
 
-      // 根据海报比例计算高度 (2:3) + 标题和来源信息高度，调整比例使卡片更小
-      const posterHeight = Math.floor(itemWidth * 1.35); // 减小海报高度比例
-      const textHeight = 32; // 减小文字区域高度
-      const itemHeight = posterHeight + textHeight + gap; // 包含行间距
+      // 根据海报比例计算高度 (2:3) + 标题和来源信息高度，精确优化行高
+      const posterHeight = Math.floor(itemWidth * 1.35); // 保持2:3的海报比例，优化高度计算
+      const textHeight = containerWidth < 768 ? 28 : 32; // 响应式文字区域高度：移动端更小
+      const itemHeight = posterHeight + textHeight + gap; // 精确计算总高度，包含行间距
 
       setDimensions({
         columnCount,

@@ -60,9 +60,9 @@ interface VirtualSearchGridProps {
   >;
 }
 
-// 渐进式加载配置 - 与 LunaTV 保持一致
+// 渐进式加载配置 - 优化加载批次大小
 const INITIAL_BATCH_SIZE = 12; // 初始加载数量，平衡性能和首屏体验
-const LOAD_MORE_BATCH_SIZE = 8; // 每次加载数量，减少单次渲染压力
+const LOAD_MORE_BATCH_SIZE = 6; // 优化：减少每次加载数量，降低渲染压力
 const LOAD_MORE_THRESHOLD = 5; // 触发加载的剩余行数，更早开始加载，避免滚动白屏
 
 export const VirtualSearchGrid = React.forwardRef<
@@ -108,12 +108,12 @@ export const VirtualSearchGrid = React.forwardRef<
     const displayItemCount = Math.min(visibleItemCount, totalItemCount);
     const displayData = currentData.slice(0, displayItemCount);
 
-    // 预加载图片 - 收集即将显示的图片 URLs，增加预加载数量以减少滚动延迟
+    // 预加载图片 - 收集即将显示的图片 URLs，减少预加载数量以优化性能
     const imagesToPreload = useMemo(() => {
       const urls: string[] = [];
       const itemsToPreload = currentData.slice(
         displayItemCount,
-        Math.min(displayItemCount + 30, totalItemCount)
+        Math.min(displayItemCount + 15, totalItemCount)
       );
 
       itemsToPreload.forEach((item) => {
@@ -353,7 +353,7 @@ export const VirtualSearchGrid = React.forwardRef<
             columnWidth={itemWidth}
             rowHeight={itemHeight}
             rowCount={rowCount}
-            overscanCount={5}
+            overscanCount={3}
             // 添加ARIA支持提升无障碍体验
             role='grid'
             aria-label={`搜索结果列表 "${searchQuery}"，共${displayItemCount}个结果，当前视图：${

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any,no-console,no-case-declarations */
 
 import { DoubanItem, DoubanResult } from './types';
+import { queuedFetch, RequestPriority } from './requestQueue';
 
 // 豆瓣数据缓存配置
 const DOUBAN_CACHE_EXPIRE = {
@@ -201,9 +202,6 @@ async function fetchWithTimeout(
   url: string,
   proxyUrl: string
 ): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
-
   // 检查是否使用代理
   const finalUrl =
     proxyUrl === 'https://cors-anywhere.com/'
@@ -212,24 +210,16 @@ async function fetchWithTimeout(
       ? `${proxyUrl}${encodeURIComponent(url)}`
       : url;
 
-  const fetchOptions: RequestInit = {
-    signal: controller.signal,
+  return queuedFetch(finalUrl, {
     headers: {
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
       Referer: 'https://movie.douban.com/',
       Accept: 'application/json, text/plain, */*',
     },
-  };
-
-  try {
-    const response = await fetch(finalUrl, fetchOptions);
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    throw error;
-  }
+    priority: RequestPriority.NORMAL,
+    timeout: 10000
+  });
 }
 
 function getDoubanProxyConfig(): {

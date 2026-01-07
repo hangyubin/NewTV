@@ -1,14 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any,react-hooks/exhaustive-deps,@typescript-eslint/no-empty-function */
 
-import {
-  ExternalLink,
-  Heart,
-  Link,
-  PlayCircleIcon,
-  Radio,
-  Trash2,
-} from 'lucide-react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import React, {
   forwardRef,
@@ -20,6 +11,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { ExternalLink, Heart, PlayCircleIcon, Trash2 } from 'lucide-react';
 
 import {
   deleteFavorite,
@@ -30,15 +22,13 @@ import {
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import { getDoubanDetails } from '@/lib/douban.client';
+import { queuedFetch, RequestPriority } from '@/lib/requestQueue';
 import { DoubanDetail, SearchResult } from '@/lib/types';
-import { processImageUrl } from '@/lib/utils';
 import { useLongPress } from '@/hooks/useLongPress';
 
-import { ImagePlaceholder } from '@/components/ImagePlaceholder';
-import MobileActionSheet from '@/components/MobileActionSheet';
-import VideoDetailPreview from '@/components/VideoDetailPreview';
-
-import CombinedDetailModal from './CombinedDetailModal';
+import VideoCardCore from './VideoCardCore';
+import VideoCardActions from './VideoCardActions';
+import VideoCardModal from './VideoCardModal';
 
 export interface VideoCardProps {
   id?: string;
@@ -111,10 +101,6 @@ const VideoCard = memo(
     const [searchFavorited, setSearchFavorited] = useState<boolean | null>(
       null
     ); // 搜索结果的收藏状态
-    const [showDetailPreview, setShowDetailPreview] = useState(false);
-    const [previewDetail, setPreviewDetail] = useState<SearchResult | null>(
-      null
-    );
 
     const [showCombinedModal, setShowCombinedModal] = useState(false);
     const [doubanDetail, setDoubanDetail] = useState<DoubanDetail | null>(null);
@@ -122,11 +108,6 @@ const VideoCard = memo(
     const [isLoadingModal, setIsLoadingModal] = useState(false);
     const [isApiLoading, setIsApiLoading] = useState(false);
     const autoPlayTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-    // 悬停相关状态（仅豆瓣卡片）
-    const [_isHovering, setIsHovering] = useState(false);
-
-    // AI聊天模态框状态
 
     const [isDesktop, setIsDesktop] = useState(false);
 
@@ -176,10 +157,8 @@ const VideoCard = memo(
     const actualTitle = title;
     const actualPoster = poster;
     // 对于播放记录，id是完整的存储key（source+id格式），需要解析
-    const actualSource =
-      from === 'playrecord' && id?.includes('+') ? id.split('+')[0] : source;
-    const actualId =
-      from === 'playrecord' && id?.includes('+') ? id.split('+')[1] : id;
+    const actualSource = from === 'playrecord' && id?.includes('+') ? id.split('+')[0] : source;
+    const actualId = from === 'playrecord' && id?.includes('+') ? id.split('+')[1] : id;
     const actualDoubanId = dynamicDoubanId;
     const actualEpisodes = dynamicEpisodes;
     const actualYear = year;
@@ -228,8 +207,7 @@ const VideoCard = memo(
 
         try {
           // 确定当前收藏状态
-          const currentFavorited =
-            from === 'search' ? searchFavorited : favorited;
+          const currentFavorited = from === 'search' ? searchFavorited : favorited;
 
           if (currentFavorited) {
             // 如果已收藏，删除收藏
@@ -297,16 +275,7 @@ const VideoCard = memo(
       [from, actualSource, actualId, id, onDelete]
     );
 
-    // 悬停事件处理（仅豆瓣卡片）
-    const handleMouseEnter = useCallback(() => {
-      if (from !== 'douban') return;
-      setIsHovering(true);
-    }, [from]);
 
-    const handleMouseLeave = useCallback(() => {
-      if (from !== 'douban') return;
-      setIsHovering(false);
-    }, [from]);
 
     // 跳转到播放页面的函数
     const navigateToPlay = useCallback(() => {
@@ -317,10 +286,9 @@ const VideoCard = memo(
       }
 
       // 构建豆瓣ID参数
-      const doubanIdParam =
-        actualDoubanId && actualDoubanId > 0
-          ? `&douban_id=${actualDoubanId}`
-          : '';
+      const doubanIdParam = actualDoubanId && actualDoubanId > 0
+        ? `&douban_id=${actualDoubanId}`
+        : '';
 
       if (origin === 'live' && actualSource && actualId) {
         // 直播内容跳转到直播页面
@@ -379,16 +347,19 @@ const VideoCard = memo(
       setVideoDetail(null);
 
       try {
-        // 并行执行API请求
+        // 并行执行API请求 - 使用请求队列优化
         const [doubanRes, searchRes] = await Promise.all([
-          // 获取豆瓣详情
+          // 获取豆瓣详情 - 高优先级
           actualDoubanId 
             ? getDoubanDetails(actualDoubanId.toString())
                 .then(res => res.code === 200 ? res.data : null)
                 .catch(() => null)
             : Promise.resolve(null),
-          // 获取搜索详情
-          fetch(`/api/search?q=${encodeURIComponent(actualTitle.trim())}`)
+          // 获取搜索详情 - 中优先级
+          queuedFetch(`/api/search?q=${encodeURIComponent(actualTitle.trim())}`, {
+            priority: RequestPriority.NORMAL,
+            timeout: 8000
+          })
             .then(res => res.ok ? res.json() : { results: [] })
             .catch(() => ({ results: [] }))
         ]);
@@ -478,10 +449,9 @@ const VideoCard = memo(
     // 新标签页播放处理函数
     const handlePlayInNewTab = useCallback(() => {
       // 构建豆瓣ID参数
-      const doubanIdParam =
-        actualDoubanId && actualDoubanId > 0
-          ? `&douban_id=${actualDoubanId}`
-          : '';
+      const doubanIdParam = actualDoubanId && actualDoubanId > 0
+        ? `&douban_id=${actualDoubanId}`
+        : '';
 
       if (origin === 'live' && actualSource && actualId) {
         // 直播内容跳转到直播页面
@@ -571,218 +541,32 @@ const VideoCard = memo(
       checkSearchFavoriteStatus,
     ]);
 
-    // 长按手势hook
-    const longPressProps = useLongPress({
-      onLongPress: handleLongPress,
-      onClick: handleClick, // 保持点击播放功能
-      longPressDelay: 500,
-    });
-
-    const config = useMemo(() => {
-      const baseConfigs = {
-        playrecord: {
-          showSourceName: true,
-          showProgress: true,
-          showPlayButton: true,
-          showHeart: true,
-          showCheckCircle: true,
-          showDoubanLink: false,
-          showRating: false,
-          showYear: false,
-        },
-        favorite: {
-          showSourceName: true,
-          showProgress: false,
-          showPlayButton: true,
-          showHeart: true,
-          showCheckCircle: false,
-          showDoubanLink: false,
-          showRating: false,
-          showYear: false,
-        },
-        search: {
-          showSourceName: true,
-          showProgress: false,
-          showPlayButton: true,
-          showHeart: true,
-          showCheckCircle: false,
-          showDoubanLink: true,
-          showRating: false,
-          showYear: true,
-        },
-        douban: {
-          showSourceName: false,
-          showProgress: false,
-          showPlayButton: true,
-          showHeart: false,
-          showCheckCircle: false,
-          showDoubanLink: true,
-          showRating: !!rate,
-          showYear: false,
-        },
-      };
-      return baseConfigs[from] || baseConfigs.search;
-    }, [from, rate]);
-
-    // 移动端操作菜单配置
-    const mobileActions = useMemo(() => {
-      const actions = [];
-
-      // 播放操作
-      if (config.showPlayButton) {
-        actions.push({
-          id: 'play',
-          label: origin === 'live' ? '观看直播' : '播放',
-          icon: <PlayCircleIcon size={20} />,
-          onClick: handleClick,
-          color: 'primary' as const,
-        });
-      }
-
-      // 新标签页播放
-      if (config.showPlayButton) {
-        actions.push({
-          id: 'play-new-tab',
-          label: origin === 'live' ? '新标签页观看' : '新标签页播放',
-          icon: <ExternalLink size={20} />,
-          onClick: handlePlayInNewTab,
-          color: 'default' as const,
-        });
-      }
-
-      // 聚合源信息 - 直接在菜单中展示，不需要单独的操作项
-
-      // 收藏/取消收藏操作
-      if (config.showHeart && from !== 'douban' && actualSource && actualId) {
-        const currentFavorited =
-          from === 'search' ? searchFavorited : favorited;
-
-        if (from === 'search') {
-          // 搜索结果：根据加载状态显示不同的选项
-          if (searchFavorited !== null) {
-            // 已加载完成，显示实际的收藏状态
-            actions.push({
-              id: 'favorite',
-              label: currentFavorited ? '取消收藏' : '添加收藏',
-              icon: currentFavorited ? (
-                <Heart size={20} className='fill-red-600 stroke-red-600' />
-              ) : (
-                <Heart size={20} className='fill-transparent stroke-red-500' />
-              ),
-              onClick: () => {
-                const mockEvent = {
-                  preventDefault: () => {},
-                  stopPropagation: () => {},
-                } as React.MouseEvent;
-                handleToggleFavorite(mockEvent);
-              },
-              color: currentFavorited
-                ? ('danger' as const)
-                : ('default' as const),
-            });
-          } else {
-            // 正在加载中，显示占位项
-            actions.push({
-              id: 'favorite-loading',
-              label: '收藏加载中...',
-              icon: <Heart size={20} />,
-              onClick: () => {}, // 加载中时不响应点击
-              disabled: true,
-            });
-          }
-        } else {
-          // 非搜索结果：直接显示收藏选项
-          actions.push({
-            id: 'favorite',
-            label: currentFavorited ? '取消收藏' : '添加收藏',
-            icon: currentFavorited ? (
-              <Heart size={20} className='fill-red-600 stroke-red-600' />
-            ) : (
-              <Heart size={20} className='fill-transparent stroke-red-500' />
-            ),
-            onClick: () => {
-              const mockEvent = {
-                preventDefault: () => {},
-                stopPropagation: () => {},
-              } as React.MouseEvent;
-              handleToggleFavorite(mockEvent);
-            },
-            color: currentFavorited
-              ? ('danger' as const)
-              : ('default' as const),
-          });
-        }
-      }
-
-      // 删除播放记录操作
-      if (
-        config.showCheckCircle &&
-        from === 'playrecord' &&
-        actualSource &&
-        actualId
-      ) {
-        actions.push({
-          id: 'delete',
-          label: '删除记录',
-          icon: <Trash2 size={20} />,
-          onClick: () => {
-            const mockEvent = {
-              preventDefault: () => {},
-              stopPropagation: () => {},
-            } as React.MouseEvent;
-            handleDeleteRecord(mockEvent);
-          },
-          color: 'danger' as const,
-        });
-      }
-
-      return actions;
-    }, [
-      config,
-      from,
-      actualSource,
-      actualId,
-      favorited,
-      searchFavorited,
-      actualDoubanId,
-      isBangumi,
-      isAggregate,
-      dynamicSourceNames,
-      actualTitle,
-      actualPoster,
-      actualYear,
-      type,
-      handleClick,
-      handleToggleFavorite,
-      handleDeleteRecord,
-      handlePlayInNewTab,
-      isDesktop,
-      router,
-      origin,
-    ]);
-
     return (
       <>
-        <div
-          className='group relative w-full rounded-apple-xl cursor-pointer transition-transform duration-200 ease-out hover:scale-105 hover:shadow-elevated hover:z-10 flex flex-col h-full'
-          onClick={handleClick}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-          {...longPressProps}
-          style={
-            {
-              // 禁用所有默认的长按和选择效果
-              WebkitUserSelect: 'none',
-              userSelect: 'none',
-              WebkitTouchCallout: 'none',
-              WebkitTapHighlightColor: 'transparent',
-              touchAction: 'manipulation',
-              // 禁用右键菜单和长按菜单
-              pointerEvents: 'auto',
-              // 应用外部传递的样式
-              ...style,
-            } as React.CSSProperties
-          }
+        {/* 核心卡片组件 */}
+        <VideoCardCore
+          id={id}
+          title={actualTitle}
+          poster={actualPoster}
+          year={actualYear}
+          rate={rate}
+          episodes={actualEpisodes}
+          source_name={source_name}
+          source_names={dynamicSourceNames}
+          progress={progress}
+          from={from}
+          currentEpisode={currentEpisode}
+          douban_id={actualDoubanId}
+          type={actualSearchType}
+          isBangumi={isBangumi}
+          isAggregate={isAggregate}
+          origin={origin}
+          style={style}
+          priority={priority}
+          sameTitleStats={sameTitleStats}
+          onPlay={handleClick}
+          onFavoriteToggle={handleToggleFavorite}
+          onDelete={handleDeleteRecord}
           onContextMenu={(e) => {
             // 阻止默认右键菜单
             e.preventDefault();
@@ -809,841 +593,47 @@ const VideoCard = memo(
             e.preventDefault();
             return false;
           }}
-        >
-          {/* 海报容器 - 增强的玻璃态和渐变效果 */}
-          <div
-            className={`relative aspect-[2/3] overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800 transition-all duration-400 ease-in-out group-hover:shadow-2xl group-hover:shadow-black/30 dark:group-hover:shadow-black/40 glass ${
-              origin === 'live'
-                ? 'ring-1 ring-gray-300/80 dark:ring-gray-600/80'
-                : ''
-            }`}
-            style={
-              {
-                WebkitUserSelect: 'none',
-                userSelect: 'none',
-                WebkitTouchCallout: 'none',
-              } as React.CSSProperties
-            }
-            onContextMenu={(e) => {
-              e.preventDefault();
-              return false;
-            }}
-          >
-            {/* 渐变光泽动画层 - 增强效果 */}
-            <div
-              className='absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-600 pointer-events-none z-10'
-              style={{
-                background:
-                  'linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.2) 45%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.2) 55%, transparent 70%)',
-                backgroundSize: '200% 100%',
-                animation: 'card-shimmer 2.5s ease-in-out infinite',
-              }}
-            />
+          favorited={favorited}
+          searchFavorited={searchFavorited}
+          isImageLoading={isImageLoading}
+        />
 
-            {/* 骨架屏 - 更精致的设计 */}
-            {!isImageLoading && (
-              <ImagePlaceholder
-                aspectRatio='aspect-[2/3]'
-                className='animate-pulse rounded-lg'
-              />
-            )}
-            {/* 图片 - 增强的过渡效果 */}
-            <Image
-          src={processImageUrl(actualPoster)}
-          alt={actualTitle}
-          fill
-          className={`${
-            origin === 'live'
-              ? 'object-contain'
-              : 'object-cover'
-          } transition-all duration-600 ease-in-out ${
-            isImageLoading ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
-          }`}
-          referrerPolicy='no-referrer'
-          loading='lazy'
-          priority={priority}
-          quality={75}
-          onLoadingComplete={() => setIsImageLoading(true)}
-          onError={(e) => {
-            const img = e.target as HTMLImageElement;
-            if (!img.dataset.retried) {
-              img.dataset.retried = 'true';
-              setTimeout(() => {
-                try {
-                  img.src = '/icons/icon-192x192.png';
-                  setIsImageLoading(true);
-                } catch (err) {
-                  // 忽略图片加载失败
-                }
-              }, 2000);
-            }
-          }}
-              style={
-                {
-                  WebkitUserSelect: 'none',
-                  userSelect: 'none',
-                  WebkitTouchCallout: 'none',
-                  pointerEvents: 'none',
-                } as React.CSSProperties
-              }
-              onContextMenu={(e) => {
-                e.preventDefault();
-                return false;
-              }}
-              onDragStart={(e) => {
-                e.preventDefault();
-                return false;
-              }}
-            />
-
-            {/* 悬浮遮罩 - 增强的效果 */}
-            <div
-              className='absolute inset-0 bg-linear-to-t from-black/90 via-black/30 to-transparent transition-all duration-400 ease-in-out opacity-0 group-hover:opacity-100'
-              style={
-                {
-                  WebkitUserSelect: 'none',
-                  userSelect: 'none',
-                  WebkitTouchCallout: 'none',
-                } as React.CSSProperties
-              }
-              onContextMenu={(e) => {
-                e.preventDefault();
-                return false;
-              }}
-            />
-
-            {/* 播放按钮 */}
-            {config.showPlayButton && (
-              <div
-                data-button='true'
-                className='absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-300 ease-in-out delay-75 group-hover:opacity-100 group-hover:scale-100'
-                style={
-                  {
-                    WebkitUserSelect: 'none',
-                    userSelect: 'none',
-                    WebkitTouchCallout: 'none',
-                  } as React.CSSProperties
-                }
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  return false;
-                }}
-              >
-                {!isImageLoading ? (
-                  <div className='flex items-center justify-center'>
-                    <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-white'></div>
-                  </div>
-                ) : from === 'playrecord' && progress !== undefined ? (
-                  // 观看记录显示百分比进度
-                  <div className='flex flex-col items-center justify-center text-white'>
-                    <div className='relative w-16 h-16 mb-2'>
-                      {/* 圆形进度环 */}
-                      <svg
-                        className='w-16 h-16 transform -rotate-90'
-                        viewBox='0 0 64 64'
-                      >
-                        {/* 背景圆环 */}
-                        <circle
-                          cx='32'
-                          cy='32'
-                          r='28'
-                          stroke='rgba(255,255,255,0.2)'
-                          strokeWidth='4'
-                          fill='none'
-                        />
-                        {/* 进度圆环 */}
-                        <circle
-                          cx='32'
-                          cy='32'
-                          r='28'
-                          stroke='white'
-                          strokeWidth='4'
-                          fill='none'
-                          strokeDasharray={`${2 * Math.PI * 28}`}
-                          strokeDashoffset={`${
-                            2 * Math.PI * 28 * (1 - progress / 100)
-                          }`}
-                          className='transition-all duration-500 ease-out'
-                          strokeLinecap='round'
-                        />
-                      </svg>
-                      {/* 中心播放图标 */}
-                      <div className='absolute inset-0 flex items-center justify-center'>
-                        <PlayCircleIcon
-                          size={24}
-                          strokeWidth={1}
-                          className='text-white fill-transparent hover:fill-blue-400 transition-all duration-200'
-                        />
-                      </div>
-                    </div>
-                    {/* 百分比文字 */}
-                    <div className='text-sm font-semibold bg-black/50 px-2 py-1 rounded-full'>
-                      {Math.round(progress)}%
-                    </div>
-                  </div>
-                ) : (
-                  <PlayCircleIcon
-                    size={50}
-                    strokeWidth={0.8}
-                    className='text-white fill-transparent transition-all duration-300 ease-out hover:fill-blue-500 hover:scale-[1.1] active:scale-[0.95]'
-                    style={
-                      {
-                        WebkitUserSelect: 'none',
-                        userSelect: 'none',
-                        WebkitTouchCallout: 'none',
-                      } as React.CSSProperties
-                    }
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      return false;
-                    }}
-                  />
-                )}
-              </div>
-            )}
-
-            {/* 操作按钮 */}
-            {(config.showHeart || config.showCheckCircle) && (
-              <div
-                data-button='true'
-                className='absolute bottom-3 right-3 flex gap-3 opacity-0 translate-y-2 transition-all duration-300 ease-in-out sm:group-hover:opacity-100 sm:group-hover:translate-y-0'
-                style={
-                  {
-                    WebkitUserSelect: 'none',
-                    userSelect: 'none',
-                    WebkitTouchCallout: 'none',
-                  } as React.CSSProperties
-                }
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  return false;
-                }}
-              >
-                {config.showCheckCircle && (
-                  <Trash2
-                    onClick={handleDeleteRecord}
-                    size={20}
-                    className='text-white transition-all duration-300 ease-out hover:stroke-red-500 hover:scale-[1.1]'
-                    style={
-                      {
-                        WebkitUserSelect: 'none',
-                        userSelect: 'none',
-                        WebkitTouchCallout: 'none',
-                      } as React.CSSProperties
-                    }
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      return false;
-                    }}
-                  />
-                )}
-                {config.showHeart && (
-                  <Heart
-                    onClick={handleToggleFavorite}
-                    size={20}
-                    className={`transition-all duration-300 ease-out ${
-                      favorited
-                        ? 'fill-red-600 stroke-red-600'
-                        : 'fill-transparent stroke-white hover:stroke-red-400'
-                    } hover:scale-[1.1]`}
-                    style={
-                      {
-                        WebkitUserSelect: 'none',
-                        userSelect: 'none',
-                        WebkitTouchCallout: 'none',
-                      } as React.CSSProperties
-                    }
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      return false;
-                    }}
-                  />
-                )}
-              </div>
-            )}
-
-            {/* 年份徽章 */}
-            {config.showYear &&
-              actualYear &&
-              actualYear !== 'unknown' &&
-              actualYear.trim() !== '' && (
-                <div
-                  className='absolute top-2 bg-black/50 text-white text-xs font-medium px-2 py-1 rounded backdrop-blur-sm shadow-sm transition-all duration-300 ease-out group-hover:opacity-90 left-2'
-                  style={
-                    {
-                      WebkitUserSelect: 'none',
-                      userSelect: 'none',
-                      WebkitTouchCallout: 'none',
-                    } as React.CSSProperties
-                  }
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    return false;
-                  }}
-                >
-                  {actualYear}
-                </div>
-              )}
-
-            {/* 徽章 */}
-            {config.showRating && rate && (
-              <div
-                className='absolute top-2 right-2 bg-pink-500 text-white text-xs font-bold w-7 h-7 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ease-out group-hover:scale-110'
-                style={
-                  {
-                    WebkitUserSelect: 'none',
-                    userSelect: 'none',
-                    WebkitTouchCallout: 'none',
-                  } as React.CSSProperties
-                }
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  return false;
-                }}
-              >
-                {rate}
-              </div>
-            )}
-
-            {actualEpisodes && actualEpisodes > 1 && (
-              <div
-                className='absolute top-2 right-2 bg-black text-white text-xs font-semibold px-2 py-1 rounded-md shadow-md transition-all duration-300 ease-out group-hover:scale-110'
-                style={
-                  {
-                    WebkitUserSelect: 'none',
-                    userSelect: 'none',
-                    WebkitTouchCallout: 'none',
-                  } as React.CSSProperties
-                }
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  return false;
-                }}
-              >
-                {currentEpisode
-                  ? `${currentEpisode}/${actualEpisodes}`
-                  : actualEpisodes}
-              </div>
-            )}
-
-            {/* 豆瓣链接 */}
-            {config.showDoubanLink &&
-              actualDoubanId &&
-              actualDoubanId !== 0 && (
-                <a
-                  href={
-                    isBangumi
-                      ? `https://bgm.tv/subject/${actualDoubanId.toString()}`
-                      : `https://movie.douban.com/subject/${actualDoubanId.toString()}`
-                  }
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  onClick={(e) => e.stopPropagation()}
-                  className='absolute top-2 left-2 opacity-0 -translate-x-2 transition-all duration-300 ease-in-out delay-100 sm:group-hover:opacity-100 sm:group-hover:translate-x-0'
-                  style={
-                    {
-                      WebkitUserSelect: 'none',
-                      userSelect: 'none',
-                      WebkitTouchCallout: 'none',
-                    } as React.CSSProperties
-                  }
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    return false;
-                  }}
-                >
-                  <div
-                    className='bg-black text-white text-xs font-bold w-7 h-7 rounded-full flex items-center justify-center shadow-md hover:bg-gray-800 hover:scale-[1.1] transition-all duration-300 ease-out'
-                    style={
-                      {
-                        WebkitUserSelect: 'none',
-                        userSelect: 'none',
-                        WebkitTouchCallout: 'none',
-                      } as React.CSSProperties
-                    }
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      return false;
-                    }}
-                  >
-                    <Link
-                      size={16}
-                      style={
-                        {
-                          WebkitUserSelect: 'none',
-                          userSelect: 'none',
-                          WebkitTouchCallout: 'none',
-                          pointerEvents: 'none',
-                        } as React.CSSProperties
-                      }
-                    />
-                  </div>
-                </a>
-              )}
-
-            {/* 聚合播放源指示器 */}
-            {isAggregate &&
-              dynamicSourceNames &&
-              dynamicSourceNames.length > 0 &&
-              (() => {
-                const uniqueSources = Array.from(new Set(dynamicSourceNames));
-                const sourceCount = uniqueSources.length;
-
-                return (
-                  <div
-                    className='absolute bottom-2 right-2 opacity-0 transition-all duration-300 ease-in-out delay-75 sm:group-hover:opacity-100'
-                    style={
-                      {
-                        WebkitUserSelect: 'none',
-                        userSelect: 'none',
-                        WebkitTouchCallout: 'none',
-                      } as React.CSSProperties
-                    }
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      return false;
-                    }}
-                  >
-                    <div
-                      className='relative group/sources'
-                      style={
-                        {
-                          WebkitUserSelect: 'none',
-                          userSelect: 'none',
-                          WebkitTouchCallout: 'none',
-                        } as React.CSSProperties
-                      }
-                    >
-                      <div
-                        className='glass-strong text-white text-xs font-bold w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shadow-glass hover:scale-[1.1] transition-all duration-300 ease-out cursor-pointer'
-                        style={
-                          {
-                            WebkitUserSelect: 'none',
-                            userSelect: 'none',
-                            WebkitTouchCallout: 'none',
-                          } as React.CSSProperties
-                        }
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          return false;
-                        }}
-                      >
-                        {sourceCount}
-                      </div>
-
-                      {/* 播放源详情悬浮框 */}
-                      {(() => {
-                        // 优先显示的播放源（常见的主流平台）
-                        const prioritySources = [
-                          '爱奇艺',
-                          '腾讯视频',
-                          '优酷',
-                          '芒果TV',
-                          '哔哩哔哩',
-                          'Netflix',
-                          'Disney+',
-                        ];
-
-                        // 按优先级排序播放源
-                        const sortedSources = uniqueSources.sort((a, b) => {
-                          const aIndex = prioritySources.indexOf(a);
-                          const bIndex = prioritySources.indexOf(b);
-                          if (aIndex !== -1 && bIndex !== -1)
-                            return aIndex - bIndex;
-                          if (aIndex !== -1) return -1;
-                          if (bIndex !== -1) return 1;
-                          return a.localeCompare(b);
-                        });
-
-                        const maxDisplayCount = 6; // 最多显示6个
-                        const displaySources = sortedSources.slice(
-                          0,
-                          maxDisplayCount
-                        );
-                        const hasMore = sortedSources.length > maxDisplayCount;
-                        const remainingCount =
-                          sortedSources.length - maxDisplayCount;
-
-                        return (
-                          <div
-                            className='absolute bottom-full mb-2 opacity-0 invisible group-hover/sources:opacity-100 group-hover/sources:visible transition-all duration-200 ease-out delay-100 pointer-events-none z-50 right-0 sm:right-0 -translate-x-0 sm:translate-x-0'
-                            style={
-                              {
-                                WebkitUserSelect: 'none',
-                                userSelect: 'none',
-                                WebkitTouchCallout: 'none',
-                              } as React.CSSProperties
-                            }
-                            onContextMenu={(e) => {
-                              e.preventDefault();
-                              return false;
-                            }}
-                          >
-                            <div
-                              className='glass-strong text-white text-xs sm:text-xs rounded-apple-lg shadow-floating border border-white/30 p-1.5 sm:p-2 min-w-[100px] sm:min-w-[120px] max-w-[140px] sm:max-w-[200px] overflow-hidden bg-black/90 dark:bg-gray-900/90'
-                              style={
-                                {
-                                  WebkitUserSelect: 'none',
-                                  userSelect: 'none',
-                                  WebkitTouchCallout: 'none',
-                                } as React.CSSProperties
-                              }
-                              onContextMenu={(e) => {
-                                e.preventDefault();
-                                return false;
-                              }}
-                            >
-                              {/* 单列布局 */}
-                              <div className='space-y-0.5 sm:space-y-1'>
-                                {displaySources.map((sourceName, index) => (
-                                  <div
-                                    key={index}
-                                    className='flex items-center gap-1 sm:gap-1.5'
-                                  >
-                                    <div className='w-0.5 h-0.5 sm:w-1 sm:h-1 bg-blue-400 rounded-full flex-shrink-0'></div>
-                                    <span
-                                      className='truncate text-[10px] sm:text-xs leading-tight font-medium text-white dark:text-white'
-                                      title={sourceName}
-                                    >
-                                      {sourceName}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-
-                              {/* 显示更多提示 */}
-                              {hasMore && (
-                                <div className='mt-1 sm:mt-2 pt-1 sm:pt-1.5 border-t border-gray-600/70'>
-                                  <div className='flex items-center justify-center'>
-                                    <span className='text-[10px] sm:text-xs font-medium text-white/90 dark:text-white/90'>
-                                      +{remainingCount} 播放源
-                                    </span>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* 小箭头 */}
-                              <div className='absolute top-full right-2 sm:right-3 w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] sm:border-l-[6px] sm:border-r-[6px] sm:border-t-[6px] border-transparent border-t-gray-800/90'></div>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                );
-              })()}
-            {/* 相同标题统计指示器（非聚合视图下显示） */}
-            {!isAggregate &&
-              sameTitleStats &&
-              sameTitleStats.totalCount > 1 && (
-                <div
-                  className='absolute bottom-2 right-2 opacity-0 transition-all duration-300 ease-in-out delay-75 sm:group-hover:opacity-100'
-                  style={
-                    {
-                      WebkitUserSelect: 'none',
-                      userSelect: 'none',
-                      WebkitTouchCallout: 'none',
-                    } as React.CSSProperties
-                  }
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    return false;
-                  }}
-                >
-                  <div
-                    className='relative group/same-title'
-                    style={
-                      {
-                        WebkitUserSelect: 'none',
-                        userSelect: 'none',
-                        WebkitTouchCallout: 'none',
-                      } as React.CSSProperties
-                    }
-                  >
-                    <div
-                      className='bg-purple-500/80 text-white text-xs font-bold w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shadow-glass hover:scale-[1.1] transition-all duration-300 ease-out cursor-pointer backdrop-blur-sm'
-                      style={
-                        {
-                          WebkitUserSelect: 'none',
-                          userSelect: 'none',
-                          WebkitTouchCallout: 'none',
-                        } as React.CSSProperties
-                      }
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        return false;
-                      }}
-                    >
-                      {sameTitleStats.totalCount}
-                    </div>
-
-                    {/* 相同标题详情悬浮框 */}
-                    <div
-                      className='absolute bottom-full mb-2 opacity-0 invisible group-hover/same-title:opacity-100 group-hover/same-title:visible transition-all duration-200 ease-out delay-100 pointer-events-none z-50 right-0 sm:right-0 -translate-x-0 sm:translate-x-0'
-                      style={
-                        {
-                          WebkitUserSelect: 'none',
-                          userSelect: 'none',
-                          WebkitTouchCallout: 'none',
-                        } as React.CSSProperties
-                      }
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        return false;
-                      }}
-                    >
-                      <div
-                        className='glass-strong text-white text-xs sm:text-xs rounded-apple-lg shadow-floating border border-white/20 p-1.5 sm:p-2 min-w-[120px] sm:min-w-[150px] max-w-[180px] sm:max-w-[220px] overflow-hidden'
-                        style={
-                          {
-                            WebkitUserSelect: 'none',
-                            userSelect: 'none',
-                            WebkitTouchCallout: 'none',
-                          } as React.CSSProperties
-                        }
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          return false;
-                        }}
-                      >
-                        <div className='mb-2 text-sm font-semibold text-center text-purple-300'>
-                          相同片名
-                        </div>
-
-                        {/* 单列布局 */}
-                        <div className='space-y-0.5 sm:space-y-1'>
-                          {sameTitleStats.uniqueSources
-                            .slice(0, 8)
-                            .map((sourceName, index) => (
-                              <div
-                                key={index}
-                                className='flex items-center gap-1 sm:gap-1.5'
-                              >
-                                <div className='w-0.5 h-0.5 sm:w-1 sm:h-1 bg-purple-400 rounded-full flex-shrink-0'></div>
-                                <span
-                                  className='truncate text-[10px] sm:text-xs leading-tight'
-                                  title={sourceName}
-                                >
-                                  {sourceName}
-                                </span>
-                              </div>
-                            ))}
-                        </div>
-
-                        {/* 显示更多提示 */}
-                        {sameTitleStats.uniqueSources.length > 8 && (
-                          <div className='mt-1 sm:mt-2 pt-1 sm:pt-1.5 border-t border-gray-700/50'>
-                            <div className='flex items-center justify-center text-gray-400'>
-                              <span className='text-[10px] sm:text-xs font-medium'>
-                                +{sameTitleStats.uniqueSources.length - 8} 来源
-                              </span>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* 小箭头 */}
-                        <div className='absolute top-full right-2 sm:right-3 w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] sm:border-l-[6px] sm:border-r-[6px] sm:border-t-[6px] border-transparent border-t-gray-800/90'></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-          </div>
-
-          {/* 进度条 */}
-          {config.showProgress && progress !== undefined && (
-            <div
-              className='mt-1 h-1 w-full bg-gray-200 rounded-full overflow-hidden'
-              style={
-                {
-                  WebkitUserSelect: 'none',
-                  userSelect: 'none',
-                  WebkitTouchCallout: 'none',
-                } as React.CSSProperties
-              }
-              onContextMenu={(e) => {
-                e.preventDefault();
-                return false;
-              }}
-            >
-              <div
-                className='h-full bg-blue-500 transition-all duration-500 ease-out'
-                style={
-                  {
-                    width: `${progress}%`,
-                    WebkitUserSelect: 'none',
-                    userSelect: 'none',
-                    WebkitTouchCallout: 'none',
-                  } as React.CSSProperties
-                }
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  return false;
-                }}
-              />
-            </div>
-          )}
-
-          <div
-            className='mt-2 text-center'
-            style={
-              {
-                WebkitUserSelect: 'none',
-                userSelect: 'none',
-                WebkitTouchCallout: 'none',
-              } as React.CSSProperties
-            }
-            onContextMenu={(e) => {
-              e.preventDefault();
-              return false;
-            }}
-          >
-            <div
-              className='relative px-1'
-              style={
-                {
-                  WebkitUserSelect: 'none',
-                  userSelect: 'none',
-                  WebkitTouchCallout: 'none',
-                } as React.CSSProperties
-              }
-            >
-              {/* 背景高亮效果 */}
-              <div className='absolute inset-0 bg-linear-to-r from-transparent via-green-50/0 to-transparent dark:via-green-900/0 group-hover:via-green-50/50 dark:group-hover:via-green-900/30 transition-all duration-300 rounded-md'></div>
-
-              {/* 标题文字 */}
-              <span
-                className='block text-xs sm:text-sm font-bold line-clamp-2 text-gray-900 dark:text-gray-100 transition-all duration-300 ease-in-out peer relative z-10'
-                style={
-                  {
-                    WebkitUserSelect: 'none',
-                    userSelect: 'none',
-                    WebkitTouchCallout: 'none',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                    lineHeight: '1.4',
-                    // 提高文字渲染清晰度
-                    WebkitFontSmoothing: 'antialiased',
-                    textRendering: 'optimizeLegibility',
-                  } as React.CSSProperties
-                }
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  return false;
-                }}
-              >
-                {actualTitle}
-              </span>
-
-              {/* 自定义 tooltip */}
-              <div
-                className='absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded-md shadow-lg opacity-0 invisible peer-hover:opacity-100 peer-hover:visible transition-all duration-200 ease-out delay-100 whitespace-nowrap pointer-events-none'
-                style={
-                  {
-                    WebkitUserSelect: 'none',
-                    userSelect: 'none',
-                    WebkitTouchCallout: 'none',
-                  } as React.CSSProperties
-                }
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  return false;
-                }}
-              >
-                {actualTitle}
-                <div
-                  className='absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800'
-                  style={
-                    {
-                      WebkitUserSelect: 'none',
-                      userSelect: 'none',
-                      WebkitTouchCallout: 'none',
-                    } as React.CSSProperties
-                  }
-                ></div>
-              </div>
-            </div>
-            {config.showSourceName && source_name && (
-              <span
-                className='block text-xs text-gray-500 dark:text-gray-400 mt-1'
-                style={
-                  {
-                    WebkitUserSelect: 'none',
-                    userSelect: 'none',
-                    WebkitTouchCallout: 'none',
-                  } as React.CSSProperties
-                }
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  return false;
-                }}
-              >
-                <span
-                  className='inline-block border rounded px-2 py-0.5 border-gray-500/60 dark:border-gray-400/60 transition-all duration-300 ease-in-out group-hover:border-black/60 group-hover:text-black dark:group-hover:text-white'
-                  style={
-                    {
-                      WebkitUserSelect: 'none',
-                      userSelect: 'none',
-                      WebkitTouchCallout: 'none',
-                    } as React.CSSProperties
-                  }
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    return false;
-                  }}
-                >
-                  {origin === 'live' && (
-                    <Radio
-                      size={12}
-                      className='inline-block text-gray-500 dark:text-gray-400 mr-1.5'
-                    />
-                  )}
-                  {source_name}
-                </span>
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* 操作菜单 - 支持右键和长按触发 */}
-        <MobileActionSheet
-          isOpen={showMobileActions}
-          onClose={() => setShowMobileActions(false)}
+        {/* 移动端操作菜单 */}
+        <VideoCardActions
+          id={actualId}
+          source={actualSource}
           title={actualTitle}
-          poster={processImageUrl(actualPoster)}
-          actions={mobileActions}
-          sources={
-            isAggregate && dynamicSourceNames
-              ? Array.from(new Set(dynamicSourceNames))
-              : undefined
-          }
-          isAggregate={isAggregate}
-          sourceName={source_name}
+          poster={actualPoster}
+          episodes={actualEpisodes}
+          source_name={source_name}
+          source_names={dynamicSourceNames}
+          from={from}
           currentEpisode={currentEpisode}
-          totalEpisodes={actualEpisodes}
+          isAggregate={isAggregate}
           origin={origin}
+          favorited={favorited}
+          searchFavorited={searchFavorited}
+          showMobileActions={showMobileActions}
+          onCloseActions={() => setShowMobileActions(false)}
+          onPlay={handleClick}
+          onPlayInNewTab={handlePlayInNewTab}
+          onFavoriteToggle={handleToggleFavorite}
+          onDelete={handleDeleteRecord}
         />
 
-        {/* 资源站详情预览 */}
-        <VideoDetailPreview
-          detail={previewDetail}
-          isVisible={showDetailPreview}
+        {/* 混合详情模态框 */}
+        <VideoCardModal
+          isVisible={showCombinedModal}
+          isLoading={isLoadingModal}
+          doubanDetail={doubanDetail}
+          videoDetail={videoDetail}
+          poster={actualPoster}
+          title={actualTitle}
           onClose={() => {
-            setShowDetailPreview(false);
-            setPreviewDetail(null);
-          }}
-          onTimeout={() => {
-            setShowDetailPreview(false);
-            setPreviewDetail(null);
-            navigateToPlay();
-          }}
-          duration={5000}
-        />
-        <CombinedDetailModal
-          isOpen={showCombinedModal}
-          onClose={() => {
+            if (autoPlayTimerRef.current) {
+              clearTimeout(autoPlayTimerRef.current);
+              autoPlayTimerRef.current = null;
+            }
             setShowCombinedModal(false);
             setDoubanDetail(null);
             setVideoDetail(null);
@@ -1662,11 +652,6 @@ const VideoCard = memo(
               autoPlayTimerRef.current = null;
             }
           }}
-          doubanDetail={doubanDetail}
-          videoDetail={videoDetail}
-          isLoading={isLoadingModal}
-          poster={actualPoster}
-          title={actualTitle}
         />
       </>
     );
