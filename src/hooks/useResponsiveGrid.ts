@@ -43,20 +43,22 @@ export const useResponsiveGrid = (
       else if (containerWidth >= 640) columnCount = 4; // sm
       else columnCount = 2; // xs and mobile
 
-      // 计算项目尺寸 - 简化计算，移除动态gap，使用固定padding
+      // 计算项目尺寸 - 考虑间距，让卡片更小但保持协调
       // 每个项目的固定内边距
       const itemPadding = 8;
+      // 卡片之间的间距
+      const gap = 12;
 
-      // 计算实际可用宽度（减去左右内边距）
-      const availableWidth = containerWidth - itemPadding * 2;
+      // 计算实际可用宽度（减去左右内边距和总间距）
+      const availableWidth = containerWidth - itemPadding * 2 - gap * (columnCount - 1);
 
-      // 计算项目宽度 - 不考虑gap，因为react-window Grid组件会处理间距
+      // 计算项目宽度 - 考虑间距，使卡片更小
       const itemWidth = Math.floor(availableWidth / columnCount);
 
-      // 根据海报比例计算高度 (2:3) + 标题和来源信息高度，与首页保持一致
-      const posterHeight = Math.floor(itemWidth * 1.5);
-      const textHeight = 40; // 标题 + 来源信息，调整为与LunaTV一致
-      const itemHeight = posterHeight + textHeight;
+      // 根据海报比例计算高度 (2:3) + 标题和来源信息高度，调整比例使卡片更小
+      const posterHeight = Math.floor(itemWidth * 1.45); // 减小海报高度比例
+      const textHeight = 36; // 减小文字区域高度
+      const itemHeight = posterHeight + textHeight + gap; // 包含行间距
 
       setDimensions({
         columnCount,

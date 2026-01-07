@@ -259,7 +259,7 @@ export const VirtualSearchGrid = React.forwardRef<
           }
 
           return (
-            <div style={{ ...style }} {...ariaAttributes}>
+            <div style={{ ...style, padding: '6px', boxSizing: 'border-box' }} {...ariaAttributes}>
               <VideoCard
                 ref={cellGetGroupRef(mapKey)}
                 from='search'
@@ -287,7 +287,7 @@ export const VirtualSearchGrid = React.forwardRef<
             : undefined;
 
           return (
-            <div style={{ ...style }} {...ariaAttributes}>
+            <div style={{ ...style, padding: '6px', boxSizing: 'border-box' }} {...ariaAttributes}>
               <VideoCard
                 id={searchItem.id}
                 title={searchItem.title}
