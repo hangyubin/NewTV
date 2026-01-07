@@ -74,8 +74,8 @@ const TraditionalSearchList = ({
   }
 
   return (
-    <div className='justify-start grid grid-cols-2 gap-x-3 gap-y-10 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-14 md:grid-cols-4 md:gap-x-6 lg:grid-cols-5 lg:gap-x-8 px-0 sm:px-2'>
-      {currentData.map((item, index) => {
+        <div className='justify-start grid grid-cols-2 gap-x-3 gap-y-10 sm:grid-cols-4 sm:gap-x-4 sm:gap-y-14 md:grid-cols-5 md:gap-x-6 lg:grid-cols-6 lg:gap-x-8 px-0 sm:px-2'>
+          {currentData.map((item, index) => {
         if (viewMode === 'agg') {
           const [mapKey, group] = item as [string, SearchResult[]];
           const title = group[0]?.title || '';
