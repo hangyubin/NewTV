@@ -45,7 +45,7 @@ function setCache(key: string, data: any, expireTime: number): void {
     };
     localStorage.setItem(key, JSON.stringify(cacheData));
   } catch (e) {
-    console.warn('Failed to set search cache:', e);
+
   }
 }
 
@@ -76,7 +76,7 @@ function cleanExpiredCache(): void {
   });
 
   if (cleanedCount > 0) {
-    console.log(`清理了 ${cleanedCount} 个过期的搜索缓存`);
+    // 清理了过期缓存，不输出日志
   }
 }
 
@@ -90,7 +90,7 @@ export function initSearchCache(): void {
   // 每10分钟清理一次过期缓存
   setInterval(cleanExpiredCache, 10 * 60 * 1000);
 
-  console.log('搜索缓存系统已初始化');
+  // 搜索缓存系统已初始化
 }
 
 // 带缓存的搜索API封装
@@ -99,7 +99,7 @@ export async function cachedSearch(query: string): Promise<{ results: any[] }> {
   const cacheKey = getCacheKey('results', { q: query });
   const cached = getCache(cacheKey);
   if (cached) {
-    console.log(`搜索结果缓存命中: ${query}`);
+    // 搜索结果缓存命中
     return cached;
   }
 
@@ -109,7 +109,7 @@ export async function cachedSearch(query: string): Promise<{ results: any[] }> {
 
   // 保存到缓存
   setCache(cacheKey, result, SEARCH_CACHE_EXPIRE.results);
-  console.log(`搜索结果已缓存: ${query}`);
+  // 搜索结果已缓存
 
   return result;
 }
@@ -122,7 +122,7 @@ export function clearSearchCache(): void {
     key.startsWith('search-')
   );
   keys.forEach((key) => localStorage.removeItem(key));
-  console.log(`清理了 ${keys.length} 个搜索缓存项`);
+  // 清理了搜索缓存项
 }
 
 // 获取缓存状态信息

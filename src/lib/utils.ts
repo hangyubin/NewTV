@@ -163,9 +163,8 @@ function getDoubanImageProxyConfig(): {
 } {
   const doubanImageProxyType =
     localStorage.getItem('doubanImageProxyType') ||
-    (window as Window & typeof globalThis & { RUNTIME_CONFIG?: RuntimeConfig })
-      .RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY_TYPE ||
-    'cmliussss-cdn-tencent';
+    (window as Window & typeof globalThis & { RUNTIME_CONFIG?: RuntimeConfig }).RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY_TYPE ||
+    'img3';
   const doubanImageProxy =
     localStorage.getItem('doubanImageProxyUrl') ||
     (window as Window & typeof globalThis & { RUNTIME_CONFIG?: RuntimeConfig })

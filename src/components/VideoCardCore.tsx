@@ -5,8 +5,6 @@ import React, { forwardRef, memo, useCallback, useMemo } from 'react';
 
 import { processImageUrl } from '@/lib/utils';
 
-import { ImagePlaceholder } from './ImagePlaceholder';
-
 interface VideoCardCoreProps {
   id?: string;
   title?: string;
@@ -68,9 +66,9 @@ const VideoCardCore = memo(
       onContextMenu,
       onDragStart,
       favorited = false,
-      searchFavorited: _searchFavorited = null,
-      isImageLoading = false,
-    }: VideoCardCoreProps,
+    searchFavorited: _searchFavorited = null,
+    isImageLoading = false, // 保留参数但在组件内部不使用，使用默认值
+  }: VideoCardCoreProps,
     ref
   ) {
     const actualTitle = title;

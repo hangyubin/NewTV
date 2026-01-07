@@ -219,8 +219,16 @@ export async function searchFromApi(
 
     for (let i = 0; i < searchVariants.length; i++) {
       const variant = searchVariants[i];
-      const apiUrl =
-        apiBaseUrl + API_CONFIG.search.path + encodeURIComponent(variant);
+      
+      // 根据不同API源使用不同的请求格式
+      let apiUrl;
+      if (apiBaseUrl.includes('iqiyizyapi.com') || apiBaseUrl.includes('caiji.dbzy5.com') || apiBaseUrl.includes('caiji.dyttzyapi.com')) {
+        // 新的短剧API源，使用不同的请求格式
+        apiUrl = `${apiBaseUrl}?ac=videolist&wd=${encodeURIComponent(variant)}`;
+      } else {
+        // 传统API源，使用原有格式
+        apiUrl = apiBaseUrl + API_CONFIG.search.path + encodeURIComponent(variant);
+      }
 
       try {
         // 使用新的缓存搜索函数处理第一页
@@ -278,11 +286,18 @@ export async function searchFromApi(
       const additionalPagePromises = [];
 
       for (let page = 2; page <= pagesToFetch + 1; page++) {
-        const pageUrl =
-          apiBaseUrl +
-          API_CONFIG.search.pagePath
-            .replace('{query}', encodeURIComponent(query))
-            .replace('{page}', page.toString());
+        let pageUrl;
+        if (apiBaseUrl.includes('iqiyizyapi.com') || apiBaseUrl.includes('caiji.dbzy5.com') || apiBaseUrl.includes('caiji.dyttzyapi.com')) {
+          // 新的短剧API源，使用不同的分页请求格式
+          pageUrl = `${apiBaseUrl}?ac=videolist&wd=${encodeURIComponent(query)}&pg=${page}`;
+        } else {
+          // 传统API源，使用原有分页格式
+          pageUrl =
+            apiBaseUrl +
+            API_CONFIG.search.pagePath
+              .replace('{query}', encodeURIComponent(query))
+              .replace('{page}', page.toString());
+        }
 
         const pagePromise = (async () => {
           // 使用新的缓存搜索函数处理分页

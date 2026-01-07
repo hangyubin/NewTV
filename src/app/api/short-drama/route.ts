@@ -30,8 +30,29 @@ export async function GET(request: NextRequest) {
 
     let allResults: SearchResult[] = [];
     
-    // 直接使用默认API站点，确保有可用的API源
+    // 集成新的短剧API数据源
     const defaultApiSites = [
+      {
+        key: 'iqiyizyapi',
+        name: 'IQIYI ZY API',
+        api: 'https://iqiyizyapi.com/api.php/provide/vod',
+        detail: 'IQIYI ZY API',
+        disabled: false
+      },
+      {
+        key: 'caiji_dbzy5',
+        name: 'Caiji DBZY5',
+        api: 'https://caiji.dbzy5.com/api.php/provide/vod',
+        detail: 'Caiji DBZY5 API',
+        disabled: false
+      },
+      {
+        key: 'caiji_dyttzyapi',
+        name: 'Caiji DYTZY API',
+        api: 'http://caiji.dyttzyapi.com/api.php/provide/vod',
+        detail: 'Caiji DYTZY API',
+        disabled: false
+      },
       {
         key: 'dbzy_tv',
         name: 'DBZY TV',
