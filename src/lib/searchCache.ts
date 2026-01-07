@@ -45,7 +45,7 @@ function setCache(key: string, data: any, expireTime: number): void {
     };
     localStorage.setItem(key, JSON.stringify(cacheData));
   } catch (e) {
-
+    // 忽略缓存错误，不影响应用正常运行
   }
 }
 
@@ -56,7 +56,7 @@ function cleanExpiredCache(): void {
   const keys = Object.keys(localStorage).filter((key) =>
     key.startsWith('search-')
   );
-  let cleanedCount = 0;
+  let _cleanedCount = 0;
 
   keys.forEach((key) => {
     try {
@@ -65,19 +65,17 @@ function cleanExpiredCache(): void {
         const { expire } = JSON.parse(cached);
         if (Date.now() > expire) {
           localStorage.removeItem(key);
-          cleanedCount++;
+          _cleanedCount++;
         }
       }
     } catch (e) {
       // 清理损坏的缓存数据
       localStorage.removeItem(key);
-      cleanedCount++;
+      _cleanedCount++;
     }
   });
 
-  if (cleanedCount > 0) {
-    // 清理了过期缓存，不输出日志
-  }
+  // 清理了过期缓存，不输出日志
 }
 
 // 初始化缓存系统（应该在应用启动时调用）
