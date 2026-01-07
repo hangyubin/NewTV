@@ -26,7 +26,7 @@ async function searchWithCache(
   query: string,
   page: number,
   url: string,
-  timeoutMs = 8000
+  timeoutMs = 20000 // 增加超时时间到20秒
 ): Promise<{ results: SearchResult[]; pageCount?: number }> {
   // 先查缓存
   const cached = getCachedSearchPage(apiSite.key, query, page);
@@ -48,14 +48,22 @@ async function searchWithCache(
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
+      // 增加详细的请求日志
+      console.log(`🔍 [搜索API] 正在请求: ${url}`);
+      console.log(`🔍 [搜索API] 请求头: ${JSON.stringify(API_CONFIG.search.headers)}`);
+      
       const response = await fetch(url, {
         headers: API_CONFIG.search.headers,
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
-
+      
+      console.log(`🔍 [搜索API] 响应状态: ${response.status} ${response.statusText}`);
+      console.log(`🔍 [搜索API] 响应URL: ${response.url}`);
+      
       if (!response.ok) {
+        console.warn(`🔍 [搜索API] 请求失败: ${response.status} ${response.statusText}`);
         if (response.status === 403) {
           setCachedSearchPage(apiSite.key, query, page, 'forbidden', []);
           return { results: [] };
@@ -65,6 +73,7 @@ async function searchWithCache(
         if (attempt < MAX_RETRIES) {
           // 指数退避：每次重试延迟翻倍
           const delay = RETRY_DELAY * Math.pow(2, attempt);
+          console.log(`🔍 [搜索API] 重试请求，延迟 ${delay}ms`);
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }

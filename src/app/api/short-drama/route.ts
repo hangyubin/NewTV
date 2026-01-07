@@ -17,9 +17,6 @@ export const revalidate = 0;
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const type = searchParams.get('type') || 'all'; // 短剧类型筛选
-  const region = searchParams.get('region') || 'all'; // 地区筛选
-  const year = searchParams.get('year') || 'all'; // 年份筛选
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '25');
   const keyword = searchParams.get('keyword') || '';
@@ -30,7 +27,7 @@ export async function GET(request: NextRequest) {
 
     let allResults: SearchResult[] = [];
     
-    // 集成新的短剧API数据源
+    // 集成新的短剧API数据源，使用HTTPS协议避免混合内容问题
     const defaultApiSites = [
       {
         key: 'iqiyizyapi',
@@ -49,7 +46,7 @@ export async function GET(request: NextRequest) {
       {
         key: 'caiji_dyttzyapi',
         name: 'Caiji DYTZY API',
-        api: 'http://caiji.dyttzyapi.com/api.php/provide/vod',
+        api: 'https://caiji.dyttzyapi.com/api.php/provide/vod',
         detail: 'Caiji DYTZY API',
         disabled: false
       },
@@ -73,7 +70,7 @@ export async function GET(request: NextRequest) {
           const results = await Promise.race([
             searchFromApi(site, searchKeyword),
             new Promise((_, reject) =>
-              setTimeout(() => reject(new Error(`${site.name} timeout`)), 15000)
+              setTimeout(() => reject(new Error(`${site.name} timeout`)), 30000) // 增加超时时间到30秒
             ),
           ]) as SearchResult[];
 
@@ -93,7 +90,14 @@ export async function GET(request: NextRequest) {
           console.log(`📺 [短剧API] 过滤后保留 ${filteredResults.length} 条短剧结果`);
           return filteredResults;
         } catch (error) {
-          console.warn(`📺 [短剧API] 搜索短剧失败 ${site.name} - ${searchKeyword}:`, error);
+          console.error(`📺 [短剧API] 搜索短剧失败 ${site.name} - ${searchKeyword}:`, error);
+          // 输出更详细的错误信息，包括错误类型和堆栈
+          if (error instanceof Error) {
+            console.error(`📺 [短剧API] 错误详情 - 名称: ${error.name}, 消息: ${error.message}`);
+            if (error.stack) {
+              console.error(`📺 [短剧API] 错误堆栈: ${error.stack}`);
+            }
+          }
           return [];
         }
       });
