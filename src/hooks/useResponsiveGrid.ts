@@ -37,27 +37,28 @@ export const useResponsiveGrid = (
 
       let columnCount: number;
 
-      // 响应式列数计算 - 与传统搜索列表网格布局保持一致
-      if (containerWidth >= 1024) columnCount = 6; // lg
+      // 响应式列数计算 - 增加列数，使卡片更小，与首页保持一致
+      if (containerWidth >= 1280) columnCount = 8; // 2xl
+      else if (containerWidth >= 1024) columnCount = 6; // lg
       else if (containerWidth >= 768) columnCount = 5; // md
       else if (containerWidth >= 640) columnCount = 4; // sm
       else columnCount = 2; // xs and mobile
 
-      // 计算项目尺寸 - 考虑间距，让卡片更小但保持协调
+      // 计算项目尺寸 - 减小卡片大小，与首页保持一致
       // 每个项目的固定内边距
       const itemPadding = 8;
       // 卡片之间的间距
-      const gap = 12;
+      const gap = 8;
 
       // 计算实际可用宽度（减去左右内边距和总间距）
       const availableWidth = containerWidth - itemPadding * 2 - gap * (columnCount - 1);
 
-      // 计算项目宽度 - 考虑间距，使卡片更小
+      // 计算项目宽度 - 使卡片更小
       const itemWidth = Math.floor(availableWidth / columnCount);
 
       // 根据海报比例计算高度 (2:3) + 标题和来源信息高度，调整比例使卡片更小
-      const posterHeight = Math.floor(itemWidth * 1.45); // 减小海报高度比例
-      const textHeight = 36; // 减小文字区域高度
+      const posterHeight = Math.floor(itemWidth * 1.35); // 减小海报高度比例
+      const textHeight = 32; // 减小文字区域高度
       const itemHeight = posterHeight + textHeight + gap; // 包含行间距
 
       setDimensions({
