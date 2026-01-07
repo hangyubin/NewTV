@@ -377,99 +377,93 @@ const VideoCard = memo(
       setDoubanDetail(null);
       setVideoDetail(null);
 
-      // 同时执行豆瓣API和搜索API请求
-      const promises = [];
+      try {
+        // 同时执行豆瓣API和搜索API请求
+        let doubanResult = { success: false, data: null };
+        let searchResult = { success: false, results: [] };
 
-      // 豆瓣API请求
-      let doubanPromise = null;
-      if (actualDoubanId) {
-        doubanPromise = getDoubanDetails(actualDoubanId.toString())
-          .then((details) => {
-            if (details.code === 200 && details.data) {
-              setDoubanDetail(details.data);
-              return { success: true, data: details.data };
-            }
-            return { success: false, data: null };
-          })
-          .catch((_error) => {
-            return { success: false, data: null };
-          });
-        promises.push(doubanPromise);
-      }
+        // 并行执行API请求
+        const [doubanRes, searchRes] = await Promise.all([
+          actualDoubanId 
+            ? getDoubanDetails(actualDoubanId.toString())
+                .then((details) => {
+                  if (details.code === 200 && details.data) {
+                    setDoubanDetail(details.data);
+                    return { success: true, data: details.data };
+                  }
+                  return { success: false, data: null };
+                })
+                .catch(() => ({ success: false, data: null }))
+            : Promise.resolve({ success: false, data: null }),
+          fetch(`/api/search?q=${encodeURIComponent(actualTitle.trim())}`)
+            .then((response) => {
+              if (!response.ok) throw new Error('搜索失败');
+              return response.json();
+            })
+            .then((data: { results: SearchResult[] }) => {
+              if (data.results && data.results.length > 0) {
+                return { success: true, results: data.results };
+              }
+              return { success: false, results: [] };
+            })
+            .catch(() => ({ success: false, results: [] }))
+        ]);
 
-      // 搜索API请求（后台执行）
-      const searchPromise = fetch(
-        `/api/search?q=${encodeURIComponent(actualTitle.trim())}`
-      )
-        .then((response) => {
-          if (!response.ok) throw new Error('搜索失败');
-          return response.json();
-        })
-        .then((data: { results: SearchResult[] }) => {
-          if (data.results && data.results.length > 0) {
-            return { success: true, results: data.results };
-          }
-          return { success: false, results: [] };
-        })
-        .catch((_error) => {
-          return { success: false, results: [] };
-        });
-      promises.push(searchPromise);
+        doubanResult = doubanRes;
+        searchResult = searchRes;
 
-      // 等待所有请求完成
-      const [doubanResult, searchResult] = (await Promise.all(promises)) as [
-        { success: boolean; data?: DoubanDetail } | null,
-        { success: boolean; results: SearchResult[] }
-      ];
-
-      // 处理结果
-      if (doubanResult && doubanResult.success) {
-        // 豆瓣API成功：显示豆瓣信息，5秒后自动播放
-        setIsLoadingModal(false);
-
-        // 如果搜索也成功，设置搜索结果供后续使用
-        if (searchResult.success && searchResult.results.length > 0) {
-          setVideoDetail(searchResult.results[0]);
-        }
-
-        // 5秒后自动播放
-        autoPlayTimerRef.current = setTimeout(() => {
-          if (searchResult.success && searchResult.results.length > 0) {
-            // 跳转到播放器
-            navigateToPlay();
-          }
-        }, 5000);
-      } else {
-        // 豆瓣API失败：使用搜索结果作为备用方案
-        if (searchResult.success && searchResult.results.length > 0) {
-          // 查找匹配title且有desc的结果
-          const matchedResult = searchResult.results.find(
-            (result) =>
-              result.title &&
-              result.title.includes(actualTitle.trim()) &&
-              result.desc
-          ) ||
-          searchResult.results.find((result) => result.desc) ||
-          searchResult.results[0];
-
-          setVideoDetail(matchedResult);
+        // 处理结果
+        if (doubanResult.success) {
+          // 豆瓣API成功：显示豆瓣信息，5秒后自动播放
           setIsLoadingModal(false);
 
-          // 5秒后跳转到第一个源播放
+          // 如果搜索也成功，设置搜索结果供后续使用
+          if (searchResult.success && searchResult.results.length > 0) {
+            setVideoDetail(searchResult.results[0]);
+          }
+
+          // 5秒后自动播放
           autoPlayTimerRef.current = setTimeout(() => {
-            const firstResult = searchResult.results[0];
-            if (firstResult.id && firstResult.source) {
+            if (searchResult.success && searchResult.results.length > 0) {
+              // 跳转到播放器
               navigateToPlay();
             }
           }, 5000);
         } else {
-          // 搜索也失败
-          setIsLoadingModal(false);
-        }
-      }
+          // 豆瓣API失败：使用搜索结果作为备用方案
+          if (searchResult.success && searchResult.results.length > 0) {
+            // 查找匹配title且有desc的结果
+            const matchedResult = searchResult.results.find(
+              (result) =>
+                result.title &&
+                result.title.includes(actualTitle.trim()) &&
+                result.desc
+            ) ||
+            searchResult.results.find((result) => result.desc) ||
+            searchResult.results[0];
 
-      setIsLoading(false);
-    }, [actualDoubanId, actualTitle, isLoading, showCombinedModal, setIsLoading, setShowCombinedModal, setIsLoadingModal, setDoubanDetail, setVideoDetail, navigateToPlay, getDoubanDetails]);
+            setVideoDetail(matchedResult);
+            setIsLoadingModal(false);
+
+            // 5秒后跳转到第一个源播放
+            autoPlayTimerRef.current = setTimeout(() => {
+              const firstResult = searchResult.results[0];
+              if (firstResult.id && firstResult.source) {
+                navigateToPlay();
+              }
+            }, 5000);
+          } else {
+            // 搜索也失败
+            setIsLoadingModal(false);
+          }
+        }
+      } catch (error) {
+        console.error('获取视频详情失败:', error);
+        setIsLoadingModal(false);
+      } finally {
+        setIsLoading(false);
+      }
+    }, [actualDoubanId, actualTitle, isLoading, showCombinedModal, setIsLoading, setShowCombinedModal, setIsLoadingModal, setDoubanDetail, setVideoDetail, navigateToPlay]);
 
     // 组件卸载时清理自动播放计时器
     useEffect(() => {
