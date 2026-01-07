@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getAuthInfoFromCookie } from '@/lib/auth';
-import { getConfig } from '@/lib/config';
+import { getConfig, clearConfigCache } from '@/lib/config';
 import { db } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -1133,7 +1133,9 @@ export async function POST(request: NextRequest) {
     console.log('开始保存管理员配置...');
     try {
       await db.saveAdminConfig(adminConfig);
-      console.log('✅ 管理员配置保存成功');
+      // 清除配置缓存，确保短剧API能及时获取到最新的API源
+      clearConfigCache();
+      console.log('✅ 管理员配置保存成功，配置缓存已清除');
     } catch (saveError) {
       console.error('❌ 保存管理员配置失败:', saveError);
       return NextResponse.json(

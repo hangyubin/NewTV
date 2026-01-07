@@ -35,10 +35,20 @@ class LocalStorageMock implements IStorage {
     if (!this.adminConfig) {
       // 加载默认API站点配置
       const defaultApiSites = {
-        dbzy_tv: {
-          name: 'DBZY TV',
-          api: 'https://api.r2afosne.dpdns.org',
-          detail: 'DBZY TV API',
+        tyyszy: {
+          name: 'TYYSZY API',
+          api: 'https://tyyszy.com/api.php/provide/vod',
+          detail: 'TYYSZY API',
+        },
+        iqiyizyapi: {
+          name: 'IQIYI ZY API',
+          api: 'https://iqiyizyapi.com/api.php/provide/vod',
+          detail: 'IQIYI ZY API',
+        },
+        caiji_dbzy5: {
+          name: 'Caiji DBZY5',
+          api: 'https://caiji.dbzy5.com/api.php/provide/vod',
+          detail: 'Caiji DBZY5 API',
         },
       };
 

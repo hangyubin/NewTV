@@ -37,6 +37,9 @@ export function isShortDrama(typeName?: string, title?: string): boolean {
     '短剧在线',
     '短剧免费',
     '短剧大全',
+    '电视剧', // 增加电视剧类型，确保更多数据被保留
+    '电影', // 增加电影类型，确保更多数据被保留
+    '综艺', // 增加综艺类型，确保更多数据被保留
   ];
 
   // 标题中的关键词
@@ -57,38 +60,14 @@ export function isShortDrama(typeName?: string, title?: string): boolean {
   // 检查type_name
   if (typeName) {
     const typeNameLower = typeName.toLowerCase();
-    if (
-      shortDramaTypes.some((type) => typeNameLower.includes(type.toLowerCase()))
-    ) {
-      return true;
-    }
+    // 放宽条件：只要type_name不为空，就认为是短剧
+    return true;
   }
 
   // 检查标题
   if (title) {
-    const titleLower = title.toLowerCase();
-    if (
-      shortDramaTitleKeywords.some((keyword) => titleLower.includes(keyword))
-    ) {
-      return true;
-    }
-  }
-
-  // 放宽条件：如果没有type_name但有title，也可以认为是短剧
-  // 这是为了兼容某些API返回的短剧数据可能没有明确的type_name
-  if (title && !typeName) {
-    // 短剧通常集数较少，标题较短
-    if (title.length < 20) {
-      return true;
-    }
-  }
-
-  // 再次放宽条件：只要包含短或微关键字，就认为是短剧
-  if (title) {
-    const titleLower = title.toLowerCase();
-    if (titleLower.includes('短') || titleLower.includes('微')) {
-      return true;
-    }
+    // 放宽条件：只要标题不为空，就认为是短剧
+    return true;
   }
 
   return false;
@@ -171,7 +150,7 @@ function getDoubanImageProxyConfig(): {
       .RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY ||
     '';
   return {
-    proxyType: doubanImageProxyType as any,
+    proxyType: doubanImageProxyType as 'direct' | 'server' | 'img3' | 'cmliussss-cdn-tencent' | 'cmliussss-cdn-ali' | 'custom',
     proxyUrl: doubanImageProxy,
   };
 }
@@ -227,7 +206,9 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
 
     if (isIPad) {
       // iPad使用最简单的ping测试，不创建任何video或HLS实例
-      console.log('iPad检测，使用简化测速避免崩溃');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('iPad检测，使用简化测速避免崩溃');
+      }
 
       const startTime = performance.now();
       try {
@@ -298,7 +279,9 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
         try {
           if (hls) hls.destroy();
         } catch (e) {
-          console.warn('HLS cleanup error:', e);
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('HLS cleanup error:', e);
+          }
         }
         try {
           if (video && video.parentNode) {
@@ -307,7 +290,9 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
             video.remove();
           }
         } catch (e) {
-          console.warn('Video cleanup error:', e);
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Video cleanup error:', e);
+          }
         }
       };
 
@@ -396,11 +381,10 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
       // 监听HLS错误
       hls.on(
         Hls.Events.ERROR,
-        (
-          _event: unknown,
-          data: { fatal?: boolean; type?: string; details?: string }
-        ) => {
-          console.warn('HLS测速错误:', data);
+        (_event: unknown, data: { fatal?: boolean; type?: string; details?: string }) => {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('HLS测速错误:', data);
+          }
           if (data.fatal) {
             cleanup();
             reject(new Error(`HLS Error: ${data.type} - ${data.details}`));

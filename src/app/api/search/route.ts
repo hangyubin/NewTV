@@ -143,11 +143,59 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // 去重：根据标题和年份进行去重
+    // 去重：根据标题和年份进行去重，但合并所有片源信息
     const uniqueResults = new Map<string, any>();
     for (const result of flattenedResults) {
       const key = `${result.title || ''}-${result.year || 'unknown'}`;
-      if (!uniqueResults.has(key)) {
+      if (uniqueResults.has(key)) {
+        // 合并片源信息
+        const existingResult = uniqueResults.get(key);
+        
+        // 合并episodes和episodes_titles，避免重复
+        const seenEpisodes = new Set(existingResult.episodes || []);
+        const seenTitles = new Map<string, string>();
+        
+        // 初始化现有剧集标题映射
+        if (existingResult.episodes && existingResult.episodes_titles) {
+          existingResult.episodes.forEach((episode: string, index: number) => {
+            if (existingResult.episodes_titles[index]) {
+              seenTitles.set(episode, existingResult.episodes_titles[index]);
+            }
+          });
+        }
+        
+        // 添加新的episodes，避免重复
+        (result.episodes || []).forEach((episode: string, index: number) => {
+          if (!seenEpisodes.has(episode)) {
+            seenEpisodes.add(episode);
+            // 尝试添加对应的标题
+            if (result.episodes_titles && result.episodes_titles[index]) {
+              seenTitles.set(episode, result.episodes_titles[index]);
+            }
+          }
+        });
+        
+        // 更新现有结果的片源信息
+        existingResult.episodes = Array.from(seenEpisodes);
+        
+        // 生成新的episodes_titles数组
+        existingResult.episodes_titles = existingResult.episodes.map((episode: string, index: number) => {
+          return seenTitles.get(episode) || `剧集 ${index + 1}`;
+        });
+        
+        // 更新源信息，记录所有提供片源的站点
+        if (!existingResult.source_sites) {
+          existingResult.source_sites = [result.source_name];
+        } else if (!existingResult.source_sites.includes(result.source_name)) {
+          existingResult.source_sites.push(result.source_name);
+        }
+        
+        // 更新片源数量
+        existingResult.source_count = existingResult.episodes.length;
+      } else {
+        // 首次添加，设置初始值
+        result.source_count = (result.episodes || []).length;
+        result.source_sites = [result.source_name];
         uniqueResults.set(key, result);
       }
     }

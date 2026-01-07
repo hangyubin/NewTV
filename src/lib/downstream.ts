@@ -48,19 +48,34 @@ async function searchWithCache(
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      // 增加详细的请求日志
+      // 增加详细的请求日志，便于在本地Docker环境中调试
       console.log(`🔍 [搜索API] 正在请求: ${url}`);
       console.log(`🔍 [搜索API] 请求头: ${JSON.stringify(API_CONFIG.search.headers)}`);
+      console.log(`🔍 [搜索API] 请求时间: ${new Date().toISOString()}`);
+      console.log(`🔍 [搜索API] 请求源: ${apiSite.name}`);
       
-      const response = await fetch(url, {
-        headers: API_CONFIG.search.headers,
-        signal: controller.signal,
-      });
+      let response;
+      try {
+        response = await fetch(url, {
+          headers: API_CONFIG.search.headers,
+          signal: controller.signal,
+        });
+        console.log(`🔍 [搜索API] 响应状态: ${response.status} ${response.statusText}`);
+        console.log(`🔍 [搜索API] 响应URL: ${response.url}`);
+        console.log(`🔍 [搜索API] 响应时间: ${new Date().toISOString()}`);
+      } catch (error) {
+        console.error(`🔍 [搜索API] 请求失败: ${error instanceof Error ? error.message : String(error)}`);
+        if (error instanceof Error) {
+          console.error(`🔍 [搜索API] 错误类型: ${error.name}`);
+          if (error.stack) {
+            console.error(`🔍 [搜索API] 错误堆栈: ${error.stack}`);
+          }
+        }
+        // 抛出错误，让上层处理
+        throw error;
+      }
 
       clearTimeout(timeoutId);
-      
-      console.log(`🔍 [搜索API] 响应状态: ${response.status} ${response.statusText}`);
-      console.log(`🔍 [搜索API] 响应URL: ${response.url}`);
       
       if (!response.ok) {
         console.warn(`🔍 [搜索API] 请求失败: ${response.status} ${response.statusText}`);
@@ -141,30 +156,19 @@ async function searchWithCache(
         };
       });
 
-      // 对于短剧，允许集数为 0 的结果
-      let results = allResults.filter((result: SearchResult) => {
-        // 检查是否为短剧
-        const isShortDramaResult =
-          result.type_name?.toLowerCase().includes('短剧') ||
-          result.title?.toLowerCase().includes('短剧') ||
-          result.title?.toLowerCase().includes('竖屏') ||
-          result.title?.toLowerCase().includes('微电影') ||
-          result.title?.toLowerCase().includes('小剧场') ||
-          result.title?.toLowerCase().includes('微') ||
-          result.title?.toLowerCase().includes('短');
+      // 对于短剧API，返回所有结果，让调用者来过滤真正的短剧
+      // 这样可以确保获取到最多的结果，然后在短剧API中统一过滤
+      let results = allResults;
 
-        // 短剧允许集数为 0，非短剧需要集数 > 0
-        return isShortDramaResult || result.episodes.length > 0;
-      });
-
-      // 在每个API站点返回的数据中也进行去重处理
-      const seenTitles = new Set<string>();
+      // 在每个API站点返回的数据中也进行去重处理，但保留更多内容
+      const seenItems = new Set<string>();
       const uniqueResults: SearchResult[] = [];
 
       for (const result of results) {
-        // 使用标题作为唯一标识进行去重
-        if (!seenTitles.has(result.title)) {
-          seenTitles.add(result.title);
+        // 使用源+ID+标题前15个字符作为唯一标识，允许不同源的同一部剧存在
+        const uniqueKey = `${result.source}_${result.id}_${result.title.slice(0, 15)}`;
+        if (!seenItems.has(uniqueKey)) {
+          seenItems.add(uniqueKey);
           uniqueResults.push(result);
         }
       }
@@ -218,12 +222,21 @@ export async function searchFromApi(
   try {
     const apiBaseUrl = apiSite.api;
 
-    // 智能搜索：生成搜索变体（优化：只生成最有用的变体）
-    const searchVariants = generateSearchVariants(query).slice(0, 2); // 最多只用前2个变体
+    // 智能搜索：优化短剧关键词策略，减少不必要的请求，提高效率
+    let searchVariants = [];
+    
+    // 如果是短剧相关查询，只使用最核心的关键词，减少重复请求
+    if (query.includes('短剧') || query.includes('微剧') || query.includes('竖屏')) {
+      // 只使用核心关键词，避免重复请求
+      searchVariants = [query, '短剧', '微剧'];
+    } else {
+      // 其他查询，使用正常的搜索变体生成
+      searchVariants = generateSearchVariants(query);
+    }
     const results: SearchResult[] = [];
     let pageCountFromFirst = 0;
 
-    // 快速策略：优先使用第一个变体（原始查询），如果找到足够结果就停止
+    // 遍历所有搜索变体，获取更多结果
     const seenIds = new Set<string>(); // 用于去重
 
     for (let i = 0; i < searchVariants.length; i++) {
@@ -231,22 +244,22 @@ export async function searchFromApi(
       
       // 根据不同API源使用不同的请求格式
       let apiUrl;
-      if (apiBaseUrl.includes('iqiyizyapi.com') || apiBaseUrl.includes('caiji.dbzy5.com') || apiBaseUrl.includes('caiji.dyttzyapi.com') || apiBaseUrl.includes('wwzy.tv') || apiBaseUrl.includes('tyyszy.com')) {
-        // 新的短剧API源，使用不同的请求格式
-        apiUrl = `${apiBaseUrl}?ac=videolist&wd=${encodeURIComponent(variant)}`;
+      if (apiBaseUrl.includes('iqiyizyapi.com') || apiBaseUrl.includes('caiji.dbzy5.com') || apiBaseUrl.includes('caiji.dyttzyapi.com') || apiBaseUrl.includes('wwzy.tv') || apiBaseUrl.includes('tyyszy.com') || apiBaseUrl.includes('api.52zyapi.com') || apiBaseUrl.includes('api.yhdm.so')) {
+        // 新的短剧API源，使用不同的请求格式，平衡数据量和性能
+        apiUrl = `${apiBaseUrl}?ac=videolist&wd=${encodeURIComponent(variant)}&limit=50`; // 每页返回50条结果，平衡数据量和性能
       } else {
         // 传统API源，使用原有格式
         apiUrl = apiBaseUrl + API_CONFIG.search.path + encodeURIComponent(variant);
       }
 
       try {
-        // 使用新的缓存搜索函数处理第一页
+        // 使用新的缓存搜索函数处理第一页，增加超时时间适应本地Docker环境
         const firstPageResult = await searchWithCache(
           apiSite,
           variant,
           1,
           apiUrl,
-          8000
+          25000
         );
 
         if (firstPageResult.results.length > 0) {
@@ -263,11 +276,8 @@ export async function searchFromApi(
           if (i === 0 && firstPageResult.pageCount) {
             pageCountFromFirst = firstPageResult.pageCount;
           }
-
-          // 优化：如果第一个变体找到了足够多的结果（≥5个），就停止搜索其他变体
-          if (i === 0 && results.length >= 5) {
-            break;
-          }
+          
+          // 不停止搜索，继续遍历所有变体获取更多结果
         }
       } catch (error) {
         // 忽略搜索变体失败，继续尝试下一个
@@ -283,39 +293,40 @@ export async function searchFromApi(
     query = searchVariants[0];
 
     const config = await getConfig();
-    const MAX_SEARCH_PAGES: number = config.SiteConfig.SearchDownstreamMaxPage;
+    // 对于短剧API，增加获取的页数，获取更多结果
+    const MAX_SEARCH_PAGES: number = Math.max(config.SiteConfig.SearchDownstreamMaxPage, 10); // 最少获取10页
 
-    // 获取总页数
-    const pageCount = pageCountFromFirst || 1;
+    // 获取总页数，平衡数据量和响应速度
+    const basePageCount = pageCountFromFirst || 3; // 减少默认页数，提高响应速度
+    // 确保获取合理数量的页数，平衡数据量和性能
+    const pageCount = Math.min(basePageCount, 5); // 最多5页，避免请求过多无效页面
     // 确定需要获取的额外页数
     const pagesToFetch = Math.min(pageCount - 1, MAX_SEARCH_PAGES - 1);
+    // 对于短剧API，获取合适数量的页面，平衡数据量和速度
+    const actualPagesToFetch = Math.min(pagesToFetch, 3); // 最多3个额外页，总共4页
 
     // 如果有额外页数，获取更多页的结果
-    if (pagesToFetch > 0) {
+    if (actualPagesToFetch > 0) {
       const additionalPagePromises = [];
 
-      for (let page = 2; page <= pagesToFetch + 1; page++) {
+      for (let page = 2; page <= actualPagesToFetch + 1; page++) {
         let pageUrl;
-        if (apiBaseUrl.includes('iqiyizyapi.com') || apiBaseUrl.includes('caiji.dbzy5.com') || apiBaseUrl.includes('caiji.dyttzyapi.com') || apiBaseUrl.includes('tyyszy.com')) {
+        if (apiBaseUrl.includes('iqiyizyapi.com') || apiBaseUrl.includes('caiji.dbzy5.com') || apiBaseUrl.includes('caiji.dyttzyapi.com') || apiBaseUrl.includes('wwzy.tv') || apiBaseUrl.includes('tyyszy.com') || apiBaseUrl.includes('api.52zyapi.com') || apiBaseUrl.includes('api.yhdm.so')) {
           // 新的短剧API源，使用不同的分页请求格式
-          pageUrl = `${apiBaseUrl}?ac=videolist&wd=${encodeURIComponent(query)}&pg=${page}`;
+          pageUrl = `${apiBaseUrl}?ac=videolist&wd=${encodeURIComponent(query)}&pg=${page}&limit=50`;
         } else {
           // 传统API源，使用原有分页格式
-          pageUrl =
-            apiBaseUrl +
-            API_CONFIG.search.pagePath
-              .replace('{query}', encodeURIComponent(query))
-              .replace('{page}', page.toString());
+          pageUrl = apiBaseUrl + API_CONFIG.search.pagePath.replace('{query}', encodeURIComponent(query)).replace('{page}', page.toString());
         }
 
         const pagePromise = (async () => {
-          // 使用新的缓存搜索函数处理分页
+          // 使用新的缓存搜索函数处理分页，增加超时时间适应本地Docker环境
           const pageResult = await searchWithCache(
             apiSite,
             query,
             page,
             pageUrl,
-            8000
+            25000
           );
           return pageResult.results;
         })();
