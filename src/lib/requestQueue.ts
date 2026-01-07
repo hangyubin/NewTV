@@ -49,7 +49,7 @@ export class RequestQueue {
    * @param maxParallel 最大并行请求数，默认4
    * @param timeout 默认超时时间，默认10秒
    */
-  constructor(maxParallel: number = 4, timeout: number = 10000) {
+  constructor(maxParallel = 4, timeout = 10000) {
     this.maxParallel = maxParallel;
     this.timeout = timeout;
   }
@@ -69,7 +69,9 @@ export class RequestQueue {
     // 按优先级排序插入
     let inserted = false;
     for (let i = 0; i < this.queue.length; i++) {
-      if (this.queue[i].options.priority! < task.options.priority!) {
+      const queuePriority = this.queue[i].options.priority || RequestPriority.NORMAL;
+      const taskPriority = task.options.priority || RequestPriority.NORMAL;
+      if (queuePriority < taskPriority) {
         this.queue.splice(i, 0, task);
         inserted = true;
         break;
@@ -134,7 +136,10 @@ export class RequestQueue {
 
     // 如果请求已在队列或活跃中，直接返回现有请求
     if (this.requestMap.has(id)) {
-      const existingTask = this.requestMap.get(id)!;
+      const existingTask = this.requestMap.get(id);
+      if (!existingTask) {
+        throw new Error(`Request not found in queue: ${id}`);
+      }
       return new Promise((resolve, reject) => {
         // 替换resolve和reject，以便返回相同的结果
         const originalResolve = existingTask.resolve;
@@ -153,15 +158,13 @@ export class RequestQueue {
     if (this.activeRequests.has(id)) {
       // 如果请求正在执行，等待其完成
       return new Promise((resolve, reject) => {
-        let checkInterval: NodeJS.Timeout;
         const checkActive = () => {
           if (!this.activeRequests.has(id)) {
-            clearInterval(checkInterval);
             // 重新发起请求
             this.fetch(options).then(resolve).catch(reject);
           }
         };
-        checkInterval = setInterval(checkActive, 100);
+        setInterval(checkActive, 100);
       });
     }
 

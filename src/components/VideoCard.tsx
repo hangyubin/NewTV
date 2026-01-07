@@ -7,11 +7,9 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
 } from 'react';
-import { ExternalLink, Heart, PlayCircleIcon, Trash2 } from 'lucide-react';
 
 import {
   deleteFavorite,
@@ -24,10 +22,9 @@ import {
 import { getDoubanDetails } from '@/lib/douban.client';
 import { queuedFetch, RequestPriority } from '@/lib/requestQueue';
 import { DoubanDetail, SearchResult } from '@/lib/types';
-import { useLongPress } from '@/hooks/useLongPress';
 
-import VideoCardCore from './VideoCardCore';
 import VideoCardActions from './VideoCardActions';
+import VideoCardCore from './VideoCardCore';
 import VideoCardModal from './VideoCardModal';
 
 export interface VideoCardProps {
@@ -96,7 +93,6 @@ const VideoCard = memo(
   ) {
     const router = useRouter();
     const [favorited, setFavorited] = useState(false);
-    const [isImageLoading, setIsImageLoading] = useState(false);
     const [showMobileActions, setShowMobileActions] = useState(false);
     const [searchFavorited, setSearchFavorited] = useState<boolean | null>(
       null
@@ -108,8 +104,6 @@ const VideoCard = memo(
     const [isLoadingModal, setIsLoadingModal] = useState(false);
     const [isApiLoading, setIsApiLoading] = useState(false);
     const autoPlayTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-    const [isDesktop, setIsDesktop] = useState(false);
 
     // 可外部修改的可控字段
     const [dynamicEpisodes, setDynamicEpisodes] = useState<number | undefined>(
@@ -409,7 +403,6 @@ const VideoCard = memo(
           }
         }
       } catch (error) {
-        console.error('获取视频详情失败:', error);
         setIsLoadingModal(false);
       } finally {
         setIsApiLoading(false);
@@ -512,34 +505,6 @@ const VideoCard = memo(
         }
       }
     }, [from, isAggregate, actualSource, actualId, searchFavorited]);
-
-    // 长按操作
-    const handleLongPress = useCallback(() => {
-      if (!showMobileActions) {
-        // 防止重复触发
-        // 立即显示菜单，避免等待数据加载导致动画卡顿
-        setShowMobileActions(true);
-
-        // 异步检查收藏状态，不阻塞菜单显示
-        if (
-          from === 'search' &&
-          !isAggregate &&
-          actualSource &&
-          actualId &&
-          searchFavorited === null
-        ) {
-          checkSearchFavoriteStatus();
-        }
-      }
-    }, [
-      showMobileActions,
-      from,
-      isAggregate,
-      actualSource,
-      actualId,
-      searchFavorited,
-      checkSearchFavoriteStatus,
-    ]);
 
     return (
       <>

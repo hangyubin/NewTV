@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any,no-console,no-case-declarations */
 
-import { DoubanItem, DoubanResult } from './types';
 import { queuedFetch, RequestPriority } from './requestQueue';
+import { DoubanItem, DoubanResult } from './types';
 
 // 豆瓣数据缓存配置
 const DOUBAN_CACHE_EXPIRE = {

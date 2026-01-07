@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { PlayCircleIcon, Link } from 'lucide-react';
+import { Link,PlayCircleIcon } from 'lucide-react';
 import Image from 'next/image';
 import React, { forwardRef, memo, useCallback, useMemo } from 'react';
 
-import { SearchResult } from '@/lib/types';
 import { processImageUrl } from '@/lib/utils';
 
 import { ImagePlaceholder } from './ImagePlaceholder';
@@ -44,7 +43,7 @@ interface VideoCardCoreProps {
 const VideoCardCore = memo(
   forwardRef<HTMLDivElement, VideoCardCoreProps>(function VideoCardCore(
     {
-      id,
+      id: _id,
       title = '',
       poster = '',
       year,
@@ -56,7 +55,7 @@ const VideoCardCore = memo(
       from,
       currentEpisode,
       douban_id,
-      type = '',
+      type: _type = '',
       isBangumi = false,
       isAggregate = false,
       origin = 'vod',
@@ -69,14 +68,13 @@ const VideoCardCore = memo(
       onContextMenu,
       onDragStart,
       favorited = false,
-      searchFavorited = null,
+      searchFavorited: _searchFavorited = null,
       isImageLoading = false,
     }: VideoCardCoreProps,
     ref
   ) {
     const actualTitle = title;
     const actualPoster = poster;
-    const actualSource = source_name;
     const actualYear = year;
     const actualDoubanId = douban_id;
     const actualEpisodes = episodes;
