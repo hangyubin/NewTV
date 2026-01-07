@@ -106,7 +106,7 @@ const VideoCard = memo(
   ) {
     const router = useRouter();
     const [favorited, setFavorited] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isImageLoading, setIsImageLoading] = useState(false);
     const [showMobileActions, setShowMobileActions] = useState(false);
     const [searchFavorited, setSearchFavorited] = useState<boolean | null>(
       null
@@ -120,6 +120,7 @@ const VideoCard = memo(
     const [doubanDetail, setDoubanDetail] = useState<DoubanDetail | null>(null);
     const [videoDetail, setVideoDetail] = useState<SearchResult | null>(null);
     const [isLoadingModal, setIsLoadingModal] = useState(false);
+    const [isApiLoading, setIsApiLoading] = useState(false);
     const autoPlayTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     // 悬停相关状态（仅豆瓣卡片）
@@ -366,88 +367,67 @@ const VideoCard = memo(
 
     const handleDoubanClick = useCallback(async () => {
       // 防止重复调用
-      if (isLoading || showCombinedModal) {
+      if (isApiLoading || showCombinedModal) {
         return;
       }
 
       // 立即显示模态框和加载状态
-      setIsLoading(true);
+      setIsApiLoading(true);
       setShowCombinedModal(true);
       setIsLoadingModal(true);
       setDoubanDetail(null);
       setVideoDetail(null);
 
       try {
-        // 同时执行豆瓣API和搜索API请求
-        let doubanResult = { success: false, data: null };
-        let searchResult = { success: false, results: [] };
-
         // 并行执行API请求
         const [doubanRes, searchRes] = await Promise.all([
+          // 获取豆瓣详情
           actualDoubanId 
             ? getDoubanDetails(actualDoubanId.toString())
-                .then((details) => {
-                  if (details.code === 200 && details.data) {
-                    setDoubanDetail(details.data);
-                    return { success: true, data: details.data };
-                  }
-                  return { success: false, data: null };
-                })
-                .catch(() => ({ success: false, data: null }))
-            : Promise.resolve({ success: false, data: null }),
+                .then(res => res.code === 200 ? res.data : null)
+                .catch(() => null)
+            : Promise.resolve(null),
+          // 获取搜索详情
           fetch(`/api/search?q=${encodeURIComponent(actualTitle.trim())}`)
-            .then((response) => {
-              if (!response.ok) throw new Error('搜索失败');
-              return response.json();
-            })
-            .then((data: { results: SearchResult[] }) => {
-              if (data.results && data.results.length > 0) {
-                return { success: true, results: data.results };
-              }
-              return { success: false, results: [] };
-            })
-            .catch(() => ({ success: false, results: [] }))
+            .then(res => res.ok ? res.json() : { results: [] })
+            .catch(() => ({ results: [] }))
         ]);
 
-        doubanResult = doubanRes;
-        searchResult = searchRes;
-
         // 处理结果
-        if (doubanResult.success) {
-          // 豆瓣API成功：显示豆瓣信息，5秒后自动播放
-          setIsLoadingModal(false);
-
-          // 如果搜索也成功，设置搜索结果供后续使用
-          if (searchResult.success && searchResult.results.length > 0) {
-            setVideoDetail(searchResult.results[0]);
+        if (doubanRes) {
+          // 豆瓣API成功：显示豆瓣信息
+          setDoubanDetail(doubanRes);
+          // 如果搜索也成功，设置搜索结果
+          if (searchRes?.results?.length > 0) {
+            setVideoDetail(searchRes.results[0]);
           }
+          setIsLoadingModal(false);
 
           // 5秒后自动播放
           autoPlayTimerRef.current = setTimeout(() => {
-            if (searchResult.success && searchResult.results.length > 0) {
-              // 跳转到播放器
+            if (searchRes?.results?.length > 0) {
               navigateToPlay();
             }
           }, 5000);
         } else {
           // 豆瓣API失败：使用搜索结果作为备用方案
-          if (searchResult.success && searchResult.results.length > 0) {
+          if (searchRes?.results?.length > 0) {
             // 查找匹配title且有desc的结果
-            const matchedResult = searchResult.results.find(
-              (result) =>
+            const matchedResult = searchRes.results.find(
+              (result: SearchResult) =>
                 result.title &&
                 result.title.includes(actualTitle.trim()) &&
                 result.desc
             ) ||
-            searchResult.results.find((result) => result.desc) ||
-            searchResult.results[0];
+            searchRes.results.find((result: SearchResult) => result.desc) ||
+            searchRes.results[0];
 
             setVideoDetail(matchedResult);
             setIsLoadingModal(false);
 
             // 5秒后跳转到第一个源播放
             autoPlayTimerRef.current = setTimeout(() => {
-              const firstResult = searchResult.results[0];
+              const firstResult = searchRes.results[0];
               if (firstResult.id && firstResult.source) {
                 navigateToPlay();
               }
@@ -461,9 +441,9 @@ const VideoCard = memo(
         console.error('获取视频详情失败:', error);
         setIsLoadingModal(false);
       } finally {
-        setIsLoading(false);
+        setIsApiLoading(false);
       }
-    }, [actualDoubanId, actualTitle, isLoading, showCombinedModal, setIsLoading, setShowCombinedModal, setIsLoadingModal, setDoubanDetail, setVideoDetail, navigateToPlay]);
+    }, [actualDoubanId, actualTitle, isApiLoading, showCombinedModal, setIsApiLoading, setShowCombinedModal, setIsLoadingModal, setDoubanDetail, setVideoDetail, navigateToPlay]);
 
     // 组件卸载时清理自动播放计时器
     useEffect(() => {
@@ -861,7 +841,7 @@ const VideoCard = memo(
             />
 
             {/* 骨架屏 - 更精致的设计 */}
-            {!isLoading && (
+            {!isImageLoading && (
               <ImagePlaceholder
                 aspectRatio='aspect-[2/3]'
                 className='animate-pulse rounded-lg'
@@ -869,33 +849,35 @@ const VideoCard = memo(
             )}
             {/* 图片 - 增强的过渡效果 */}
             <Image
-              src={processImageUrl(actualPoster)}
-              alt={actualTitle}
-              fill
-              className={`${
-                origin === 'live' ? 'object-contain' : 'object-cover'
-              } transition-all duration-600 ease-in-out ${
-                isLoading ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
-              }`}
-              referrerPolicy='no-referrer'
-              loading='lazy'
-              priority={priority}
-              quality={75}
-              onLoadingComplete={() => setIsLoading(true)}
-              onError={(e) => {
-                const img = e.target as HTMLImageElement;
-                if (!img.dataset.retried) {
-                  img.dataset.retried = 'true';
-                  setTimeout(() => {
-                    try {
-                      img.src = '/icons/icon-192x192.png';
-                      setIsLoading(true);
-                    } catch (err) {
-                      // 忽略图片加载失败
-                    }
-                  }, 2000);
+          src={processImageUrl(actualPoster)}
+          alt={actualTitle}
+          fill
+          className={`${
+            origin === 'live'
+              ? 'object-contain'
+              : 'object-cover'
+          } transition-all duration-600 ease-in-out ${
+            isImageLoading ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
+          }`}
+          referrerPolicy='no-referrer'
+          loading='lazy'
+          priority={priority}
+          quality={75}
+          onLoadingComplete={() => setIsImageLoading(true)}
+          onError={(e) => {
+            const img = e.target as HTMLImageElement;
+            if (!img.dataset.retried) {
+              img.dataset.retried = 'true';
+              setTimeout(() => {
+                try {
+                  img.src = '/icons/icon-192x192.png';
+                  setIsImageLoading(true);
+                } catch (err) {
+                  // 忽略图片加载失败
                 }
-              }}
+              }, 2000);
+            }
+          }}
               style={
                 {
                   WebkitUserSelect: 'none',
@@ -947,7 +929,7 @@ const VideoCard = memo(
                   return false;
                 }}
               >
-                {isLoading ? (
+                {!isImageLoading ? (
                   <div className='flex items-center justify-center'>
                     <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-white'></div>
                   </div>
