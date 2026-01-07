@@ -94,6 +94,7 @@ const VideoCard = memo(
     const router = useRouter();
     const [favorited, setFavorited] = useState(false);
     const [showMobileActions, setShowMobileActions] = useState(false);
+    const [isImageLoading, setIsImageLoading] = useState(false);
     const [searchFavorited, setSearchFavorited] = useState<boolean | null>(
       null
     ); // 搜索结果的收藏状态
@@ -127,20 +128,6 @@ const VideoCard = memo(
     useEffect(() => {
       setDynamicDoubanId(douban_id);
     }, [douban_id]);
-
-    // 屏幕尺寸检测
-    useEffect(() => {
-      const checkScreenSize = () => {
-        setIsDesktop(window.innerWidth >= 768);
-      };
-
-      checkScreenSize();
-      window.addEventListener('resize', checkScreenSize);
-
-      return () => {
-        window.removeEventListener('resize', checkScreenSize);
-      };
-    }, []);
 
     useImperativeHandle(ref, () => ({
       setEpisodes: (eps?: number) => setDynamicEpisodes(eps),
