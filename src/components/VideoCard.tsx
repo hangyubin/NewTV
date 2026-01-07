@@ -94,7 +94,7 @@ const VideoCard = memo(
     const router = useRouter();
     const [favorited, setFavorited] = useState(false);
     const [showMobileActions, setShowMobileActions] = useState(false);
-    const [isImageLoading, setIsImageLoading] = useState(true);
+    const [isImageLoading, setIsImageLoading] = useState(true); // 修复：需要使用isImageLoading变量
     const [searchFavorited, setSearchFavorited] = useState<boolean | null>(
       null
     ); // 搜索结果的收藏状态

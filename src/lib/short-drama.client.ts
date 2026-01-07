@@ -13,6 +13,8 @@ export interface ShortDramaSearchParams {
 }
 
 export interface ShortDramaResponse {
+  code: number;
+  message: string;
   results: SearchResult[];
   total: number;
   page: number;
@@ -57,7 +59,14 @@ export async function getShortDramaData(
     throw new Error(`获取短剧数据失败: ${response.status}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  
+  // 检查API返回的code字段
+  if (data.code !== 200) {
+    throw new Error(`获取短剧数据失败: ${data.message || '未知错误'}`);
+  }
+  
+  return data;
 }
 
 /**
