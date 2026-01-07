@@ -3,12 +3,7 @@
 
 const nextConfig = {
   output: 'standalone',
-  eslint: {
-    dirs: ['src'],
-  },
-
   reactStrictMode: false,
-  swcMinify: false,
 
   experimental: {
     // instrumentationHook: process.env.NODE_ENV === 'production',
@@ -38,6 +33,9 @@ const nextConfig = {
 
     return config;
   },
+
+  // 添加空的turbopack配置来解决Next.js 16的构建错误
+  turbopack: {},
 };
 
 const withPWA = require('next-pwa')({
