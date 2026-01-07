@@ -20,7 +20,7 @@ import {
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import { getDoubanDetails } from '@/lib/douban.client';
-import { queuedFetch, RequestPriority } from '@/lib/requestQueue';
+import { cachedSearch } from '@/lib/searchCache';
 import { DoubanDetail, SearchResult } from '@/lib/types';
 
 import VideoCardActions from './VideoCardActions';
@@ -94,7 +94,7 @@ const VideoCard = memo(
     const router = useRouter();
     const [favorited, setFavorited] = useState(false);
     const [showMobileActions, setShowMobileActions] = useState(false);
-    const [isImageLoading, setIsImageLoading] = useState(false);
+    const [isImageLoading, setIsImageLoading] = useState(true);
     const [searchFavorited, setSearchFavorited] = useState<boolean | null>(
       null
     ); // 搜索结果的收藏状态
@@ -106,42 +106,45 @@ const VideoCard = memo(
     const [isApiLoading, setIsApiLoading] = useState(false);
     const autoPlayTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-    // 可外部修改的可控字段
-    const [dynamicEpisodes, setDynamicEpisodes] = useState<number | undefined>(
-      episodes
-    );
-    const [dynamicSourceNames, setDynamicSourceNames] = useState<
-      string[] | undefined
-    >(source_names);
-    const [dynamicDoubanId, setDynamicDoubanId] = useState<number | undefined>(
-      douban_id
-    );
+    // 可外部修改的可控字段 - 使用ref存储动态值，避免不必要的重渲染
+  const dynamicValuesRef = useRef({
+    episodes: episodes,
+    sourceNames: source_names,
+    doubanId: douban_id,
+  });
 
-    useEffect(() => {
-      setDynamicEpisodes(episodes);
-    }, [episodes]);
+  // 当props变化时更新ref值
+  useEffect(() => {
+    dynamicValuesRef.current.episodes = episodes;
+  }, [episodes]);
 
-    useEffect(() => {
-      setDynamicSourceNames(source_names);
-    }, [source_names]);
+  useEffect(() => {
+    dynamicValuesRef.current.sourceNames = source_names;
+  }, [source_names]);
 
-    useEffect(() => {
-      setDynamicDoubanId(douban_id);
-    }, [douban_id]);
+  useEffect(() => {
+    dynamicValuesRef.current.doubanId = douban_id;
+  }, [douban_id]);
 
-    useImperativeHandle(ref, () => ({
-      setEpisodes: (eps?: number) => setDynamicEpisodes(eps),
-      setSourceNames: (names?: string[]) => setDynamicSourceNames(names),
-      setDoubanId: (id?: number) => setDynamicDoubanId(id),
-    }));
+  useImperativeHandle(ref, () => ({
+    setEpisodes: (eps?: number) => {
+      dynamicValuesRef.current.episodes = eps;
+    },
+    setSourceNames: (names?: string[]) => {
+      dynamicValuesRef.current.sourceNames = names;
+    },
+    setDoubanId: (id?: number) => {
+      dynamicValuesRef.current.doubanId = id;
+    },
+  }));
 
     const actualTitle = title;
     const actualPoster = poster;
     // 对于播放记录，id是完整的存储key（source+id格式），需要解析
     const actualSource = from === 'playrecord' && id?.includes('+') ? id.split('+')[0] : source;
     const actualId = from === 'playrecord' && id?.includes('+') ? id.split('+')[1] : id;
-    const actualDoubanId = dynamicDoubanId;
-    const actualEpisodes = dynamicEpisodes;
+    const actualDoubanId = dynamicValuesRef.current.doubanId;
+    const actualEpisodes = dynamicValuesRef.current.episodes;
     const actualYear = year;
     const actualQuery = query || '';
     const actualSearchType = isAggregate
@@ -336,13 +339,8 @@ const VideoCard = memo(
                 .then(res => res.code === 200 ? res.data : null)
                 .catch(() => null)
             : Promise.resolve(null),
-          // 获取搜索详情 - 中优先级
-          queuedFetch(`/api/search?q=${encodeURIComponent(actualTitle.trim())}`, {
-            priority: RequestPriority.NORMAL,
-            timeout: 8000
-          })
-            .then(res => res.ok ? res.json() : { results: [] })
-            .catch(() => ({ results: [] }))
+          // 获取搜索详情 - 使用带缓存的搜索API
+          cachedSearch(actualTitle.trim())
         ]);
 
         // 处理结果
@@ -504,7 +502,7 @@ const VideoCard = memo(
           rate={rate}
           episodes={actualEpisodes}
           source_name={source_name}
-          source_names={dynamicSourceNames}
+          source_names={dynamicValuesRef.current.sourceNames}
           progress={progress}
           from={from}
           currentEpisode={currentEpisode}
@@ -558,7 +556,7 @@ const VideoCard = memo(
           poster={actualPoster}
           episodes={actualEpisodes}
           source_name={source_name}
-          source_names={dynamicSourceNames}
+          source_names={dynamicValuesRef.current.sourceNames}
           from={from}
           currentEpisode={currentEpisode}
           isAggregate={isAggregate}

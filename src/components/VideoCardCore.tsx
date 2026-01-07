@@ -182,30 +182,33 @@ const VideoCardCore = memo(
             WebkitTouchCallout: 'none',
           } as React.CSSProperties}
         >
-          {/* 渐变光泽动画层 */}
+          {/* 渐变光泽动画层 - 简化动画并添加硬件加速 */}
           <div
-            className='absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-600 pointer-events-none z-10'
+            className='absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10'
             style={{
-              background: 'linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.2) 45%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.2) 55%, transparent 70%)',
-              backgroundSize: '200% 100%',
-              animation: 'card-shimmer 2.5s ease-in-out infinite',
+              background: 'linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)',
+              backgroundSize: '150% 100%',
+              animation: 'card-shimmer 2s ease-in-out infinite',
+              // 硬件加速优化
+              transform: 'translateZ(0)',
+              willChange: 'opacity',
             }}
           />
 
           {/* 骨架屏 */}
-          {!isImageLoading && (
+          {/* {!isImageLoading && (
             <ImagePlaceholder
               aspectRatio='aspect-[2/3]'
               className='animate-pulse rounded-lg'
             />
-          )}
+          )} */}
 
           {/* 图片 */}
           <Image
             src={processImageUrl(actualPoster)}
             alt={actualTitle}
             fill
-            className={`${origin === 'live' ? 'object-contain' : 'object-cover'} transition-all duration-600 ease-in-out ${isImageLoading ? 'opacity-100 scale-100' : 'opacity-0 scale-105'}`}
+            className={`${origin === 'live' ? 'object-contain' : 'object-cover'} transition-all duration-600 ease-in-out opacity-100 scale-100`}
             referrerPolicy='no-referrer'
             loading='lazy'
             priority={priority}
@@ -242,11 +245,7 @@ const VideoCardCore = memo(
                 WebkitTouchCallout: 'none',
               } as React.CSSProperties}
             >
-              {!isImageLoading ? (
-                <div className='flex items-center justify-center'>
-                  <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-white'></div>
-                </div>
-              ) : from === 'playrecord' && progress !== undefined ? (
+              {from === 'playrecord' && progress !== undefined ? (
                 // 观看记录显示百分比进度
                 <div className='flex flex-col items-center justify-center text-white'>
                   <div className='relative w-16 h-16 mb-2'>
