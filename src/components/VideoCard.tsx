@@ -443,15 +443,14 @@ const VideoCard = memo(
         // 豆瓣API失败：使用搜索结果作为备用方案
         if (searchResult.success && searchResult.results.length > 0) {
           // 查找匹配title且有desc的结果
-          const matchedResult =
-            searchResult.results.find(
-              (result) =>
-                result.title &&
-                result.title.includes(actualTitle.trim()) &&
-                result.desc
-            ) ||
-            searchResult.results.find((result) => result.desc) ||
-            searchResult.results[0];
+          const matchedResult = searchResult.results.find(
+            (result) =>
+              result.title &&
+              result.title.includes(actualTitle.trim()) &&
+              result.desc
+          ) ||
+          searchResult.results.find((result) => result.desc) ||
+          searchResult.results[0];
 
           setVideoDetail(matchedResult);
           setIsLoadingModal(false);
@@ -470,7 +469,7 @@ const VideoCard = memo(
       }
 
       setIsLoading(false);
-    }, [actualDoubanId, actualTitle]);
+    }, [actualDoubanId, actualTitle, isLoading, showCombinedModal, setIsLoading, setShowCombinedModal, setIsLoadingModal, setDoubanDetail, setVideoDetail, navigateToPlay, getDoubanDetails]);
 
     // 组件卸载时清理自动播放计时器
     useEffect(() => {
