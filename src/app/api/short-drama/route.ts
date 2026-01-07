@@ -30,6 +30,20 @@ export async function GET(request: NextRequest) {
     // 集成新的短剧API数据源，使用HTTPS协议避免混合内容问题
     const defaultApiSites = [
       {
+        key: 'wwzy_tv',
+        name: 'WWZY TV',
+        api: 'https://wwzy.tv/api.php/provide/vod',
+        detail: 'WWZY TV API - 专做短剧平台',
+        disabled: true // 暂时禁用，用户反馈该平台打不开报错
+      },
+      {
+        key: 'tyyszy',
+        name: 'TYYSZY API',
+        api: 'https://tyyszy.com/api.php/provide/vod',
+        detail: 'TYYSZY API',
+        disabled: false
+      },
+      {
         key: 'iqiyizyapi',
         name: 'IQIYI ZY API',
         api: 'https://iqiyizyapi.com/api.php/provide/vod',
@@ -44,10 +58,17 @@ export async function GET(request: NextRequest) {
         disabled: false
       },
       {
-        key: 'caiji_dyttzyapi',
-        name: 'Caiji DYTZY API',
+        key: 'caiji_dyttzyapi_http',
+        name: 'Caiji DYTZY API (HTTP)',
+        api: 'http://caiji.dyttzyapi.com/api.php/provide/vod',
+        detail: 'Caiji DYTZY API (HTTP)',
+        disabled: false
+      },
+      {
+        key: 'caiji_dyttzyapi_https',
+        name: 'Caiji DYTZY API (HTTPS)',
         api: 'https://caiji.dyttzyapi.com/api.php/provide/vod',
-        detail: 'Caiji DYTZY API',
+        detail: 'Caiji DYTZY API (HTTPS)',
         disabled: false
       },
       {

@@ -231,7 +231,7 @@ export async function searchFromApi(
       
       // 根据不同API源使用不同的请求格式
       let apiUrl;
-      if (apiBaseUrl.includes('iqiyizyapi.com') || apiBaseUrl.includes('caiji.dbzy5.com') || apiBaseUrl.includes('caiji.dyttzyapi.com')) {
+      if (apiBaseUrl.includes('iqiyizyapi.com') || apiBaseUrl.includes('caiji.dbzy5.com') || apiBaseUrl.includes('caiji.dyttzyapi.com') || apiBaseUrl.includes('wwzy.tv') || apiBaseUrl.includes('tyyszy.com')) {
         // 新的短剧API源，使用不同的请求格式
         apiUrl = `${apiBaseUrl}?ac=videolist&wd=${encodeURIComponent(variant)}`;
       } else {
@@ -296,7 +296,7 @@ export async function searchFromApi(
 
       for (let page = 2; page <= pagesToFetch + 1; page++) {
         let pageUrl;
-        if (apiBaseUrl.includes('iqiyizyapi.com') || apiBaseUrl.includes('caiji.dbzy5.com') || apiBaseUrl.includes('caiji.dyttzyapi.com')) {
+        if (apiBaseUrl.includes('iqiyizyapi.com') || apiBaseUrl.includes('caiji.dbzy5.com') || apiBaseUrl.includes('caiji.dyttzyapi.com') || apiBaseUrl.includes('tyyszy.com')) {
           // 新的短剧API源，使用不同的分页请求格式
           pageUrl = `${apiBaseUrl}?ac=videolist&wd=${encodeURIComponent(query)}&pg=${page}`;
         } else {
