@@ -125,6 +125,8 @@ export interface SearchResult {
   type_name?: string;
   douban_id?: number;
   score?: number; // 添加评分字段
+  source_sites?: string[]; // 所有提供片源的站点名称
+  source_count?: number; // 片源数量
 }
 
 // 豆瓣数据结构
