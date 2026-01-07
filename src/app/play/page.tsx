@@ -3972,7 +3972,7 @@ function PlayPageClient() {
         <div className='py-1'>
           <h1 className='text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center'>
             <span
-              className='mr-3 text-2xl font-bold cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors'
+              className='mr-5 ml-2 text-2xl font-bold cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors'
               onClick={() => router.back()}
               aria-label='返回上一页'
             >
