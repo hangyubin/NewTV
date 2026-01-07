@@ -4071,6 +4071,13 @@ function PlayPageClient() {
             <div className='p-6 flex flex-col min-h-0'>
               {/* 标题 */}
               <h1 className='text-3xl font-bold mb-2 tracking-wide flex items-center flex-shrink-0 text-center md:text-left w-full'>
+                <span
+                  className='mr-3 text-4xl font-bold cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors'
+                  onClick={() => router.back()}
+                  aria-label='返回上一页'
+                >
+                  ←
+                </span>
                 {videoTitle || '影片标题'}
                 <button
                   onClick={(e) => {

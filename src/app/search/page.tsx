@@ -1244,7 +1244,14 @@ function SearchPageClient() {
             <section className='mb-12'>
               {/* 标题 */}
               <div className='mb-4'>
-                <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
+                <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200 flex items-center'>
+                  <span
+                    className='mr-3 text-2xl font-bold cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors'
+                    onClick={() => router.back()}
+                    aria-label='返回上一页'
+                  >
+                    ←
+                  </span>
                   搜索结果
                   {totalSources > 0 && useFluidSearch && (
                     <span className='ml-2 text-sm font-normal text-gray-500 dark:text-gray-400'>
