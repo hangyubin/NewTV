@@ -243,7 +243,6 @@ function PlayPageClient() {
 
   // 搜索所需信息
   const [searchTitle] = useState(searchParams.get('stitle') || '');
-  const [searchType] = useState(searchParams.get('stype') || '');
 
   // 是否需要优选
   const [needPrefer, setNeedPrefer] = useState(
@@ -1398,22 +1397,12 @@ function PlayPageClient() {
         }
         const data = await response.json();
 
-        // 处理搜索结果，根据规则过滤
-        const results = data.results.filter(
-          (result: SearchResult) =>
-            result.title
-              .replaceAll(' ', '')
-              .toLowerCase()
-              .includes(
-                videoTitleRef.current.replaceAll(' ', '').toLowerCase()
-              ) &&
-            (videoYearRef.current
-              ? result.year.toLowerCase() === videoYearRef.current.toLowerCase()
-              : true) &&
-            (searchType
-              ? (searchType === 'tv' && result.episodes.length > 1) ||
-                (searchType === 'movie' && result.episodes.length === 1)
-              : true)
+        // 处理搜索结果，只保留标题的基本匹配要求
+        const results = data.results.filter((result: SearchResult) =>
+          result.title
+            .replaceAll(' ', '')
+            .toLowerCase()
+            .includes(videoTitleRef.current.replaceAll(' ', '').toLowerCase())
         );
         setAvailableSources(results);
         return results;
