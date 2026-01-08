@@ -102,15 +102,25 @@ export function calculateRelevanceScore(
     if (containsCharsInOrder(titleNoSpace, keywordNoSpace)) {
       // 计算字符间隔程度，间隔越小分数越高
       const similarity = similarityScore(titleNoSpace, keywordNoSpace);
-      score = 20 + similarity * 20; // 20-40分
+      // 只有相似度达到50%以上才给分
+      if (similarity >= 0.5) {
+        score = 20 + similarity * 20; // 20-40分
+      }
     }
     // 4.2 检查是否包含关键词的部分字符
     else {
       const matchedChars = keywordNoSpace
         .split('')
         .filter((char) => titleNoSpace.includes(char)).length;
-      const matchRatio = matchedChars / keywordNoSpace.length;
-      score = matchRatio * 15; // 0-15分
+
+      // 添加最小字符匹配要求：至少3个字符匹配
+      if (matchedChars >= 3) {
+        const matchRatio = matchedChars / keywordNoSpace.length;
+        // 只有匹配比例达到50%以上才给分
+        if (matchRatio >= 0.5) {
+          score = matchRatio * 15; // 0-15分
+        }
+      }
     }
   }
 

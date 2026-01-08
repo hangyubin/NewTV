@@ -1492,35 +1492,66 @@ function PlayPageClient() {
                   .replaceAll(' ', '')
                   .toLowerCase();
 
-                // 智能标题匹配：支持多种匹配策略
+                // 智能标题匹配：完全匹配优先，精确匹配次之
                 const titleMatch =
-                  // 精确包含匹配
-                  resultTitle.includes(queryTitle) ||
-                  queryTitle.includes(resultTitle) ||
-                  // 移除数字和标点后匹配
-                  resultTitle.replace(/\d+|[：:]/g, '') ===
-                    queryTitle.replace(/\d+|[：:]/g, '') ||
-                  // 通用关键词匹配：仅当查询标题较长时（4个字符以上）才使用关键词匹配
+                  // 1. 完全匹配（最优先）- 完全相同的标题
+                  resultTitle === queryTitle ||
+                  // 2. 精确包含匹配，至少3个字符
+                  ((resultTitle.includes(queryTitle) ||
+                    queryTitle.includes(resultTitle)) &&
+                    queryTitle.length >= 3) ||
+                  // 3. 移除数字和标点后完全匹配，至少3个字符
+                  (resultTitle.replace(/\d+|[：:]/g, '') ===
+                    queryTitle.replace(/\d+|[：:]/g, '') &&
+                    queryTitle.length >= 3) ||
+                  // 4. 中文标题完全匹配：移除所有非中文字符后完全相同，至少3个字符
+                  (resultTitle.replace(/[^\u4e00-\u9fa5]/g, '') ===
+                    queryTitle.replace(/[^\u4e00-\u9fa5]/g, '') &&
+                    queryTitle.replace(/[^\u4e00-\u9fa5]/g, '').length >= 3) ||
+                  // 5. 英文标题完全匹配：移除所有非英文字符后完全相同，至少3个字符
+                  (resultTitle.replace(/[^a-zA-Z]/g, '') ===
+                    queryTitle.replace(/[^a-zA-Z]/g, '') &&
+                    queryTitle.replace(/[^a-zA-Z]/g, '').length >= 3) ||
+                  // 6. 通用关键词匹配：仅当查询标题较长时（4个字符以上）才使用，且所有关键词都匹配
                   (queryTitle.length > 4 &&
                     checkAllKeywordsMatch(queryTitle, resultTitle)) ||
-                  // 中文标题匹配：移除所有非中文字符后匹配
-                  resultTitle.replace(/[^\u4e00-\u9fa5]/g, '') ===
-                    queryTitle.replace(/[^\u4e00-\u9fa5]/g, '') ||
-                  // 英文标题匹配：移除所有非英文字符后匹配
-                  resultTitle.replace(/[^a-zA-Z]/g, '') ===
-                    queryTitle.replace(/[^a-zA-Z]/g, '') ||
-                  // 宽松匹配：至少有50%的字符匹配
+                  // 7. 改进的相似匹配：至少70%的字符匹配，且至少3个字符相同
                   (() => {
                     const commonChars = Array.from(queryTitle).filter((char) =>
                       resultTitle.includes(char)
                     ).length;
                     const similarity =
                       commonChars / Math.max(queryTitle.length, 1);
-                    return similarity >= 0.5;
+                    // 提高阈值到70%，且至少3个字符匹配
+                    return (
+                      similarity >= 0.7 &&
+                      commonChars >= 3 &&
+                      queryTitle.length >= 3
+                    );
                   })() ||
-                  // 年份匹配：如果查询包含年份，结果标题也应包含相同年份
-                  (videoYearRef.current &&
-                    result.title.includes(videoYearRef.current));
+                  // 8. 年份匹配加强版：如果查询包含年份，结果标题必须包含相同年份，且至少有其他3个字符匹配
+                  (() => {
+                    if (!videoYearRef.current) return false;
+                    const hasYearMatch = result.title.includes(
+                      videoYearRef.current
+                    );
+                    if (!hasYearMatch) return false;
+
+                    // 移除年份后检查其他字符匹配度
+                    const queryWithoutYear = queryTitle
+                      .replace(new RegExp(videoYearRef.current, 'g'), '')
+                      .replace(/\s+/g, '');
+                    const resultWithoutYear = resultTitle
+                      .replace(new RegExp(videoYearRef.current, 'g'), '')
+                      .replace(/\s+/g, '');
+
+                    const commonChars = Array.from(queryWithoutYear).filter(
+                      (char) => resultWithoutYear.includes(char)
+                    ).length;
+
+                    // 至少有3个其他字符匹配，且原始查询至少3个字符
+                    return commonChars >= 3 && queryTitle.length >= 3;
+                  })();
 
                 return titleMatch;
               }
@@ -1621,8 +1652,8 @@ function PlayPageClient() {
               return false;
             });
           } else {
-            // 中文查询：宽松匹配
-            console.log('使用中文宽松匹配策略');
+            // 中文查询：精确匹配优先，减少宽松匹配
+            console.log('使用中文精确匹配策略');
             relevantMatches = allCandidates.filter((result) => {
               const title = result.title.toLowerCase();
               const normalizedQuery = queryTitle.replace(
@@ -1631,7 +1662,7 @@ function PlayPageClient() {
               );
               const normalizedTitle = title.replace(/[^\w\u4e00-\u9fff]/g, '');
 
-              // 包含匹配或50%相似度
+              // 精确包含匹配（最优先）
               if (
                 normalizedTitle.includes(normalizedQuery) ||
                 normalizedQuery.includes(normalizedTitle)
@@ -1640,11 +1671,18 @@ function PlayPageClient() {
                 return true;
               }
 
+              // 提高相似匹配阈值到70%，且至少3个字符匹配
               const commonChars = Array.from(normalizedQuery).filter((char) =>
                 normalizedTitle.includes(char)
               ).length;
+
+              // 至少3个字符匹配
+              if (commonChars < 3) {
+                return false;
+              }
+
               const similarity = commonChars / normalizedQuery.length;
-              if (similarity >= 0.5) {
+              if (similarity >= 0.7) {
                 console.log(
                   `中文相似匹配 (${(similarity * 100).toFixed(1)}%): "${
                     result.title

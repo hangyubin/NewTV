@@ -77,6 +77,42 @@ const VideoCardCore = memo(
     const actualDoubanId = douban_id;
     const actualEpisodes = episodes;
 
+    // 图片加载状态管理
+    const [isImageLoaded, setIsImageLoaded] = React.useState(false);
+    const [imageError, setImageError] = React.useState(false);
+
+    // 处理图片加载完成
+    const handleImageLoad = React.useCallback(() => {
+      setIsImageLoaded(true);
+    }, []);
+
+    // 处理图片加载失败
+    const handleImageError = React.useCallback(() => {
+      setImageError(true);
+      setIsImageLoaded(true);
+    }, []);
+
+    // 优化图片URL处理，添加图片压缩和格式优化
+    const optimizedImageUrl = useMemo(() => {
+      const processedUrl = processImageUrl(actualPoster);
+      // 添加图片压缩和格式优化参数（如果图片服务支持）
+      // 这里假设图片服务支持quality和format参数
+      if (processedUrl && processedUrl.startsWith('http')) {
+        const url = new URL(processedUrl);
+        // 只对图片格式添加优化参数
+        if (
+          ['jpg', 'jpeg', 'png', 'webp'].some((ext) =>
+            processedUrl.toLowerCase().endsWith(ext)
+          )
+        ) {
+          url.searchParams.set('quality', '70');
+          url.searchParams.set('format', 'webp');
+        }
+        return url.toString();
+      }
+      return processedUrl;
+    }, [actualPoster]);
+
     // 配置：根据来源显示不同的元素
     const config = useMemo(() => {
       const baseConfigs = {
@@ -188,26 +224,43 @@ const VideoCardCore = memo(
         >
           {/* 移除渐变光泽动画层，减少动效 */}
 
-          {/* 骨架屏 */}
-          {/* {!isImageLoading && (
-            <ImagePlaceholder
-              aspectRatio='aspect-[2/3]'
-              className='animate-pulse rounded-lg'
-            />
-          )} */}
+          {/* 骨架屏 - 优化版 */}
+          <div
+            className={`absolute inset-0 bg-gray-200 dark:bg-gray-800 animate-pulse rounded-lg transition-opacity duration-300 ease-out ${
+              isImageLoaded ? 'opacity-0' : 'opacity-100'
+            }`}
+            style={
+              {
+                WebkitUserSelect: 'none',
+                userSelect: 'none',
+                WebkitTouchCallout: 'none',
+              } as React.CSSProperties
+            }
+          >
+            {/* 骨架屏内容 */}
+            <div className='w-full h-full flex items-center justify-center'>
+              <div className='text-gray-400 dark:text-gray-600 text-sm'>
+                {actualTitle}
+              </div>
+            </div>
+          </div>
 
-          {/* 图片 */}
+          {/* 图片 - 优化版 */}
           <Image
-            src={processImageUrl(actualPoster)}
+            src={optimizedImageUrl}
             alt={actualTitle}
             fill
             className={`${
               origin === 'live' ? 'object-contain' : 'object-cover'
-            } transition-all duration-600 ease-in-out opacity-100 scale-100`}
+            } transition-all duration-300 ease-out ${
+              isImageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+            } ${imageError ? 'opacity-0' : ''}`}
             referrerPolicy='no-referrer'
-            loading='lazy'
+            loading={priority ? 'eager' : 'lazy'}
             priority={priority}
-            quality={75}
+            quality={80}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
             onContextMenu={(e) => {
               e.preventDefault();
             }}
@@ -220,6 +273,39 @@ const VideoCardCore = memo(
               } as React.CSSProperties
             }
           />
+
+          {/* 图片加载失败占位符 */}
+          {imageError && (
+            <div
+              className='absolute inset-0 bg-gray-300 dark:bg-gray-700 flex items-center justify-center transition-all duration-300 ease-out opacity-100 scale-100'
+              style={
+                {
+                  WebkitUserSelect: 'none',
+                  userSelect: 'none',
+                  WebkitTouchCallout: 'none',
+                } as React.CSSProperties
+              }
+            >
+              <div className='text-gray-500 dark:text-gray-400 text-sm text-center p-4'>
+                <svg
+                  width='40'
+                  height='40'
+                  viewBox='0 0 24 24'
+                  fill='none'
+                  stroke='currentColor'
+                  strokeWidth='1.5'
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  className='mx-auto mb-2'
+                >
+                  <rect width='18' height='18' x='3' y='3' rx='2' ry='2' />
+                  <circle cx='12' cy='12' r='3' />
+                  <line x1='19.4' x2='19.41' y1='15.4' y2='15.41' />
+                </svg>
+                图片加载失败
+              </div>
+            </div>
+          )}
 
           {/* 悬浮遮罩 - 简化动画 */}
           <div
@@ -526,7 +612,7 @@ const VideoCardCore = memo(
                   }
                 >
                   <div
-                  className='bg-black/90 text-white text-xs sm:text-xs rounded-apple-lg shadow-floating border border-white/30 p-1.5 sm:p-2 min-w-[100px] sm:min-w-[120px] max-w-[140px] sm:max-w-[200px] overflow-hidden dark:bg-gray-900/90'
+                    className='bg-black/90 text-white text-xs sm:text-xs rounded-apple-lg shadow-floating border border-white/30 p-1.5 sm:p-2 min-w-[100px] sm:min-w-[120px] max-w-[140px] sm:max-w-[200px] overflow-hidden dark:bg-gray-900/90'
                     style={
                       {
                         WebkitUserSelect: 'none',
