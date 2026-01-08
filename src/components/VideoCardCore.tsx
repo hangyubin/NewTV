@@ -526,7 +526,7 @@ const VideoCardCore = memo(
                   }
                 >
                   <div
-                    className='glass-strong text-white text-xs sm:text-xs rounded-apple-lg shadow-floating border border-white/30 p-1.5 sm:p-2 min-w-[100px] sm:min-w-[120px] max-w-[140px] sm:max-w-[200px] overflow-hidden bg-black/90 dark:bg-gray-900/90'
+                  className='bg-black/90 text-white text-xs sm:text-xs rounded-apple-lg shadow-floating border border-white/30 p-1.5 sm:p-2 min-w-[100px] sm:min-w-[120px] max-w-[140px] sm:max-w-[200px] overflow-hidden dark:bg-gray-900/90'
                     style={
                       {
                         WebkitUserSelect: 'none',
