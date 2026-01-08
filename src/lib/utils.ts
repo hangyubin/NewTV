@@ -140,15 +140,18 @@ function getDoubanImageProxyConfig(): {
     | 'custom';
   proxyUrl: string;
 } {
+  // 检测是否在浏览器环境中
+  const isBrowser = typeof window !== 'undefined' && typeof localStorage !== 'undefined';
+  
   const doubanImageProxyType =
-    localStorage.getItem('doubanImageProxyType') ||
-    (window as Window & typeof globalThis & { RUNTIME_CONFIG?: RuntimeConfig })
-      .RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY_TYPE ||
+    (isBrowser ? localStorage.getItem('doubanImageProxyType') : null) ||
+    (isBrowser ? (window as Window & typeof globalThis & { RUNTIME_CONFIG?: RuntimeConfig })
+      .RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY_TYPE : null) ||
     'img3';
   const doubanImageProxy =
-    localStorage.getItem('doubanImageProxyUrl') ||
-    (window as Window & typeof globalThis & { RUNTIME_CONFIG?: RuntimeConfig })
-      .RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY ||
+    (isBrowser ? localStorage.getItem('doubanImageProxyUrl') : null) ||
+    (isBrowser ? (window as Window & typeof globalThis & { RUNTIME_CONFIG?: RuntimeConfig })
+      .RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY : null) ||
     '';
   return {
     proxyType: doubanImageProxyType as
