@@ -1387,21 +1387,37 @@ function PlayPageClient() {
         setSourceSearchLoading(false);
       }
     };
-    // 生成搜索变体的辅助函数
+    // 生成搜索变体的辅助函数 - 增强版
     const generateSearchVariants = (query: string): string[] => {
       const variants: string[] = [query];
 
-      // 移除年份后缀，如 "电影名 (2023)" -> "电影名"
+      // 1. 移除年份后缀，如 "电影名 (2023)" -> "电影名"
       const yearRemoved = query.replace(/\s*\(\d{4}\)$/, '').trim();
       if (yearRemoved !== query) variants.push(yearRemoved);
 
-      // 移除冒号，如 "电影名：副标题" -> "电影名 副标题"
+      // 2. 移除冒号，如 "电影名：副标题" -> "电影名 副标题"
       const colonRemoved = query.replace(/[：:]/g, ' ').trim();
       if (colonRemoved !== query) variants.push(colonRemoved);
 
-      // 移除特殊字符，如 "电影名-副标题" -> "电影名 副标题"
+      // 3. 移除特殊字符，如 "电影名-副标题" -> "电影名 副标题"
       const specialCharsRemoved = query.replace(/[-_\s]+/g, ' ').trim();
       if (specialCharsRemoved !== query) variants.push(specialCharsRemoved);
+
+      // 4. 移除副标题，如 "电影名：副标题" -> "电影名"
+      const subtitleRemoved = query.replace(/[:：].*/, '').trim();
+      if (subtitleRemoved !== query) variants.push(subtitleRemoved);
+
+      // 5. 移除括号内容，如 "电影名 (额外信息)" -> "电影名"
+      const bracketRemoved = query.replace(/\s*\([^)]+\)/g, '').trim();
+      if (bracketRemoved !== query) variants.push(bracketRemoved);
+
+      // 6. 移除所有非中文字符和数字，用于中文搜索
+      const chineseOnly = query.replace(/[^\u4e00-\u9fa5\d]/g, '').trim();
+      if (chineseOnly !== query && chineseOnly.length > 0) variants.push(chineseOnly);
+
+      // 7. 生成无空格版本，用于精确匹配
+      const noSpaces = query.replace(/\s+/g, '').trim();
+      if (noSpaces !== query) variants.push(noSpaces);
 
       return Array.from(new Set(variants));
     };
@@ -1459,8 +1475,9 @@ function PlayPageClient() {
                   .replaceAll(' ', '')
                   .toLowerCase();
 
-                // 智能标题匹配：支持数字变体和标点符号变化
+                // 智能标题匹配：支持多种匹配策略
                 const titleMatch =
+                  // 精确包含匹配
                   resultTitle.includes(queryTitle) ||
                   queryTitle.includes(resultTitle) ||
                   // 移除数字和标点后匹配
@@ -1468,7 +1485,13 @@ function PlayPageClient() {
                     queryTitle.replace(/\d+|[：:]/g, '') ||
                   // 通用关键词匹配：仅当查询标题较长时（4个字符以上）才使用关键词匹配
                   (queryTitle.length > 4 &&
-                    checkAllKeywordsMatch(queryTitle, resultTitle));
+                    checkAllKeywordsMatch(queryTitle, resultTitle)) ||
+                  // 中文标题匹配：移除所有非中文字符后匹配
+                  resultTitle.replace(/[^\u4e00-\u9fa5]/g, '') ===
+                    queryTitle.replace(/[^\u4e00-\u9fa5]/g, '') ||
+                  // 英文标题匹配：移除所有非英文字符后匹配
+                  resultTitle.replace(/[^a-zA-Z]/g, '') ===
+                    queryTitle.replace(/[^a-zA-Z]/g, '');
 
                 return titleMatch;
               }
