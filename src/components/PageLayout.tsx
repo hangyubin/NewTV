@@ -10,7 +10,11 @@ interface PageLayoutProps {
   defaultSidebarCollapsed?: boolean;
 }
 
-const PageLayout = ({  children,  activePath,  defaultSidebarCollapsed,}: PageLayoutProps) => {
+const PageLayout = ({
+  children,
+  activePath,
+  defaultSidebarCollapsed,
+}: PageLayoutProps) => {
   return (
     <div className='w-full min-h-screen bg-pattern'>
       {/* 移动端头部 - 添加玻璃态效果 */}
@@ -38,9 +42,7 @@ const PageLayout = ({  children,  activePath,  defaultSidebarCollapsed,}: PageLa
               paddingBottom: 'calc(3.5rem + env(safe-area-inset-bottom))',
             }}
           >
-            <div className='w-full mx-auto px-2 sm:px-0'>
-              {children}
-            </div>
+            <div className='w-full mx-auto px-2 sm:px-0'>{children}</div>
           </main>
         </div>
       </div>

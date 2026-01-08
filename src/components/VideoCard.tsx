@@ -107,42 +107,44 @@ const VideoCard = memo(
     const autoPlayTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     // 可外部修改的可控字段 - 使用ref存储动态值，避免不必要的重渲染
-  const dynamicValuesRef = useRef({
-    episodes: episodes,
-    sourceNames: source_names,
-    doubanId: douban_id,
-  });
+    const dynamicValuesRef = useRef({
+      episodes: episodes,
+      sourceNames: source_names,
+      doubanId: douban_id,
+    });
 
-  // 当props变化时更新ref值
-  useEffect(() => {
-    dynamicValuesRef.current.episodes = episodes;
-  }, [episodes]);
+    // 当props变化时更新ref值
+    useEffect(() => {
+      dynamicValuesRef.current.episodes = episodes;
+    }, [episodes]);
 
-  useEffect(() => {
-    dynamicValuesRef.current.sourceNames = source_names;
-  }, [source_names]);
+    useEffect(() => {
+      dynamicValuesRef.current.sourceNames = source_names;
+    }, [source_names]);
 
-  useEffect(() => {
-    dynamicValuesRef.current.doubanId = douban_id;
-  }, [douban_id]);
+    useEffect(() => {
+      dynamicValuesRef.current.doubanId = douban_id;
+    }, [douban_id]);
 
-  useImperativeHandle(ref, () => ({
-    setEpisodes: (eps?: number) => {
-      dynamicValuesRef.current.episodes = eps;
-    },
-    setSourceNames: (names?: string[]) => {
-      dynamicValuesRef.current.sourceNames = names;
-    },
-    setDoubanId: (id?: number) => {
-      dynamicValuesRef.current.doubanId = id;
-    },
-  }));
+    useImperativeHandle(ref, () => ({
+      setEpisodes: (eps?: number) => {
+        dynamicValuesRef.current.episodes = eps;
+      },
+      setSourceNames: (names?: string[]) => {
+        dynamicValuesRef.current.sourceNames = names;
+      },
+      setDoubanId: (id?: number) => {
+        dynamicValuesRef.current.doubanId = id;
+      },
+    }));
 
     const actualTitle = title;
     const actualPoster = poster;
     // 对于播放记录，id是完整的存储key（source+id格式），需要解析
-    const actualSource = from === 'playrecord' && id?.includes('+') ? id.split('+')[0] : source;
-    const actualId = from === 'playrecord' && id?.includes('+') ? id.split('+')[1] : id;
+    const actualSource =
+      from === 'playrecord' && id?.includes('+') ? id.split('+')[0] : source;
+    const actualId =
+      from === 'playrecord' && id?.includes('+') ? id.split('+')[1] : id;
     const actualDoubanId = dynamicValuesRef.current.doubanId;
     const actualEpisodes = dynamicValuesRef.current.episodes;
     const actualYear = year;
@@ -191,7 +193,8 @@ const VideoCard = memo(
 
         try {
           // 确定当前收藏状态
-          const currentFavorited = from === 'search' ? searchFavorited : favorited;
+          const currentFavorited =
+            from === 'search' ? searchFavorited : favorited;
 
           if (currentFavorited) {
             // 如果已收藏，删除收藏
@@ -259,8 +262,6 @@ const VideoCard = memo(
       [from, actualSource, actualId, id, onDelete]
     );
 
-
-
     // 跳转到播放页面的函数
     const navigateToPlay = useCallback(() => {
       // 清除自动播放计时器，防止重复跳转
@@ -270,9 +271,10 @@ const VideoCard = memo(
       }
 
       // 构建豆瓣ID参数
-      const doubanIdParam = actualDoubanId && actualDoubanId > 0
-        ? `&douban_id=${actualDoubanId}`
-        : '';
+      const doubanIdParam =
+        actualDoubanId && actualDoubanId > 0
+          ? `&douban_id=${actualDoubanId}`
+          : '';
 
       if (origin === 'live' && actualSource && actualId) {
         // 直播内容跳转到直播页面
@@ -334,13 +336,13 @@ const VideoCard = memo(
         // 并行执行API请求 - 使用请求队列优化
         const [doubanRes, searchRes] = await Promise.all([
           // 获取豆瓣详情 - 高优先级
-          actualDoubanId 
+          actualDoubanId
             ? getDoubanDetails(actualDoubanId.toString())
-                .then(res => res.code === 200 ? res.data : null)
+                .then((res) => (res.code === 200 ? res.data : null))
                 .catch(() => null)
             : Promise.resolve(null),
           // 获取搜索详情 - 使用带缓存的搜索API
-          cachedSearch(actualTitle.trim())
+          cachedSearch(actualTitle.trim()),
         ]);
 
         // 处理结果
@@ -363,14 +365,15 @@ const VideoCard = memo(
           // 豆瓣API失败：使用搜索结果作为备用方案
           if (searchRes?.results?.length > 0) {
             // 查找匹配title且有desc的结果
-            const matchedResult = searchRes.results.find(
-              (result: SearchResult) =>
-                result.title &&
-                result.title.includes(actualTitle.trim()) &&
-                result.desc
-            ) ||
-            searchRes.results.find((result: SearchResult) => result.desc) ||
-            searchRes.results[0];
+            const matchedResult =
+              searchRes.results.find(
+                (result: SearchResult) =>
+                  result.title &&
+                  result.title.includes(actualTitle.trim()) &&
+                  result.desc
+              ) ||
+              searchRes.results.find((result: SearchResult) => result.desc) ||
+              searchRes.results[0];
 
             setVideoDetail(matchedResult);
             setIsLoadingModal(false);
@@ -392,7 +395,18 @@ const VideoCard = memo(
       } finally {
         setIsApiLoading(false);
       }
-    }, [actualDoubanId, actualTitle, isApiLoading, showCombinedModal, setIsApiLoading, setShowCombinedModal, setIsLoadingModal, setDoubanDetail, setVideoDetail, navigateToPlay]);
+    }, [
+      actualDoubanId,
+      actualTitle,
+      isApiLoading,
+      showCombinedModal,
+      setIsApiLoading,
+      setShowCombinedModal,
+      setIsLoadingModal,
+      setDoubanDetail,
+      setVideoDetail,
+      navigateToPlay,
+    ]);
 
     // 组件卸载时清理自动播放计时器
     useEffect(() => {
@@ -427,9 +441,10 @@ const VideoCard = memo(
     // 新标签页播放处理函数
     const handlePlayInNewTab = useCallback(() => {
       // 构建豆瓣ID参数
-      const doubanIdParam = actualDoubanId && actualDoubanId > 0
-        ? `&douban_id=${actualDoubanId}`
-        : '';
+      const doubanIdParam =
+        actualDoubanId && actualDoubanId > 0
+          ? `&douban_id=${actualDoubanId}`
+          : '';
 
       if (origin === 'live' && actualSource && actualId) {
         // 直播内容跳转到直播页面

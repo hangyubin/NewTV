@@ -137,7 +137,9 @@ const VideoCardActions = React.memo(function VideoCardActions({
               <Heart size={20} className='fill-transparent stroke-red-500' />
             ),
             onClick: onFavoriteToggle,
-            color: currentFavorited ? ('danger' as const) : ('default' as const),
+            color: currentFavorited
+              ? ('danger' as const)
+              : ('default' as const),
           });
         } else {
           // 正在加载中，显示占位项

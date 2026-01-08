@@ -42,11 +42,6 @@ interface EpisodeSelectorProps {
   sourceSearchError?: string | null;
   /** 预计算的测速结果，避免重复测速 */
   precomputedVideoInfo?: Map<string, VideoInfo>;
-  /** 扩大搜索相关 */
-  isExpandingSearch?: boolean;
-  expandedSearchResults?: SearchResult[];
-  expandedSearchProgress?: number;
-  expandedSearchMessage?: string;
 }
 
 /**
@@ -66,10 +61,6 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
   sourceSearchLoading = false,
   sourceSearchError = null,
   precomputedVideoInfo,
-  isExpandingSearch = false,
-  expandedSearchResults = [],
-  expandedSearchProgress = 0,
-  expandedSearchMessage = '',
 }) => {
   const router = useRouter();
   const pageCount = Math.ceil(totalEpisodes / episodesPerPage);
@@ -129,8 +120,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
     if (!source.episodes || source.episodes.length === 0) {
       return;
     }
-    const episodeUrl =
-      source.episodes.length > 1 ? source.episodes[1] : source.episodes[0];
+    const episodeUrl = source.episodes[0];
 
     // 标记为已尝试
     setAttemptedSources((prev) => new Set(prev).add(sourceKey));
@@ -532,40 +522,6 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                 </div>
               </div>
             )}
-
-          {/* 扩大搜索进度显示 */}
-          {isExpandingSearch && (
-            <div className='flex flex-col items-center justify-center py-8 px-4'>
-              <div className='text-center mb-4'>
-                <div className='text-blue-500 text-2xl mb-2'>🔍</div>
-                <h3 className='text-lg font-medium text-gray-800 dark:text-gray-200 mb-1'>
-                  正在扩大搜索
-                </h3>
-                <p className='text-sm text-gray-600 dark:text-gray-400'>
-                  {expandedSearchMessage}
-                </p>
-              </div>
-
-              <div className='w-full max-w-md'>
-                <div className='flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1'>
-                  <span>进度</span>
-                  <span>{expandedSearchProgress}%</span>
-                </div>
-                <div className='w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5'>
-                  <div
-                    className='bg-blue-600 h-2.5 rounded-full transition-all duration-300'
-                    style={{ width: `${expandedSearchProgress}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              {expandedSearchResults.length > 0 && (
-                <div className='mt-4 text-sm text-green-600 dark:text-green-400'>
-                  已找到 {expandedSearchResults.length} 个潜在播放源
-                </div>
-              )}
-            </div>
-          )}
 
           {!sourceSearchLoading &&
             !sourceSearchError &&

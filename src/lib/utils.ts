@@ -142,7 +142,8 @@ function getDoubanImageProxyConfig(): {
 } {
   const doubanImageProxyType =
     localStorage.getItem('doubanImageProxyType') ||
-    (window as Window & typeof globalThis & { RUNTIME_CONFIG?: RuntimeConfig }).RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY_TYPE ||
+    (window as Window & typeof globalThis & { RUNTIME_CONFIG?: RuntimeConfig })
+      .RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY_TYPE ||
     'img3';
   const doubanImageProxy =
     localStorage.getItem('doubanImageProxyUrl') ||
@@ -150,7 +151,13 @@ function getDoubanImageProxyConfig(): {
       .RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY ||
     '';
   return {
-    proxyType: doubanImageProxyType as 'direct' | 'server' | 'img3' | 'cmliussss-cdn-tencent' | 'cmliussss-cdn-ali' | 'custom',
+    proxyType: doubanImageProxyType as
+      | 'direct'
+      | 'server'
+      | 'img3'
+      | 'cmliussss-cdn-tencent'
+      | 'cmliussss-cdn-ali'
+      | 'custom',
     proxyUrl: doubanImageProxy,
   };
 }
@@ -381,7 +388,10 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
       // 监听HLS错误
       hls.on(
         Hls.Events.ERROR,
-        (_event: unknown, data: { fatal?: boolean; type?: string; details?: string }) => {
+        (
+          _event: unknown,
+          data: { fatal?: boolean; type?: string; details?: string }
+        ) => {
           if (process.env.NODE_ENV === 'development') {
             console.warn('HLS测速错误:', data);
           }

@@ -7,7 +7,7 @@ export enum RequestPriority {
   LOW = 0,
   NORMAL = 1,
   HIGH = 2,
-  CRITICAL = 3
+  CRITICAL = 3,
 }
 
 /**
@@ -69,7 +69,8 @@ export class RequestQueue {
     // 按优先级排序插入
     let inserted = false;
     for (let i = 0; i < this.queue.length; i++) {
-      const queuePriority = this.queue[i].options.priority || RequestPriority.NORMAL;
+      const queuePriority =
+        this.queue[i].options.priority || RequestPriority.NORMAL;
       const taskPriority = task.options.priority || RequestPriority.NORMAL;
       if (queuePriority < taskPriority) {
         this.queue.splice(i, 0, task);
@@ -80,7 +81,7 @@ export class RequestQueue {
     if (!inserted) {
       this.queue.push(task);
     }
-    
+
     this.requestMap.set(task.id, task);
   }
 
@@ -88,7 +89,10 @@ export class RequestQueue {
    * 执行下一个请求
    */
   private executeNext(): void {
-    if (this.activeRequests.size >= this.maxParallel || this.queue.length === 0) {
+    if (
+      this.activeRequests.size >= this.maxParallel ||
+      this.queue.length === 0
+    ) {
       return;
     }
 

@@ -74,8 +74,8 @@ const TraditionalSearchList = ({
   }
 
   return (
-        <div className='justify-start grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 px-0 sm:px-2'>
-          {currentData.map((item, index) => {
+    <div className='justify-start grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 px-0 sm:px-2'>
+      {currentData.map((item, index) => {
         if (viewMode === 'agg') {
           const [mapKey, group] = item as [string, SearchResult[]];
           const title = group[0]?.title || '';

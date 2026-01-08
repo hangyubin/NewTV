@@ -60,12 +60,12 @@ export async function getShortDramaData(
   }
 
   const data = await response.json();
-  
+
   // 检查API返回的code字段
   if (data.code !== 200) {
     throw new Error(`获取短剧数据失败: ${data.message || '未知错误'}`);
   }
-  
+
   return data;
 }
 

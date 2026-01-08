@@ -86,8 +86,6 @@ const MobileBottomNav = ({
       return decodedActive === '/live' || decodedActive.startsWith('/live/');
     }
 
-
-
     // 处理豆瓣类型页面的匹配
     if (href.startsWith('/douban?type=')) {
       // 提取导航项的type参数
@@ -219,7 +217,6 @@ const MobileBottomNav = ({
                   <Star className='h-4 w-4' /> 纪录
                 </Link>
               )}
-
             </div>
           </div>
         </div>

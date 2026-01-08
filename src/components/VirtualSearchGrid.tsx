@@ -26,15 +26,15 @@ import { SearchResult } from '@/lib/types';
 import { useImagePreload } from '@/hooks/useImagePreload';
 import { useResponsiveGrid } from '@/hooks/useResponsiveGrid';
 
-const VideoCard = dynamic(
-  () => import('@/components/VideoCard'),
-  {
-    ssr: false,
-    loading: () => (
-      <div className='animate-pulse h-full bg-gray-200 dark:bg-gray-800 rounded-lg' style={{ padding: '6px', boxSizing: 'border-box' }} />
-    ),
-  }
-);
+const VideoCard = dynamic(() => import('@/components/VideoCard'), {
+  ssr: false,
+  loading: () => (
+    <div
+      className='animate-pulse h-full bg-gray-200 dark:bg-gray-800 rounded-lg'
+      style={{ padding: '6px', boxSizing: 'border-box' }}
+    />
+  ),
+});
 
 // 导出的 ref 接口，供父组件调用
 export interface VirtualSearchGridRef {
@@ -117,25 +117,25 @@ export const VirtualSearchGrid = React.forwardRef<
     const displayData = currentData.slice(0, displayItemCount);
 
     // 预加载图片 - 进一步减少预加载数量以优化性能
-  const imagesToPreload = useMemo(() => {
-    const urls: string[] = [];
-    const itemsToPreload = currentData.slice(
-      displayItemCount,
-      Math.min(displayItemCount + 10, totalItemCount)
-    );
+    const imagesToPreload = useMemo(() => {
+      const urls: string[] = [];
+      const itemsToPreload = currentData.slice(
+        displayItemCount,
+        Math.min(displayItemCount + 10, totalItemCount)
+      );
 
-    itemsToPreload.forEach((item) => {
-      if (viewMode === 'agg') {
-        const [, group] = item as [string, SearchResult[]];
-        if (group[0]?.poster) urls.push(group[0].poster);
-      } else {
-        const searchItem = item as SearchResult;
-        if (searchItem.poster) urls.push(searchItem.poster);
-      }
-    });
+      itemsToPreload.forEach((item) => {
+        if (viewMode === 'agg') {
+          const [, group] = item as [string, SearchResult[]];
+          if (group[0]?.poster) urls.push(group[0].poster);
+        } else {
+          const searchItem = item as SearchResult;
+          if (searchItem.poster) urls.push(searchItem.poster);
+        }
+      });
 
-    return urls;
-  }, [currentData, displayItemCount, totalItemCount, viewMode]);
+      return urls;
+    }, [currentData, displayItemCount, totalItemCount, viewMode]);
 
     useImagePreload(imagesToPreload, totalItemCount > 0);
 
@@ -267,7 +267,10 @@ export const VirtualSearchGrid = React.forwardRef<
           }
 
           return (
-            <div style={{ ...style, padding: '6px', boxSizing: 'border-box' }} {...ariaAttributes}>
+            <div
+              style={{ ...style, padding: '6px', boxSizing: 'border-box' }}
+              {...ariaAttributes}
+            >
               <VideoCard
                 ref={cellGetGroupRef(mapKey)}
                 from='search'
@@ -295,7 +298,10 @@ export const VirtualSearchGrid = React.forwardRef<
             : undefined;
 
           return (
-            <div style={{ ...style, padding: '6px', boxSizing: 'border-box' }} {...ariaAttributes}>
+            <div
+              style={{ ...style, padding: '6px', boxSizing: 'border-box' }}
+              {...ariaAttributes}
+            >
               <VideoCard
                 id={searchItem.id}
                 title={searchItem.title}

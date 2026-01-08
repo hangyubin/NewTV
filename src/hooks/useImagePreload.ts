@@ -10,11 +10,11 @@ export function useImagePreload(urls: string[], enabled = true) {
     if (!enabled || urls.length === 0) return;
 
     // 只预加载未加载过的图片
-    const urlsToPreload = urls.filter(url => !preloadedRef.current.has(url));
+    const urlsToPreload = urls.filter((url) => !preloadedRef.current.has(url));
     if (urlsToPreload.length === 0) return;
 
     // 批量预加载图片
-    const preloadPromises = urlsToPreload.map(url => {
+    const preloadPromises = urlsToPreload.map((url) => {
       return new Promise<void>((resolve) => {
         const img = new Image();
         img.onload = () => {
@@ -37,13 +37,15 @@ export function useImagePreload(urls: string[], enabled = true) {
     function loadNext() {
       if (currentIndex >= preloadPromises.length) return;
 
-      while (activeCount < maxConcurrent && currentIndex < preloadPromises.length) {
+      while (
+        activeCount < maxConcurrent &&
+        currentIndex < preloadPromises.length
+      ) {
         activeCount++;
-        preloadPromises[currentIndex++]
-          .finally(() => {
-            activeCount--;
-            loadNext();
-          });
+        preloadPromises[currentIndex++].finally(() => {
+          activeCount--;
+          loadNext();
+        });
       }
     }
 

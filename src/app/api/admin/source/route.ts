@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getAuthInfoFromCookie } from '@/lib/auth';
-import { getConfig, clearConfigCache } from '@/lib/config';
+import { clearConfigCache, getConfig } from '@/lib/config';
 import { db } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -67,8 +67,6 @@ function isValidUrl(url: string): boolean {
     return false;
   }
 }
-
-
 
 // 转换旧格式数据为新格式
 function convertLegacyToNewFormat(data: any): VideoSource[] {

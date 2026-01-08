@@ -12,13 +12,16 @@ export async function POST(request: NextRequest) {
   if (!authInfo || !authInfo.username) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   // 只有管理员可以清除所有数据
   const username = authInfo.username;
   const adminUsername = process.env.USERNAME || 'admin';
-  
+
   if (username !== adminUsername) {
-    return NextResponse.json({ error: '仅支持管理员清除所有数据' }, { status: 401 });
+    return NextResponse.json(
+      { error: '仅支持管理员清除所有数据' },
+      { status: 401 }
+    );
   }
 
   try {
@@ -26,9 +29,9 @@ export async function POST(request: NextRequest) {
     await db.clearAllData();
 
     return NextResponse.json(
-      { 
-        ok: true, 
-        message: '所有数据已成功清除'
+      {
+        ok: true,
+        message: '所有数据已成功清除',
       },
       {
         headers: {

@@ -92,7 +92,7 @@ function simpleHmacSha256(data: string, secret: string): string {
   let hash = 0;
   for (let i = 0; i < combined.length; i++) {
     const char = combined.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32bit integer
   }
   // 转换为十六进制字符串

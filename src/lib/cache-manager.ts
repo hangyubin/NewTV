@@ -246,7 +246,9 @@ export class CacheManager {
     expirationSeconds?: number
   ): Promise<void> {
     const now = Date.now();
-    const expirationMs = expirationSeconds ? expirationSeconds * 1000 : this.memoryCacheDefaultTtl;
+    const expirationMs = expirationSeconds
+      ? expirationSeconds * 1000
+      : this.memoryCacheDefaultTtl;
 
     // 1. 更新内存缓存
     this.memoryCache.set(key, {

@@ -575,7 +575,10 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
   // 配置文件里填写的源和导入的源都应该是 config 类型
   // 只有真正手动添加的源才是 custom 类型
   adminConfig.SourceConfig.forEach((source) => {
-    if (!source.from || (source.from !== 'config' && source.from !== 'custom')) {
+    if (
+      !source.from ||
+      (source.from !== 'config' && source.from !== 'custom')
+    ) {
       // 默认值为 config，因为只有手动添加的源才是 custom
       source.from = 'config';
     }
@@ -645,11 +648,14 @@ export async function getCacheTime(): Promise<number> {
 }
 
 // API源健康状态缓存
-const apiHealthCache = new Map<string, {
-  isHealthy: boolean;
-  lastChecked: number;
-  responseTime: number;
-}>();
+const apiHealthCache = new Map<
+  string,
+  {
+    isHealthy: boolean;
+    lastChecked: number;
+    responseTime: number;
+  }
+>();
 
 // 健康检查间隔：5分钟
 const HEALTH_CHECK_INTERVAL = 5 * 60 * 1000;
@@ -663,7 +669,7 @@ const HEALTH_CHECK_TIMEOUT = 3000;
 async function checkApiHealth(site: any): Promise<boolean> {
   try {
     const startTime = Date.now();
-    
+
     // 发送一个简单的请求来检查API是否可用
     const response = await Promise.race([
       fetch(`${site.api}/api/search?q=test`, {
@@ -672,21 +678,21 @@ async function checkApiHealth(site: any): Promise<boolean> {
           'Content-Type': 'application/json',
         },
       }),
-      new Promise<Response>((_, reject) => 
+      new Promise<Response>((_, reject) =>
         setTimeout(() => reject(new Error('Timeout')), HEALTH_CHECK_TIMEOUT)
-      )
+      ),
     ]);
-    
+
     const endTime = Date.now();
     const responseTime = endTime - startTime;
-    
+
     // 更新健康状态缓存
     apiHealthCache.set(site.key, {
       isHealthy: response.ok,
       lastChecked: endTime,
       responseTime,
     });
-    
+
     return response.ok;
   } catch (error) {
     // 更新健康状态缓存为不健康
@@ -695,7 +701,7 @@ async function checkApiHealth(site: any): Promise<boolean> {
       lastChecked: Date.now(),
       responseTime: HEALTH_CHECK_TIMEOUT,
     });
-    
+
     return false;
   }
 }
@@ -706,7 +712,7 @@ async function checkApiHealth(site: any): Promise<boolean> {
 async function periodicHealthCheck() {
   const config = await getConfig();
   const allApiSites = config.SourceConfig.filter((s: any) => !s.disabled);
-  
+
   // 并行检查所有API源的健康状态
   const healthCheckPromises = allApiSites.map(checkApiHealth);
   await Promise.allSettled(healthCheckPromises);
@@ -738,7 +744,7 @@ function getApiHealth(key: string): {
     }
     return health;
   }
-  
+
   // 未检查过的源默认视为健康
   return {
     isHealthy: true,
@@ -755,7 +761,9 @@ export async function getAvailableApiSites(user?: string): Promise<any[]> {
     return allApiSites;
   }
 
-  const userConfig = config.UserConfig.Users.find((u: any) => u.username === user);
+  const userConfig = config.UserConfig.Users.find(
+    (u: any) => u.username === user
+  );
   if (!userConfig) {
     return allApiSites;
   }
@@ -765,13 +773,19 @@ export async function getAvailableApiSites(user?: string): Promise<any[]> {
   if (userConfig.enabledApis && userConfig.enabledApis.length > 0) {
     const userApiSitesSet = new Set(userConfig.enabledApis);
     filteredSites = allApiSites.filter((s: any) => userApiSitesSet.has(s.key));
-  } else if (userConfig.tags && userConfig.tags.length > 0 && config.UserConfig.Tags) {
+  } else if (
+    userConfig.tags &&
+    userConfig.tags.length > 0 &&
+    config.UserConfig.Tags
+  ) {
     // 如果没有 enabledApis 配置，则根据 tags 查找
     const enabledApisFromTags = new Set<string>();
 
     // 遍历用户的所有 tags，收集对应的 enabledApis
     userConfig.tags.forEach((tagName: string) => {
-      const tagConfig = config.UserConfig.Tags?.find((t: any) => t.name === tagName);
+      const tagConfig = config.UserConfig.Tags?.find(
+        (t: any) => t.name === tagName
+      );
       if (tagConfig && tagConfig.enabledApis) {
         tagConfig.enabledApis.forEach((apiKey: string) =>
           enabledApisFromTags.add(apiKey)
@@ -780,10 +794,12 @@ export async function getAvailableApiSites(user?: string): Promise<any[]> {
     });
 
     if (enabledApisFromTags.size > 0) {
-      filteredSites = allApiSites.filter((s: any) => enabledApisFromTags.has(s.key));
+      filteredSites = allApiSites.filter((s: any) =>
+        enabledApisFromTags.has(s.key)
+      );
     }
   }
-  
+
   // 添加上下文信息，包括健康状态和优先级
   const sitesWithHealth = filteredSites.map((site: any) => {
     const health = getApiHealth(site.key);
@@ -797,19 +813,19 @@ export async function getAvailableApiSites(user?: string): Promise<any[]> {
       priority: site.priority || 5,
     };
   });
-  
+
   // 根据健康状态、优先级和响应时间排序
   const sortedSites = sitesWithHealth.sort((a: any, b: any) => {
     // 1. 健康状态优先：健康的源排在前面
     if (a.health !== b.health) {
       return a.health ? -1 : 1;
     }
-    
+
     // 2. 然后按优先级排序：优先级高的排在前面
     if (a.priority !== b.priority) {
       return b.priority - a.priority;
     }
-    
+
     // 3. 最后按响应时间排序：响应时间短的排在前面
     return a.responseTime - b.responseTime;
   });

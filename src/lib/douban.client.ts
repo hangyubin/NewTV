@@ -218,7 +218,7 @@ async function fetchWithTimeout(
       Accept: 'application/json, text/plain, */*',
     },
     priority: RequestPriority.NORMAL,
-    timeout: 10000
+    timeout: 10000,
   });
 }
 

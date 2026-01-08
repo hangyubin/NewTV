@@ -73,7 +73,10 @@ function createRetryWrapper(
             if (reconnectErr instanceof Error) {
               logger.error('Failed to reconnect:', reconnectErr);
             } else {
-              logger.error('Failed to reconnect:', new Error(String(reconnectErr)));
+              logger.error(
+                'Failed to reconnect:',
+                new Error(String(reconnectErr))
+              );
             }
           }
 

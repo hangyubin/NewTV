@@ -51,7 +51,8 @@ export const useResponsiveGrid = (
       const gap = 8;
 
       // 计算实际可用宽度（减去左右内边距和总间距）
-      const availableWidth = containerWidth - itemPadding * 2 - gap * (columnCount - 1);
+      const availableWidth =
+        containerWidth - itemPadding * 2 - gap * (columnCount - 1);
 
       // 计算项目宽度 - 精确分配可用空间
       const itemWidth = Math.floor(availableWidth / columnCount);
