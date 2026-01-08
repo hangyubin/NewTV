@@ -22,6 +22,11 @@ export async function GET(request: NextRequest) {
   const keyword = searchParams.get('keyword') || '';
 
   try {
+    // 限制API请求的并发数量，避免过多请求导致服务器压力过大
+    const CONCURRENT_LIMIT = 3;
+    // 优化超时时间，将25秒缩短为10秒，提高响应速度
+    const TIMEOUT_MS = 10000;
+
     // 使用更精准的短剧关键词策略，提高搜索效率
     const shortDramaKeywords = keyword
       ? [keyword] // 只使用用户提供的关键词，避免重复请求
@@ -36,21 +41,8 @@ export async function GET(request: NextRequest) {
     // 过滤掉AV相关的API源，只保留正规影视资源
     apiSites = apiSites.filter((site) => !site.name.includes('AV-'));
 
-    console.log(
-      '📺 [短剧API] 从视频列表获取API源，过滤后共',
-      apiSites.length,
-      '个可用源'
-    );
-    console.log(
-      '📺 [短剧API] API源列表:',
-      apiSites.map((site) => site.name)
-    );
-
     // 如果过滤后没有可用的API源，使用默认的可靠数据源作为后备
     if (apiSites.length === 0) {
-      console.warn(
-        '📺 [短剧API] 视频列表中没有可用的非AV API源，使用默认数据源'
-      );
       apiSites = [
         {
           key: 'caiji_dbzy5',
@@ -76,82 +68,64 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    console.log(
-      '📺 [短剧API] 使用专用的API站点:',
-      apiSites.map((site) => site.name)
-    );
+    // 限制并发的辅助函数，使用箭头函数表达式代替函数声明
+    const limitedConcurrency = async <T>(
+      items: T[],
+      limit: number,
+      fn: (item: T) => Promise<any>
+    ): Promise<any[]> => {
+      const results: any[] = [];
+      const executing: Promise<any>[] = [];
 
-    console.log(
-      '📺 [短剧API] 请求参数: keyword=${keyword}, page=${page}, limit=${limit}'
-    );
+      for (const item of items) {
+        const p = Promise.resolve().then(() => fn(item));
+        results.push(p);
 
-    // 并行搜索多个关键词
+        if (items.length > limit) {
+          const e = p.then(() => {
+            executing.splice(executing.indexOf(e), 1);
+          });
+          executing.push(e);
+          if (executing.length >= limit) {
+            await Promise.race(executing);
+          }
+        }
+      }
+
+      return Promise.all(results);
+    };
+
+    // 并行搜索多个关键词，但限制每个关键词的API请求并发数
     const searchPromises = shortDramaKeywords.map(async (searchKeyword) => {
-      const sitePromises = apiSites.map(async (site) => {
+      // 使用限制并发的方式请求API
+      const siteResults = await limitedConcurrency(apiSites, CONCURRENT_LIMIT, async (site) => {
         try {
-          console.log(`📺 [短剧API] 从 ${site.name} 搜索: ${searchKeyword}`);
-
-          // 添加详细的API请求日志
-          console.log(`📺 [短剧API] API URL: ${site.api}`);
-          console.log(`📺 [短剧API] 请求时间: ${new Date().toISOString()}`);
-
-          // 优化超时时间，平衡响应速度和数据完整性
-          const timeoutMs = 25000; // 统一设置25秒超时，避免单个API影响整体性能
-
           const results = (await Promise.race([
             searchFromApi(site, searchKeyword),
             new Promise((_, reject) =>
               setTimeout(
                 () => reject(new Error(`${site.name} timeout`)),
-                timeoutMs
+                TIMEOUT_MS
               )
             ),
           ])) as SearchResult[];
 
-          console.log(
-            `📺 [短剧API] ${site.name} 返回 ${results.length} 条结果`
-          );
-
           // 过滤出真正的短剧内容
           const filteredResults = results.filter((result) => {
-            // 1. 检查是否为短剧
             const isShort = isShortDrama(result.type_name, result.title);
-            if (!isShort) {
-              return false;
-            }
-
-            return true;
+            return isShort;
           });
 
-          console.log(
-            `📺 [短剧API] 过滤后保留 ${filteredResults.length} 条短剧结果`
-          );
           return filteredResults;
         } catch (error) {
-          console.error(
-            `📺 [短剧API] 搜索短剧失败 ${site.name} - ${searchKeyword}:`,
-            error
-          );
-          // 输出更详细的错误信息，包括错误类型和堆栈
-          if (error instanceof Error) {
-            console.error(
-              `📺 [短剧API] 错误详情 - 名称: ${error.name}, 消息: ${error.message}`
-            );
-            if (error.stack) {
-              console.error(`📺 [短剧API] 错误堆栈: ${error.stack}`);
-            }
-          }
+          // 忽略单个API请求失败，继续处理其他请求
           return [];
         }
       });
 
-      const siteResults = await Promise.allSettled(sitePromises);
-      return siteResults
-        .filter((result) => result.status === 'fulfilled')
-        .map(
-          (result) => (result as PromiseFulfilledResult<SearchResult[]>).value
-        )
-        .flat();
+      // 等待所有站点请求完成，过滤掉拒绝的结果
+      const fulfilledResults = siteResults.filter(result => result.length > 0);
+      return fulfilledResults.flat();
     });
 
     const keywordResults = await Promise.allSettled(searchPromises);
@@ -159,8 +133,6 @@ export async function GET(request: NextRequest) {
       .filter((result) => result.status === 'fulfilled')
       .map((result) => (result as PromiseFulfilledResult<SearchResult[]>).value)
       .flat();
-
-    console.log(`📺 [短剧API] 所有站点返回 ${allResults.length} 条结果`);
 
     // 改进去重机制，使用更宽松的策略，合并所有片源信息
     // 根据标题和年份进行去重，但合并所有片源信息

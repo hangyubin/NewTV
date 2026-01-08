@@ -23,12 +23,75 @@ export interface ShortDramaResponse {
   hasMore: boolean;
 }
 
+// 缓存配置
+const CACHE_KEY_PREFIX = 'short-drama-cache-';
+const CACHE_TTL = 60 * 60 * 1000; // 1小时缓存时间
+
+/**
+ * 生成缓存键
+ */
+function generateCacheKey(params: ShortDramaSearchParams): string {
+  const sortedParams = Object.keys(params)
+    .sort()
+    .map(key => `${key}=${params[key as keyof ShortDramaSearchParams]}`)
+    .join('&');
+  return `${CACHE_KEY_PREFIX}${btoa(sortedParams)}`;
+}
+
+/**
+ * 从缓存获取数据
+ */
+function getFromCache(key: string): ShortDramaResponse | null {
+  if (typeof localStorage === 'undefined') return null;
+
+  try {
+    const cached = localStorage.getItem(key);
+    if (!cached) return null;
+
+    const { data, timestamp } = JSON.parse(cached);
+    if (Date.now() - timestamp > CACHE_TTL) {
+      localStorage.removeItem(key);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('从缓存获取短剧数据失败:', error);
+    return null;
+  }
+}
+
+/**
+ * 保存数据到缓存
+ */
+function saveToCache(key: string, data: ShortDramaResponse): void {
+  if (typeof localStorage === 'undefined') return;
+
+  try {
+    localStorage.setItem(key, JSON.stringify({
+      data,
+      timestamp: Date.now()
+    }));
+  } catch (error) {
+    console.error('保存短剧数据到缓存失败:', error);
+  }
+}
+
 /**
  * 获取短剧数据
  */
 export async function getShortDramaData(
   params: ShortDramaSearchParams = {}
 ): Promise<ShortDramaResponse> {
+  // 生成缓存键
+  const cacheKey = generateCacheKey(params);
+  
+  // 尝试从缓存获取
+  const cachedData = getFromCache(cacheKey);
+  if (cachedData) {
+    return cachedData;
+  }
+
   const searchParams = new URLSearchParams();
 
   if (params.type && params.type !== 'all') {
@@ -53,6 +116,7 @@ export async function getShortDramaData(
 
   const response = await fetch(url, {
     credentials: 'include',
+    cache: 'no-store' // 禁用浏览器缓存，使用我们自己的缓存机制
   });
 
   if (!response.ok) {
@@ -65,6 +129,9 @@ export async function getShortDramaData(
   if (data.code !== 200) {
     throw new Error(`获取短剧数据失败: ${data.message || '未知错误'}`);
   }
+
+  // 保存到缓存
+  saveToCache(cacheKey, data);
 
   return data;
 }

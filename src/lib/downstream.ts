@@ -245,10 +245,10 @@ export async function searchFromApi(
       query.includes('竖屏')
     ) {
       // 只使用核心关键词，避免重复请求
-      searchVariants = [query, '短剧', '微剧'];
+      searchVariants = [query]; // 仅使用用户提供的关键词，避免不必要的请求
     } else {
-      // 其他查询，使用正常的搜索变体生成
-      searchVariants = generateSearchVariants(query);
+      // 其他查询，使用简化的搜索变体生成，减少变体数量
+      searchVariants = [query]; // 仅使用原始查询，减少请求数量
     }
     const results: SearchResult[] = [];
     let pageCountFromFirst = 0;
@@ -321,81 +321,8 @@ export async function searchFromApi(
     query = searchVariants[0];
 
     const config = await getConfig();
-    // 对于短剧API，增加获取的页数，获取更多结果
-    const MAX_SEARCH_PAGES: number = Math.max(
-      config.SiteConfig.SearchDownstreamMaxPage,
-      10
-    ); // 最少获取10页
-
-    // 获取总页数，平衡数据量和响应速度
-    const basePageCount = pageCountFromFirst || 3; // 减少默认页数，提高响应速度
-    // 确保获取合理数量的页数，平衡数据量和性能
-    const pageCount = Math.min(basePageCount, 5); // 最多5页，避免请求过多无效页面
-    // 确定需要获取的额外页数
-    const pagesToFetch = Math.min(pageCount - 1, MAX_SEARCH_PAGES - 1);
-    // 对于短剧API，获取合适数量的页面，平衡数据量和速度
-    const actualPagesToFetch = Math.min(pagesToFetch, 3); // 最多3个额外页，总共4页
-
-    // 如果有额外页数，获取更多页的结果
-    if (actualPagesToFetch > 0) {
-      const additionalPagePromises = [];
-
-      for (let page = 2; page <= actualPagesToFetch + 1; page++) {
-        let pageUrl;
-        if (
-          apiBaseUrl.includes('iqiyizyapi.com') ||
-          apiBaseUrl.includes('caiji.dbzy5.com') ||
-          apiBaseUrl.includes('caiji.dyttzyapi.com') ||
-          apiBaseUrl.includes('wwzy.tv') ||
-          apiBaseUrl.includes('tyyszy.com') ||
-          apiBaseUrl.includes('api.52zyapi.com') ||
-          apiBaseUrl.includes('api.yhdm.so')
-        ) {
-          // 新的短剧API源，使用不同的分页请求格式
-          pageUrl = `${apiBaseUrl}?ac=videolist&wd=${encodeURIComponent(
-            query
-          )}&pg=${page}&limit=50`;
-        } else {
-          // 传统API源，使用原有分页格式
-          pageUrl =
-            apiBaseUrl +
-            API_CONFIG.search.pagePath
-              .replace('{query}', encodeURIComponent(query))
-              .replace('{page}', page.toString());
-        }
-
-        const pagePromise = (async () => {
-          // 使用新的缓存搜索函数处理分页，增加超时时间适应本地Docker环境
-          const pageResult = await searchWithCache(
-            apiSite,
-            query,
-            page,
-            pageUrl,
-            25000
-          );
-          return pageResult.results;
-        })();
-
-        additionalPagePromises.push(pagePromise);
-      }
-
-      // 等待所有额外页的结果
-      const additionalResults = await Promise.all(additionalPagePromises);
-
-      // 合并所有页的结果
-      additionalResults.forEach((pageResults) => {
-        if (pageResults.length > 0) {
-          pageResults.forEach((result) => {
-            const uniqueKey = `${result.source}_${result.id}`;
-            if (!seenIds.has(uniqueKey)) {
-              seenIds.add(uniqueKey);
-              results.push(result);
-            }
-          });
-        }
-      });
-    }
-
+    // 对于短剧API，只获取第一页结果，显著提高响应速度
+    // 短剧内容通常在第一页就有足够的结果，后续页质量较低
     return results;
   } catch (error) {
     return [];
