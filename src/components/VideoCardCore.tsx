@@ -92,24 +92,9 @@ const VideoCardCore = memo(
       setIsImageLoaded(true);
     }, []);
 
-    // 优化图片URL处理，添加图片压缩和格式优化
+    // 优化图片URL处理，移除可能导致图片加载失败的额外参数
     const optimizedImageUrl = useMemo(() => {
       const processedUrl = processImageUrl(actualPoster);
-      // 添加图片压缩和格式优化参数（如果图片服务支持）
-      // 这里假设图片服务支持quality和format参数
-      if (processedUrl && processedUrl.startsWith('http')) {
-        const url = new URL(processedUrl);
-        // 只对图片格式添加优化参数
-        if (
-          ['jpg', 'jpeg', 'png', 'webp'].some((ext) =>
-            processedUrl.toLowerCase().endsWith(ext)
-          )
-        ) {
-          url.searchParams.set('quality', '70');
-          url.searchParams.set('format', 'webp');
-        }
-        return url.toString();
-      }
       return processedUrl;
     }, [actualPoster]);
 

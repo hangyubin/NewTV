@@ -173,33 +173,35 @@ export function processImageUrl(originalUrl: string): string {
 
   // 处理豆瓣图片代理，支持多种豆瓣图片域名
   const isDoubanImage = /douban\.com|doubanio\.com/.test(originalUrl);
-  if (!isDoubanImage) {
-    return originalUrl;
+  if (isDoubanImage) {
+    const { proxyType, proxyUrl } = getDoubanImageProxyConfig();
+    switch (proxyType) {
+      case 'server':
+        return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
+      case 'img3':
+        // 处理各种豆瓣图片域名
+        return originalUrl
+          .replace(/img\d+\.doubanio\.com/g, 'img3.doubanio.com')
+          .replace(/img\.douban\.com/g, 'img3.doubanio.com');
+      case 'cmliussss-cdn-tencent':
+        return originalUrl
+          .replace(/img\d+\.doubanio\.com/g, 'img.doubanio.cmliussss.net')
+          .replace(/img\.douban\.com/g, 'img.doubanio.cmliussss.net');
+      case 'cmliussss-cdn-ali':
+        return originalUrl
+          .replace(/img\d+\.doubanio\.com/g, 'img.doubanio.cmliussss.com')
+          .replace(/img\.douban\.com/g, 'img.doubanio.cmliussss.com');
+      case 'custom':
+        return `${proxyUrl}${encodeURIComponent(originalUrl)}`;
+      case 'direct':
+      default:
+        return originalUrl;
+    }
   }
 
-  const { proxyType, proxyUrl } = getDoubanImageProxyConfig();
-  switch (proxyType) {
-    case 'server':
-      return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
-    case 'img3':
-      // 处理各种豆瓣图片域名
-      return originalUrl
-        .replace(/img\d+\.doubanio\.com/g, 'img3.doubanio.com')
-        .replace(/img\.douban\.com/g, 'img3.doubanio.com');
-    case 'cmliussss-cdn-tencent':
-      return originalUrl
-        .replace(/img\d+\.doubanio\.com/g, 'img.doubanio.cmliussss.net')
-        .replace(/img\.douban\.com/g, 'img.doubanio.cmliussss.net');
-    case 'cmliussss-cdn-ali':
-      return originalUrl
-        .replace(/img\d+\.doubanio\.com/g, 'img.doubanio.cmliussss.com')
-        .replace(/img\.douban\.com/g, 'img.doubanio.cmliussss.com');
-    case 'custom':
-      return `${proxyUrl}${encodeURIComponent(originalUrl)}`;
-    case 'direct':
-    default:
-      return originalUrl;
-  }
+  // 处理其他图片，根据需要添加代理
+  // 对于非豆瓣图片，我们也可以考虑使用代理，特别是当图片可能存在跨域问题时
+  return originalUrl;
 }
 
 /**
