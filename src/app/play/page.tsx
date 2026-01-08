@@ -243,7 +243,6 @@ function PlayPageClient() {
 
   // 搜索所需信息
   const [searchTitle] = useState(searchParams.get('stitle') || '');
-  const [searchType] = useState(searchParams.get('stype') || '');
 
   // 是否需要优选
   const [needPrefer, setNeedPrefer] = useState(
@@ -1413,11 +1412,29 @@ function PlayPageClient() {
 
       // 6. 移除所有非中文字符和数字，用于中文搜索
       const chineseOnly = query.replace(/[^\u4e00-\u9fa5\d]/g, '').trim();
-      if (chineseOnly !== query && chineseOnly.length > 0) variants.push(chineseOnly);
+      if (chineseOnly !== query && chineseOnly.length > 0)
+        variants.push(chineseOnly);
 
       // 7. 生成无空格版本，用于精确匹配
       const noSpaces = query.replace(/\s+/g, '').trim();
       if (noSpaces !== query) variants.push(noSpaces);
+
+      // 8. 移除英文前缀，如 "The Movie" -> "Movie"
+      const englishPrefixRemoved = query.replace(/^(The|A|An)\s+/i, '').trim();
+      if (englishPrefixRemoved !== query) variants.push(englishPrefixRemoved);
+
+      // 9. 仅保留英文单词，用于英文搜索
+      const englishOnly = query.replace(/[^a-zA-Z\s]/g, '').trim();
+      if (englishOnly !== query && englishOnly.length > 0)
+        variants.push(englishOnly);
+
+      // 10. 移除所有标点符号，用于更宽松的匹配
+      const noPunctuation = query.replace(/[\p{P}\p{S}]/gu, '').trim();
+      if (noPunctuation !== query) variants.push(noPunctuation);
+
+      // 11. 生成首字母大写版本，用于标题匹配
+      const titleCase = query.replace(/\b\w/g, (l) => l.toUpperCase());
+      if (titleCase !== query) variants.push(titleCase);
 
       return Array.from(new Set(variants));
     };
@@ -1491,7 +1508,19 @@ function PlayPageClient() {
                     queryTitle.replace(/[^\u4e00-\u9fa5]/g, '') ||
                   // 英文标题匹配：移除所有非英文字符后匹配
                   resultTitle.replace(/[^a-zA-Z]/g, '') ===
-                    queryTitle.replace(/[^a-zA-Z]/g, '');
+                    queryTitle.replace(/[^a-zA-Z]/g, '') ||
+                  // 宽松匹配：至少有50%的字符匹配
+                  (() => {
+                    const commonChars = Array.from(queryTitle).filter((char) =>
+                      resultTitle.includes(char)
+                    ).length;
+                    const similarity =
+                      commonChars / Math.max(queryTitle.length, 1);
+                    return similarity >= 0.5;
+                  })() ||
+                  // 年份匹配：如果查询包含年份，结果标题也应包含相同年份
+                  (videoYearRef.current &&
+                    result.title.includes(videoYearRef.current));
 
                 return titleMatch;
               }

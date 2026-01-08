@@ -18,134 +18,60 @@ function getCache(key: string): any | null {
   if (typeof localStorage === 'undefined') return null;
 
   try {
-    const cached = localStorage.getItem(key);
-    if (!cached) return null;
+    const value = localStorage.getItem(key);
+    if (!value) return null;
 
-    const { data, expire } = JSON.parse(cached);
-    if (Date.now() > expire) {
+    const cacheItem = JSON.parse(value);
+    if (Date.now() > cacheItem.expiresAt) {
       localStorage.removeItem(key);
       return null;
     }
 
-    return data;
-  } catch (e) {
-    localStorage.removeItem(key);
+    return cacheItem.data;
+  } catch (error) {
+    // 忽略缓存读取错误
     return null;
   }
 }
 
-function setCache(key: string, data: any, expireTime: number): void {
+function setCache(key: string, data: any, ttl: number): void {
   if (typeof localStorage === 'undefined') return;
 
   try {
-    const cacheData = {
+    const cacheItem = {
       data,
-      expire: Date.now() + expireTime,
-      created: Date.now(),
+      expiresAt: Date.now() + ttl,
     };
-    localStorage.setItem(key, JSON.stringify(cacheData));
-  } catch (e) {
-    // 忽略缓存错误，不影响应用正常运行
+    localStorage.setItem(key, JSON.stringify(cacheItem));
+  } catch (error) {
+    // 忽略缓存写入错误
   }
 }
 
-// 清理过期缓存
-function cleanExpiredCache(): void {
-  if (typeof localStorage === 'undefined') return;
+// 导出的缓存搜索函数
+export async function cachedSearch(query: string): Promise<any> {
+  if (!query.trim()) return { results: [] };
 
-  const keys = Object.keys(localStorage).filter((key) =>
-    key.startsWith('search-')
-  );
-  let _cleanedCount = 0;
-
-  keys.forEach((key) => {
-    try {
-      const cached = localStorage.getItem(key);
-      if (cached) {
-        const { expire } = JSON.parse(cached);
-        if (Date.now() > expire) {
-          localStorage.removeItem(key);
-          _cleanedCount++;
-        }
-      }
-    } catch (e) {
-      // 清理损坏的缓存数据
-      localStorage.removeItem(key);
-      _cleanedCount++;
-    }
-  });
-
-  // 清理了过期缓存，不输出日志
-}
-
-// 初始化缓存系统（应该在应用启动时调用）
-export function initSearchCache(): void {
-  if (typeof window === 'undefined') return;
-
-  // 立即清理一次过期缓存
-  cleanExpiredCache();
-
-  // 每10分钟清理一次过期缓存
-  setInterval(cleanExpiredCache, 10 * 60 * 1000);
-
-  // 搜索缓存系统已初始化
-}
-
-// 带缓存的搜索API封装
-export async function cachedSearch(query: string): Promise<{ results: any[] }> {
-  // 检查缓存
-  const cacheKey = getCacheKey('results', { q: query });
+  // 尝试从缓存获取
+  const cacheKey = getCacheKey('results', { q: query.trim() });
   const cached = getCache(cacheKey);
   if (cached) {
-    // 搜索结果缓存命中
     return cached;
   }
 
-  // 发起请求
-  const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-  const result = response.ok ? await response.json() : { results: [] };
+  // 缓存未命中，发起请求
+  try {
+    const response = await fetch(
+      `/api/search?q=${encodeURIComponent(query.trim())}`
+    );
+    const data = await response.json();
 
-  // 保存到缓存
-  setCache(cacheKey, result, SEARCH_CACHE_EXPIRE.results);
-  // 搜索结果已缓存
+    // 保存到缓存
+    setCache(cacheKey, data, SEARCH_CACHE_EXPIRE.results);
 
-  return result;
-}
-
-// 清理所有搜索缓存
-export function clearSearchCache(): void {
-  if (typeof localStorage === 'undefined') return;
-
-  const keys = Object.keys(localStorage).filter((key) =>
-    key.startsWith('search-')
-  );
-  keys.forEach((key) => localStorage.removeItem(key));
-  // 清理了搜索缓存项
-}
-
-// 获取缓存状态信息
-export function getSearchCacheStats(): {
-  totalItems: number;
-  totalSize: number;
-} {
-  if (typeof localStorage === 'undefined') {
-    return { totalItems: 0, totalSize: 0 };
+    return data;
+  } catch (error) {
+    // 忽略搜索请求错误
+    return { results: [] };
   }
-
-  const keys = Object.keys(localStorage).filter((key) =>
-    key.startsWith('search-')
-  );
-  let totalSize = 0;
-
-  keys.forEach((key) => {
-    const data = localStorage.getItem(key);
-    if (data) {
-      totalSize += data.length;
-    }
-  });
-
-  return {
-    totalItems: keys.length,
-    totalSize,
-  };
 }
