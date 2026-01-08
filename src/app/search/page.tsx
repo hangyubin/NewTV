@@ -205,58 +205,40 @@ function SearchPageClient() {
     return ref;
   };
 
-  // 优化的计算统计函数，减少不必要的计算和内存分配
+  // 简化的计算统计函数，参考LunaTV实现，提高性能
   const computeGroupStats = (group: SearchResult[]) => {
-    // 计算集数 - 只需要遍历一次并记录最大值
-    let maxEpisodeCount = 0;
-    let maxEpisodeCountFreq = 0;
-    const episodeMap = new Map<number, number>();
-
-    // 计算源名称 - 直接使用 Set 收集
-    const sourceNamesSet = new Set<string>();
-
-    // 计算豆瓣ID - 遍历一次并记录出现次数最多的ID
-    let maxDoubanId = 0;
-    let maxDoubanIdFreq = 0;
-    const doubanIdMap = new Map<number, number>();
-
-    // 单次遍历完成所有计算
-    for (const g of group) {
-      // 处理集数
+    // 计算集数：统计出现次数最多的集数
+    const countMap = new Map<number, number>();
+    group.forEach((g) => {
       const len = g.episodes?.length || 0;
       if (len > 0) {
-        const freq = (episodeMap.get(len) || 0) + 1;
-        episodeMap.set(len, freq);
-        if (freq > maxEpisodeCountFreq) {
-          maxEpisodeCountFreq = freq;
-          maxEpisodeCount = len;
-        } else if (freq === maxEpisodeCountFreq && len > maxEpisodeCount) {
-          // 如果频率相同，选择较大的集数
-          maxEpisodeCount = len;
-        }
+        countMap.set(len, (countMap.get(len) || 0) + 1);
       }
+    });
+    let max = 0;
+    let res = 0;
+    countMap.forEach((v, k) => {
+      if (v > max) { max = v; res = k; }
+    });
+    const episodes = res;
 
-      // 处理源名称
-      if (g.source_name) {
-        sourceNamesSet.add(g.source_name);
-      }
+    // 计算源名称：直接使用 Set 收集
+    const source_names = Array.from(new Set(group.map((g) => g.source_name).filter(Boolean))) as string[];
 
-      // 处理豆瓣ID
+    // 计算豆瓣ID：统计出现次数最多的豆瓣ID
+    const doubanIdMap = new Map<number, number>();
+    group.forEach((g) => {
       if (g.douban_id && g.douban_id > 0) {
-        const freq = (doubanIdMap.get(g.douban_id) || 0) + 1;
-        doubanIdMap.set(g.douban_id, freq);
-        if (freq > maxDoubanIdFreq) {
-          maxDoubanIdFreq = freq;
-          maxDoubanId = g.douban_id;
-        }
+        doubanIdMap.set(g.douban_id, (doubanIdMap.get(g.douban_id) || 0) + 1);
       }
-    }
+    });
+    let maxDoubanFreq = 0;
+    let douban_id: number | undefined;
+    doubanIdMap.forEach((v, k) => {
+      if (v > maxDoubanFreq) { maxDoubanFreq = v; douban_id = k; }
+    });
 
-    return {
-      episodes: maxEpisodeCount,
-      source_names: Array.from(sourceNamesSet),
-      douban_id: maxDoubanId || undefined,
-    };
+    return { episodes, source_names, douban_id };
   };
   // 过滤器：非聚合与聚合
   const [filterAll, setFilterAll] = useState<{
@@ -464,7 +446,7 @@ function SearchPageClient() {
     });
   }, [searchResults, searchQuery]);
 
-  // 聚合后的结果（按标题和年份分组）- 优化版
+  // 聚合后的结果（按标题和年份分组）- 结合LunaTV优化版
   // 直接基于 searchResults 生成，避免 enhancedSearchResults 去重导致的聚合失效
   const aggregatedResults = useMemo(() => {
     const map = new Map<string, SearchResult[]>();
@@ -481,25 +463,23 @@ function SearchPageClient() {
       }
       addedItems.add(itemKey);
 
-      // 优化键生成，使用更高效的字符串拼接
+      // 优化键生成：使用与LunaTV类似的title+year+type结构，提高聚合准确性
       const type = item.episodes.length === 1 ? 'movie' : 'tv';
-      const key = `${item.title.replace(/\s+/g, '')}-${
-        item.year || 'unknown'
-      }-${type}`;
-      const arr = map.get(key);
+      // 使用replaceAll代替replace，确保移除所有空格
+      const key = `${item.title.replaceAll(' ', '')}-${item.year || 'unknown'}-${type}`;
+      const arr = map.get(key) || [];
 
-      if (arr) {
-        arr.push(item);
-      } else {
-        map.set(key, [item]);
+      // 如果是新的键，记录其顺序
+      if (arr.length === 0) {
         keyOrder.push(key);
       }
+
+      arr.push(item);
+      map.set(key, arr);
     });
 
-    // 按出现顺序返回聚合结果
-    return keyOrder.map(
-      (key) => [key, map.get(key)!] as [string, SearchResult[]]
-    );
+    // 按出现顺序返回聚合结果，保持搜索结果的原始顺序
+    return keyOrder.map(key => [key, map.get(key)!] as [string, SearchResult[]]);
   }, [searchResults]);
 
   // 当聚合结果变化时，如果某个聚合已存在，则调用其卡片 ref 的 set 方法增量更新
