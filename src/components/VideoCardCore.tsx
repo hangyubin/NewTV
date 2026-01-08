@@ -156,7 +156,7 @@ const VideoCardCore = memo(
     return (
       <div
         ref={ref}
-        className='group relative w-full rounded-apple-xl cursor-pointer transition-transform duration-200 ease-out hover:scale-105 hover:shadow-elevated hover:z-10 flex flex-col h-full'
+        className='group relative w-full rounded-apple-xl cursor-pointer transition-transform duration-150 ease-out hover:scale-102 hover:shadow-elevated hover:z-10 flex flex-col h-full'
         style={
           {
             WebkitUserSelect: 'none',
@@ -186,19 +186,7 @@ const VideoCardCore = memo(
             } as React.CSSProperties
           }
         >
-          {/* 渐变光泽动画层 - 简化动画并添加硬件加速 */}
-          <div
-            className='absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10'
-            style={{
-              background:
-                'linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)',
-              backgroundSize: '150% 100%',
-              animation: 'card-shimmer 2s ease-in-out infinite',
-              // 硬件加速优化
-              transform: 'translateZ(0)',
-              willChange: 'opacity',
-            }}
-          />
+          {/* 移除渐变光泽动画层，减少动效 */}
 
           {/* 骨架屏 */}
           {/* {!isImageLoading && (
@@ -233,9 +221,9 @@ const VideoCardCore = memo(
             }
           />
 
-          {/* 悬浮遮罩 */}
+          {/* 悬浮遮罩 - 简化动画 */}
           <div
-            className='absolute inset-0 bg-linear-to-t from-black/90 via-black/30 to-transparent transition-all duration-400 ease-in-out opacity-0 group-hover:opacity-100'
+            className='absolute inset-0 bg-linear-to-t from-black/90 via-black/30 to-transparent transition-opacity duration-150 ease-in-out opacity-0 group-hover:opacity-100'
             style={
               {
                 WebkitUserSelect: 'none',
@@ -249,7 +237,7 @@ const VideoCardCore = memo(
           {config.showPlayButton && (
             <div
               data-button='true'
-              className='absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-300 ease-in-out delay-75 group-hover:opacity-100 group-hover:scale-100'
+              className='absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-200 ease-in-out group-hover:opacity-100 group-hover:scale-100'
               style={
                 {
                   WebkitUserSelect: 'none',
@@ -514,7 +502,7 @@ const VideoCardCore = memo(
                 }
               >
                 <div
-                  className='glass-strong text-white text-xs font-bold w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shadow-glass hover:scale-[1.1] transition-all duration-300 ease-out cursor-pointer'
+                  className='bg-black/80 text-white text-xs font-bold w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shadow-glass hover:scale-[1.1] transition-all duration-200 ease-out cursor-pointer'
                   style={
                     {
                       WebkitUserSelect: 'none',

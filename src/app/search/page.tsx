@@ -464,13 +464,23 @@ function SearchPageClient() {
     });
   }, [searchResults, searchQuery]);
 
-  // 聚合后的结果（按标题和年份分组）
+  // 聚合后的结果（按标题和年份分组）- 优化版
   // 直接基于 searchResults 生成，避免 enhancedSearchResults 去重导致的聚合失效
   const aggregatedResults = useMemo(() => {
     const map = new Map<string, SearchResult[]>();
     const keyOrder: string[] = []; // 记录键出现的顺序
 
+    // 优化聚合逻辑，添加去重机制，避免重复添加同一来源的结果
+    const addedItems = new Set<string>();
+
     searchResults.forEach((item) => {
+      // 生成唯一键，避免重复添加同一来源的同一结果
+      const itemKey = `${item.source}-${item.id}`;
+      if (addedItems.has(itemKey)) {
+        return; // 跳过已添加的结果
+      }
+      addedItems.add(itemKey);
+
       // 优化键生成，使用更高效的字符串拼接
       const type = item.episodes.length === 1 ? 'movie' : 'tv';
       const key = `${item.title.replace(/\s+/g, '')}-${
