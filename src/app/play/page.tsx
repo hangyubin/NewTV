@@ -1492,67 +1492,11 @@ function PlayPageClient() {
                   .replaceAll(' ', '')
                   .toLowerCase();
 
-                // 智能标题匹配：完全匹配优先，精确匹配次之
-                const titleMatch =
-                  // 1. 完全匹配（最优先）- 完全相同的标题
-                  resultTitle === queryTitle ||
-                  // 2. 精确包含匹配，至少3个字符
-                  ((resultTitle.includes(queryTitle) ||
-                    queryTitle.includes(resultTitle)) &&
-                    queryTitle.length >= 3) ||
-                  // 3. 移除数字和标点后完全匹配，至少3个字符
-                  (resultTitle.replace(/\d+|[：:]/g, '') ===
-                    queryTitle.replace(/\d+|[：:]/g, '') &&
-                    queryTitle.length >= 3) ||
-                  // 4. 中文标题完全匹配：移除所有非中文字符后完全相同，至少3个字符
-                  (resultTitle.replace(/[^\u4e00-\u9fa5]/g, '') ===
-                    queryTitle.replace(/[^\u4e00-\u9fa5]/g, '') &&
-                    queryTitle.replace(/[^\u4e00-\u9fa5]/g, '').length >= 3) ||
-                  // 5. 英文标题完全匹配：移除所有非英文字符后完全相同，至少3个字符
-                  (resultTitle.replace(/[^a-zA-Z]/g, '') ===
-                    queryTitle.replace(/[^a-zA-Z]/g, '') &&
-                    queryTitle.replace(/[^a-zA-Z]/g, '').length >= 3) ||
-                  // 6. 通用关键词匹配：仅当查询标题较长时（4个字符以上）才使用，且所有关键词都匹配
-                  (queryTitle.length > 4 &&
-                    checkAllKeywordsMatch(queryTitle, resultTitle)) ||
-                  // 7. 改进的相似匹配：至少70%的字符匹配，且至少3个字符相同
-                  (() => {
-                    const commonChars = Array.from(queryTitle).filter((char) =>
-                      resultTitle.includes(char)
-                    ).length;
-                    const similarity =
-                      commonChars / Math.max(queryTitle.length, 1);
-                    // 提高阈值到70%，且至少3个字符匹配
-                    return (
-                      similarity >= 0.7 &&
-                      commonChars >= 3 &&
-                      queryTitle.length >= 3
-                    );
-                  })() ||
-                  // 8. 年份匹配加强版：如果查询包含年份，结果标题必须包含相同年份，且至少有其他3个字符匹配
-                  (() => {
-                    if (!videoYearRef.current) return false;
-                    const hasYearMatch = result.title.includes(
-                      videoYearRef.current
-                    );
-                    if (!hasYearMatch) return false;
-
-                    // 移除年份后检查其他字符匹配度
-                    const queryWithoutYear = queryTitle
-                      .replace(new RegExp(videoYearRef.current, 'g'), '')
-                      .replace(/\s+/g, '');
-                    const resultWithoutYear = resultTitle
-                      .replace(new RegExp(videoYearRef.current, 'g'), '')
-                      .replace(/\s+/g, '');
-
-                    const commonChars = Array.from(queryWithoutYear).filter(
-                      (char) => resultWithoutYear.includes(char)
-                    ).length;
-
-                    // 至少有3个其他字符匹配，且原始查询至少3个字符
-                    return commonChars >= 3 && queryTitle.length >= 3;
-                  })();
-
+                // 只使用完全匹配，确保只有精确相同的标题才会被保留
+                const titleMatch = resultTitle === queryTitle ||
+                  // 或者使用豆瓣ID精确匹配
+                  (videoDoubanIdRef.current && videoDoubanIdRef.current > 0 && result.douban_id && result.douban_id === videoDoubanIdRef.current);
+                
                 return titleMatch;
               }
             );

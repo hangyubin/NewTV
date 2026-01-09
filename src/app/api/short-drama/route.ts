@@ -27,10 +27,10 @@ export async function GET(request: NextRequest) {
     // 优化超时时间，将25秒缩短为10秒，提高响应速度
     const TIMEOUT_MS = 10000;
 
-    // 使用更精准的短剧关键词策略，提高搜索效率
+    // 使用更全面的短剧关键词策略，获取更丰富的短剧内容
     const shortDramaKeywords = keyword
       ? [keyword] // 只使用用户提供的关键词，避免重复请求
-      : ['短剧', '微剧']; // 使用最核心的关键词，提高搜索效率
+      : ['短剧', '微剧', '竖屏剧', '迷你剧', '小短剧', '短视频剧', 'short drama', 'mini drama', '微短剧', '短剧热播', '短剧全集', '短剧免费', '短剧在线', '短剧剧场']; // 扩展关键词，提高搜索覆盖率
 
     let allResults: SearchResult[] = [];
 

@@ -338,9 +338,17 @@ function SearchPageClient() {
 
     for (const item of searchResults) {
       const type = item.episodes.length === 1 ? 'movie' : 'tv';
-      const key = `${item.title.replace(/\s+/g, '')}-${
-        item.year || 'unknown'
-      }-${type}`;
+      // 统一标题处理逻辑：与聚合逻辑保持一致
+      const processedTitle = item.title
+        .replaceAll(' ', '')
+        .toLowerCase()
+        // 移除标点符号和特殊字符
+        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\\[\]"'<>|]/g, '')
+        // 移除常见的前缀和后缀
+        .replace(/^(the|a|an|电影|电视剧|剧集|高清|超清|完整版|在线观看|免费)/g, '')
+        .replace(/(高清|超清|完整版|在线观看|免费|全集)$/g, '');
+      
+      const key = `${processedTitle}-${type}`;
       const arr = preliminaryMap.get(key) || [];
       arr.push(item);
       preliminaryMap.set(key, arr);
@@ -463,10 +471,24 @@ function SearchPageClient() {
       }
       addedItems.add(itemKey);
 
-      // 优化键生成：使用与LunaTV类似的title+year+type结构，提高聚合准确性
+      // 优化键生成：更彻底的标题处理，移除标点符号和特殊字符，只保留核心文字
       const type = item.episodes.length === 1 ? 'movie' : 'tv';
-      // 使用replaceAll代替replace，确保移除所有空格
-      const key = `${item.title.replaceAll(' ', '')}-${item.year || 'unknown'}-${type}`;
+      // 统一标题处理逻辑：
+      // 1. 移除所有空格
+      // 2. 转为小写
+      // 3. 移除所有标点符号和特殊字符
+      // 4. 移除常见的前缀和后缀
+      const processedTitle = item.title
+        .replaceAll(' ', '')
+        .toLowerCase()
+        // 移除标点符号和特殊字符
+        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\\[\]"'<>|]/g, '')
+        // 移除常见的前缀和后缀
+        .replace(/^(the|a|an|电影|电视剧|剧集|高清|超清|完整版|在线观看|免费)/g, '')
+        .replace(/(高清|超清|完整版|在线观看|免费|全集)$/g, '');
+      
+      // 生成聚合键，放宽年份匹配，只使用标题和类型
+      const key = `${processedTitle}-${type}`;
       const arr = map.get(key) || [];
 
       // 如果是新的键，记录其顺序

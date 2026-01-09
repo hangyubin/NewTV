@@ -25,7 +25,7 @@ export interface ShortDramaResponse {
 
 // 缓存配置
 const CACHE_KEY_PREFIX = 'short-drama-cache-';
-const CACHE_TTL = 60 * 60 * 1000; // 1小时缓存时间
+const CACHE_TTL = 10 * 60 * 1000; // 10分钟缓存时间，缩短缓存时间以更快获取最新数据
 
 /**
  * 生成缓存键

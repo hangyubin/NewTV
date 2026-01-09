@@ -29,7 +29,6 @@ export function isShortDrama(typeName?: string, title?: string): boolean {
     '短剧剧场',
     '短剧专区',
     '短视频剧',
-    '网络剧',
     '迷你剧',
     '短剧集',
     '短剧热播',
@@ -37,9 +36,19 @@ export function isShortDrama(typeName?: string, title?: string): boolean {
     '短剧在线',
     '短剧免费',
     '短剧大全',
-    '电视剧', // 增加电视剧类型，确保更多数据被保留
-    '电影', // 增加电影类型，确保更多数据被保留
-    '综艺', // 增加综艺类型，确保更多数据被保留
+    '微短剧',
+    '竖屏剧',
+    '小短剧',
+    '短剧全集',
+    '短剧热播',
+    '短剧精选',
+    '短剧推荐',
+    '短剧剧场',
+    '短剧专区',
+    '短视频剧',
+    'mini drama',
+    'short drama',
+    'micro drama',
   ];
 
   // 标题中的关键词
@@ -51,23 +60,33 @@ export function isShortDrama(typeName?: string, title?: string): boolean {
     '微剧',
     '迷你剧',
     '短剧集',
-    '微',
-    '短',
+    '微短剧',
+    '竖屏剧',
+    '小短剧',
+    '短剧全集',
     '短视频',
     '短剧集',
+    'mini drama',
+    'short drama',
+    'micro drama',
   ];
 
   // 检查type_name
   if (typeName) {
     const typeNameLower = typeName.toLowerCase();
-    // 放宽条件：只要type_name不为空，就认为是短剧
-    return true;
+    // 检查是否包含短剧类型关键词
+    return shortDramaTypes.some(type => 
+      typeNameLower.includes(type.toLowerCase())
+    );
   }
 
   // 检查标题
   if (title) {
-    // 放宽条件：只要标题不为空，就认为是短剧
-    return true;
+    const titleLower = title.toLowerCase();
+    // 检查是否包含短剧标题关键词
+    return shortDramaTitleKeywords.some(keyword => 
+      titleLower.includes(keyword.toLowerCase())
+    );
   }
 
   return false;
