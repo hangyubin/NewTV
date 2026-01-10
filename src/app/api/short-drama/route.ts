@@ -27,11 +27,11 @@ export async function GET(request: NextRequest) {
     // 优化超时时间，将25秒缩短为10秒，提高响应速度
     const TIMEOUT_MS = 10000;
 
-    // 优化搜索策略：只使用最核心的短剧关键词，减少API请求次数
-    // 从影视分类获取短剧数据时，我们可以更高效地通过分类信息识别短剧，无需大量关键词搜索
+    // 优化搜索策略：使用多个短剧相关关键词，提高短剧数据覆盖率
+    // 从多个关键词获取数据，然后通过isShortDrama函数统一过滤，确保获取到高质量的短剧数据
     const shortDramaKeywords = keyword
       ? [keyword] // 只使用用户提供的关键词，避免重复请求
-      : ['短剧']; // 仅使用最核心的关键词，减少不必要的API请求
+      : ['短剧', '爽文短剧', '反转爽剧', '微短剧', '竖屏短剧', '迷你剧', '短剧集', '微短剧'];
 
     let allResults: SearchResult[] = [];
 

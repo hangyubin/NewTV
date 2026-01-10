@@ -238,14 +238,14 @@ export async function searchFromApi(
     // 智能搜索：优化短剧关键词策略，减少不必要的请求，提高效率
     let searchVariants = [];
 
-    // 如果是短剧相关查询，只使用最核心的关键词，减少重复请求
+    // 如果是短剧相关查询，使用更全面的关键词，确保能获取到更多短剧数据
     if (
       query.includes('短剧') ||
       query.includes('微剧') ||
       query.includes('竖屏')
     ) {
-      // 只使用核心关键词，避免重复请求
-      searchVariants = [query]; // 仅使用用户提供的关键词，避免不必要的请求
+      // 对于短剧查询，使用更全面的关键词列表，确保能获取到更多短剧数据
+      searchVariants = ['短剧', '爽文短剧', '反转爽剧', '微短剧']; // 使用多个短剧相关关键词，提高短剧数据覆盖率
     } else {
       // 其他查询，使用简化的搜索变体生成，减少变体数量
       searchVariants = [query]; // 仅使用原始查询，减少请求数量
@@ -271,16 +271,10 @@ export async function searchFromApi(
         apiBaseUrl.includes('api.yhdm.so')
       ) {
         // 新的短剧API源，使用不同的请求格式，平衡数据量和性能
-        // 对于短剧查询，尝试使用分类参数直接获取短剧内容，提高效率
-        if (variant.includes('短剧')) {
-          // 尝试使用分类参数直接获取短剧内容
-          apiUrl = `${apiBaseUrl}?ac=videolist&wd=&class=短剧&limit=100`; // 直接获取短剧分类内容，每页100条结果
-        } else {
-          // 其他查询，使用关键词搜索
-          apiUrl = `${apiBaseUrl}?ac=videolist&wd=${encodeURIComponent(
-            variant
-          )}&limit=50`; // 每页返回50条结果，平衡数据量和性能
-        }
+        // 对于所有查询，使用统一的请求格式，避免分类参数不被支持的问题
+        apiUrl = `${apiBaseUrl}?ac=videolist&wd=${encodeURIComponent(
+          variant
+        )}&limit=50`; // 每页返回50条结果，平衡数据量和性能
       } else {
         // 传统API源，使用原有格式
         apiUrl = apiBaseUrl + API_CONFIG.search.path + encodeURIComponent(variant);
