@@ -148,29 +148,17 @@ export async function GET(request: NextRequest) {
     const TIMEOUT_MS = 5000; // 超时时间，5秒
     const MAX_ATTEMPTS = 3; // 最大尝试次数，避免无限循环
     
-    // 串行搜索关键词，智能选择API源
+    // 并行搜索所有可用API源，获取更多数据
     for (const searchKeyword of keywordsToSearch) {
-      const usedSites: string[] = [];
-      let success = false;
-      
-      // 最多尝试MAX_ATTEMPTS次，直到找到可用的API源
-      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-        const randomSite = getRandomApiSite(usedSites);
-        if (!randomSite) {
-          console.log(`📺 [短剧API] 没有更多可用的API源，跳过搜索`);
-          break;
-        }
-        
-        usedSites.push(randomSite.name);
-        console.log(`📺 [短剧API] 第${attempt + 1}次尝试 - 随机选择的API源: ${randomSite.name}`);
-        
+      // 并行请求所有API源
+      const sitePromises = apiSites.map(async (site) => {
         try {
           // 只获取前100条结果，避免数据量过大
           const apiResults = (await Promise.race([
-            searchFromApi(randomSite, searchKeyword),
+            searchFromApi(site, searchKeyword),
             new Promise((_, reject) =>
               setTimeout(
-                () => reject(new Error(`${randomSite.name} timeout`)),
+                () => reject(new Error(`${site.name} timeout`)),
                 TIMEOUT_MS
               )
             ),
@@ -186,39 +174,33 @@ export async function GET(request: NextRequest) {
           const limitedResults = filteredResults.slice(0, 50);
           
           // 记录每个API源的返回结果数量
-          if (!apiSiteResultsCount[randomSite.name]) {
-            apiSiteResultsCount[randomSite.name] = 0;
+          if (!apiSiteResultsCount[site.name]) {
+            apiSiteResultsCount[site.name] = 0;
           }
-          apiSiteResultsCount[randomSite.name] += limitedResults.length;
+          apiSiteResultsCount[site.name] += limitedResults.length;
 
-          console.log(`📺 [短剧API] ${randomSite.name} 搜索 ${searchKeyword} 返回 ${limitedResults.length} 条短剧结果`);
+          console.log(`📺 [短剧API] ${site.name} 搜索 ${searchKeyword} 返回 ${limitedResults.length} 条短剧结果`);
           
-          // 添加到结果列表
-          allResults = [...allResults, ...limitedResults];
-          success = true;
-
-          // 如果已经获取到足够的结果，不再继续搜索
-          if (allResults.length >= 100) {
-            console.log(`📺 [短剧API] 已获取到 ${allResults.length} 条结果，停止搜索`);
-            break;
-          }
-          
-          // 继续尝试下一个API源，获取更多数据
-          console.log(`📺 [短剧API] 继续尝试下一个API源，当前已获取 ${allResults.length} 条结果`);
+          return limitedResults;
         } catch (error) {
           // 记录错误信息，继续尝试下一个API源
-          console.error(`📺 [短剧API] ${randomSite.name} 搜索 ${searchKeyword} 失败:`, error instanceof Error ? error.message : String(error));
-          console.log(`📺 [短剧API] 将尝试下一个API源`);
+          console.error(`📺 [短剧API] ${site.name} 搜索 ${searchKeyword} 失败:`, error instanceof Error ? error.message : String(error));
+          return [];
         }
-      }
+      });
+
+      // 等待所有API源返回结果
+      const siteResults = await Promise.all(sitePromises);
       
-      // 如果当前关键词搜索成功，继续搜索下一个关键词
-      if (success && allResults.length < 100) {
-        continue;
-      }
+      // 合并所有结果
+      const newResults = siteResults.flat();
+      allResults = [...allResults, ...newResults];
       
-      // 如果没有更多关键词或已经获取足够结果，停止搜索
-      break;
+      // 如果已经获取到足够的结果，不再继续搜索
+      if (allResults.length >= 100) {
+        console.log(`📺 [短剧API] 已获取到 ${allResults.length} 条结果，停止搜索`);
+        break;
+      }
     }
     
     // 如果最终没有获取到任何结果，返回空数组
