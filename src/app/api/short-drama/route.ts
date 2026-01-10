@@ -133,10 +133,10 @@ export async function GET(request: NextRequest) {
       return availableSites[randomIndex];
     };
     
-    // 只使用1个最相关的关键词，减少搜索次数
+    // 直接使用关键词进行搜索，减少搜索次数
     const keywordsToSearch = keyword 
       ? [keyword] 
-      : [shortDramaKeywords[0]]; // 只使用最相关的1个关键词
+      : ['短剧']; // 直接使用"短剧"关键词进行搜索
 
     console.log(`📺 [短剧API] 搜索关键词: ${keywordsToSearch.join(', ')}`);
     console.log(`📺 [短剧API] 可用API源数量: ${apiSites.length}`);
