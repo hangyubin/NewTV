@@ -271,13 +271,19 @@ export async function searchFromApi(
         apiBaseUrl.includes('api.yhdm.so')
       ) {
         // 新的短剧API源，使用不同的请求格式，平衡数据量和性能
-        apiUrl = `${apiBaseUrl}?ac=videolist&wd=${encodeURIComponent(
-          variant
-        )}&limit=50`; // 每页返回50条结果，平衡数据量和性能
+        // 对于短剧查询，尝试使用分类参数直接获取短剧内容，提高效率
+        if (variant.includes('短剧')) {
+          // 尝试使用分类参数直接获取短剧内容
+          apiUrl = `${apiBaseUrl}?ac=videolist&wd=&class=短剧&limit=100`; // 直接获取短剧分类内容，每页100条结果
+        } else {
+          // 其他查询，使用关键词搜索
+          apiUrl = `${apiBaseUrl}?ac=videolist&wd=${encodeURIComponent(
+            variant
+          )}&limit=50`; // 每页返回50条结果，平衡数据量和性能
+        }
       } else {
         // 传统API源，使用原有格式
-        apiUrl =
-          apiBaseUrl + API_CONFIG.search.path + encodeURIComponent(variant);
+        apiUrl = apiBaseUrl + API_CONFIG.search.path + encodeURIComponent(variant);
       }
 
       try {
