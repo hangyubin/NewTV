@@ -7,11 +7,11 @@ import Hls from 'hls.js';
  * @param title 内容标题
  * @returns boolean
  */
-export function isShortDrama(typeName?: string, title?: string): boolean {
-  if (!typeName && !title) return false;
+export function isShortDrama(typeName?: string, title?: string, classType?: string): boolean {
+  if (!typeName && !title && !classType) return false;
 
-  // 常见的短剧type_name标识
-  const shortDramaTypes = [
+  // 常见的短剧标识，包括type_name、class和标题中的关键词
+  const shortDramaIdentifiers = [
     '短剧',
     '微电影',
     '微剧',
@@ -49,47 +49,26 @@ export function isShortDrama(typeName?: string, title?: string): boolean {
     'mini drama',
     'short drama',
     'micro drama',
-  ];
-
-  // 标题中的关键词
-  const shortDramaTitleKeywords = [
-    '短剧',
     '竖屏',
-    '微电影',
-    '小剧场',
-    '微剧',
-    '迷你剧',
     '短剧集',
     '微短剧',
-    '竖屏剧',
     '小短剧',
-    '短剧全集',
     '短视频',
-    '短剧集',
-    'mini drama',
-    'short drama',
-    'micro drama',
   ];
 
-  // 检查type_name
-  if (typeName) {
-    const typeNameLower = typeName.toLowerCase();
-    // 检查是否包含短剧类型关键词
-    return shortDramaTypes.some(type => 
-      typeNameLower.includes(type.toLowerCase())
-    );
-  }
+  // 将所有检查字段转换为小写，统一比较
+  const typeNameLower = typeName?.toLowerCase() || '';
+  const titleLower = title?.toLowerCase() || '';
+  const classLower = classType?.toLowerCase() || '';
 
-  // 检查标题
-  if (title) {
-    const titleLower = title.toLowerCase();
-    // 检查是否包含短剧标题关键词
-    return shortDramaTitleKeywords.some(keyword => 
-      titleLower.includes(keyword.toLowerCase())
-    );
-  }
-
-  return false;
+  // 检查type_name、class和标题中是否包含任何短剧标识
+  // 使用includes方法检查是否包含，更灵活
+  return shortDramaIdentifiers.some(identifier => {
+    const identifierLower = identifier.toLowerCase();
+    return typeNameLower.includes(identifierLower) || 
+           classLower.includes(identifierLower) || 
+           titleLower.includes(identifierLower);
+  });
 }
 
 /**
@@ -100,10 +79,11 @@ export function isShortDrama(typeName?: string, title?: string): boolean {
  */
 export function getContentType(
   typeName?: string,
-  title?: string
+  title?: string,
+  classType?: string
 ): 'movie' | 'tv' | 'short-drama' | 'unknown' {
   // 首先检查是否为短剧
-  if (isShortDrama(typeName, title)) {
+  if (isShortDrama(typeName, title, classType)) {
     return 'short-drama';
   }
 

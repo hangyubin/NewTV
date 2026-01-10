@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
 
           // 过滤出真正的短剧内容
           const filteredResults = results.filter((result) => {
-            const isShort = isShortDrama(result.type_name, result.title);
+            const isShort = isShortDrama(result.type_name, result.title, result.class);
             return isShort;
           });
 
