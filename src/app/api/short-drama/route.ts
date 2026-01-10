@@ -203,8 +203,8 @@ export async function GET(request: NextRequest) {
             break;
           }
           
-          // 成功获取数据，跳出尝试循环
-          break;
+          // 继续尝试下一个API源，获取更多数据
+          console.log(`📺 [短剧API] 继续尝试下一个API源，当前已获取 ${allResults.length} 条结果`);
         } catch (error) {
           // 记录错误信息，继续尝试下一个API源
           console.error(`📺 [短剧API] ${randomSite.name} 搜索 ${searchKeyword} 失败:`, error instanceof Error ? error.message : String(error));
