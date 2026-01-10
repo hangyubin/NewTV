@@ -116,17 +116,23 @@ export async function GET(request: NextRequest) {
       return Promise.all(results);
     };
 
-    // 优化搜索策略：实现随机选择API源，减少服务器压力
-    // 1. 从可用API源中随机选择一个，避免同时请求所有API源
-    // 2. 只使用1个最相关的关键词，减少搜索次数
-    // 3. 缩短超时时间，避免长时间等待
-    // 4. 加载更多时可以利用不同API源的数据多样性
+    // 优化搜索策略：实现智能随机选择API源，带容错机制
+    // 1. 从可用API源中随机选择，避免同时请求所有API源
+    // 2. 添加重试机制，当一个API失效时尝试另一个
+    // 3. 只使用1个最相关的关键词，减少搜索次数
+    // 4. 缩短超时时间，避免长时间等待
+    // 5. 限制最大尝试次数，避免无限循环
     
-    // 随机选择一个API源的函数
-    const getRandomApiSite = () => {
+    // 随机选择一个API源，避免重复选择同一个API源
+    const getRandomApiSite = (usedSites: string[] = []) => {
       if (apiSites.length === 0) return null;
-      const randomIndex = Math.floor(Math.random() * apiSites.length);
-      return apiSites[randomIndex];
+      
+      // 过滤掉已经使用过的API源
+      const availableSites = apiSites.filter(site => !usedSites.includes(site.name));
+      if (availableSites.length === 0) return null;
+      
+      const randomIndex = Math.floor(Math.random() * availableSites.length);
+      return availableSites[randomIndex];
     };
     
     // 只使用1个最相关的关键词，减少搜索次数
@@ -138,62 +144,88 @@ export async function GET(request: NextRequest) {
     console.log(`📺 [短剧API] 可用API源数量: ${apiSites.length}`);
 
     // 优化API请求策略：
-    // 1. 只请求1个随机API源，减少服务器压力
+    // 1. 智能随机选择API源，带重试机制
     // 2. 缩短超时时间，避免长时间等待
-    // 3. 不使用重试机制，进一步减少延迟
+    // 3. 限制最大尝试次数，避免无限循环
     const TIMEOUT_MS = 5000; // 超时时间，5秒
+    const MAX_ATTEMPTS = 3; // 最大尝试次数，避免无限循环
     
-    // 串行搜索关键词，每次只请求1个随机API源
+    // 串行搜索关键词，智能选择API源
     for (const searchKeyword of keywordsToSearch) {
-      const randomSite = getRandomApiSite();
-      if (!randomSite) {
-        console.log(`📺 [短剧API] 没有可用的API源，跳过搜索`);
-        break;
-      }
+      const usedSites: string[] = [];
+      let success = false;
       
-      console.log(`📺 [短剧API] 随机选择的API源: ${randomSite.name}`);
-      
-      try {
-        // 只获取前100条结果，避免数据量过大
-        const apiResults = (await Promise.race([
-          searchFromApi(randomSite, searchKeyword),
-          new Promise((_, reject) =>
-            setTimeout(
-              () => reject(new Error(`${randomSite.name} timeout`)),
-              TIMEOUT_MS
-            )
-          ),
-        ])) as SearchResult[];
-        
-        // 过滤出真正的短剧内容
-        const filteredResults = apiResults.filter((result: SearchResult) => {
-          const isShort = isShortDrama(result.type_name, result.title, result.class);
-          return isShort;
-        });
-
-        // 限制每个API源返回的结果数量，避免数据量过大
-        const limitedResults = filteredResults.slice(0, 50);
-        
-        // 记录每个API源的返回结果数量
-        if (!apiSiteResultsCount[randomSite.name]) {
-          apiSiteResultsCount[randomSite.name] = 0;
-        }
-        apiSiteResultsCount[randomSite.name] += limitedResults.length;
-
-        console.log(`📺 [短剧API] ${randomSite.name} 搜索 ${searchKeyword} 返回 ${limitedResults.length} 条短剧结果`);
-        
-        // 添加到结果列表
-        allResults = [...allResults, ...limitedResults];
-
-        // 如果已经获取到足够的结果，不再继续搜索更多关键词
-        if (allResults.length >= 100) {
-          console.log(`📺 [短剧API] 已获取到 ${allResults.length} 条结果，停止搜索更多关键词`);
+      // 最多尝试MAX_ATTEMPTS次，直到找到可用的API源
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        const randomSite = getRandomApiSite(usedSites);
+        if (!randomSite) {
+          console.log(`📺 [短剧API] 没有更多可用的API源，跳过搜索`);
           break;
         }
-      } catch (error) {
-        // 记录错误信息，但不中断整体流程
-        console.error(`📺 [短剧API] ${randomSite.name} 搜索 ${searchKeyword} 失败:`, error instanceof Error ? error.message : String(error));
+        
+        usedSites.push(randomSite.name);
+        console.log(`📺 [短剧API] 第${attempt + 1}次尝试 - 随机选择的API源: ${randomSite.name}`);
+        
+        try {
+          // 只获取前100条结果，避免数据量过大
+          const apiResults = (await Promise.race([
+            searchFromApi(randomSite, searchKeyword),
+            new Promise((_, reject) =>
+              setTimeout(
+                () => reject(new Error(`${randomSite.name} timeout`)),
+                TIMEOUT_MS
+              )
+            ),
+          ])) as SearchResult[];
+          
+          // 过滤出真正的短剧内容
+          const filteredResults = apiResults.filter((result: SearchResult) => {
+            const isShort = isShortDrama(result.type_name, result.title, result.class);
+            return isShort;
+          });
+
+          // 限制每个API源返回的结果数量，避免数据量过大
+          const limitedResults = filteredResults.slice(0, 50);
+          
+          // 记录每个API源的返回结果数量
+          if (!apiSiteResultsCount[randomSite.name]) {
+            apiSiteResultsCount[randomSite.name] = 0;
+          }
+          apiSiteResultsCount[randomSite.name] += limitedResults.length;
+
+          console.log(`📺 [短剧API] ${randomSite.name} 搜索 ${searchKeyword} 返回 ${limitedResults.length} 条短剧结果`);
+          
+          // 添加到结果列表
+          allResults = [...allResults, ...limitedResults];
+          success = true;
+
+          // 如果已经获取到足够的结果，不再继续搜索
+          if (allResults.length >= 100) {
+            console.log(`📺 [短剧API] 已获取到 ${allResults.length} 条结果，停止搜索`);
+            break;
+          }
+          
+          // 成功获取数据，跳出尝试循环
+          break;
+        } catch (error) {
+          // 记录错误信息，继续尝试下一个API源
+          console.error(`📺 [短剧API] ${randomSite.name} 搜索 ${searchKeyword} 失败:`, error instanceof Error ? error.message : String(error));
+          console.log(`📺 [短剧API] 将尝试下一个API源`);
+        }
       }
+      
+      // 如果当前关键词搜索成功，继续搜索下一个关键词
+      if (success && allResults.length < 100) {
+        continue;
+      }
+      
+      // 如果没有更多关键词或已经获取足够结果，停止搜索
+      break;
+    }
+    
+    // 如果最终没有获取到任何结果，返回空数组
+    if (allResults.length === 0) {
+      console.log(`📺 [短剧API] 所有API源都不可用，返回空结果`);
     }
 
     // 优化去重机制，提高去重准确性
