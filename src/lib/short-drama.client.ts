@@ -19,8 +19,9 @@ export interface ShortDramaResponse {
   total: number;
   page: number;
   limit: number;
-  totalPages?: number;
+  totalPages: number;
   hasMore: boolean;
+  debug?: any;
 }
 
 // 缓存配置

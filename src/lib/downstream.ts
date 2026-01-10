@@ -242,10 +242,15 @@ export async function searchFromApi(
     if (
       query.includes('短剧') ||
       query.includes('微剧') ||
-      query.includes('竖屏')
+      query.includes('竖屏') ||
+      query.includes('迷你剧') ||
+      query.includes('短剧集') ||
+      query.includes('爽文') ||
+      query.includes('反转')
     ) {
       // 对于短剧查询，使用更全面的关键词列表，确保能获取到更多短剧数据
-      searchVariants = ['短剧', '爽文短剧', '反转爽剧', '微短剧']; // 使用多个短剧相关关键词，提高短剧数据覆盖率
+      // 包括从影视分类获取短剧数据
+      searchVariants = ['短剧', '爽文短剧', '反转爽剧', '微短剧', '影视短剧', '电视剧短剧', '影视分类短剧', '短剧影视', '影视精选短剧'];
     } else {
       // 其他查询，使用简化的搜索变体生成，减少变体数量
       searchVariants = [query]; // 仅使用原始查询，减少请求数量

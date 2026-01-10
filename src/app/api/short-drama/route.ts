@@ -20,6 +20,16 @@ export async function GET(request: NextRequest) {
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '25');
   const keyword = searchParams.get('keyword') || '';
+  const type = searchParams.get('type');
+  const region = searchParams.get('region');
+  const year = searchParams.get('year');
+  
+  // 记录请求开始时间
+  const requestStartTime = Date.now();
+  
+  // 提前声明变量，确保在catch块中可见
+  let shortDramaKeywords: string[] = [];
+  let apiSites: ApiSite[] = [];
 
   try {
     // 限制API请求的并发数量，避免过多请求导致服务器压力过大
@@ -29,15 +39,26 @@ export async function GET(request: NextRequest) {
 
     // 优化搜索策略：使用多个短剧相关关键词，提高短剧数据覆盖率
     // 从多个关键词获取数据，然后通过isShortDrama函数统一过滤，确保获取到高质量的短剧数据
-    const shortDramaKeywords = keyword
+    // 去重并扩展关键词列表，增加更多有效的短剧关键词
+    shortDramaKeywords = keyword
       ? [keyword] // 只使用用户提供的关键词，避免重复请求
-      : ['短剧', '爽文短剧', '反转爽剧', '微短剧', '竖屏短剧', '迷你剧', '短剧集', '微短剧'];
+      : Array.from(new Set([
+          '短剧', '爽文短剧', '反转爽剧', '微短剧', '竖屏短剧', '迷你剧', '短剧集', 
+          '影视短剧', '电视剧短剧', '影视分类短剧', '短剧影视', '影视精选短剧',
+          '短剧全集', '短剧完结', '短剧热播', '短剧推荐', '短剧免费', '短剧在线',
+          '短剧频道', '短剧榜单', '短剧热榜', '短剧更新', '短剧首发', '短剧独播',
+          '短剧抢先看', '短剧速看', '短剧解说', '短剧片段', '短剧剪辑', '短剧精彩'
+        ]));
+    
 
     let allResults: SearchResult[] = [];
+    
+    // 记录每个API源的返回结果数量
+    const apiSiteResultsCount: Record<string, number> = {};
 
     // 从视频源管理中获取可用的API源
     // 这样当视频源列表中被写入或导入了API，短剧API就会自动使用这些API
-    let apiSites: ApiSite[] = await getAvailableApiSites();
+    apiSites = await getAvailableApiSites();
 
     // 过滤掉AV相关的API源，只保留正规影视资源
     apiSites = apiSites.filter((site) => !site.name.includes('AV-') && !site.api.includes('AV-'));
@@ -61,6 +82,7 @@ export async function GET(request: NextRequest) {
             requestTime: new Date().toISOString(),
             keyword: keyword,
             searchKeywords: shortDramaKeywords,
+            processingTime: Date.now() - requestStartTime,
           },
         },
         {
@@ -104,38 +126,66 @@ export async function GET(request: NextRequest) {
       return Promise.all(results);
     };
 
-    // 优化搜索策略：如果有用户提供的关键词，只搜索该关键词
-    // 如果没有关键词，只搜索前3个最相关的关键词，减少API请求次数
+    // 优化搜索策略：根据API源数量动态调整搜索关键词数量
+    // 如果有用户提供的关键词，只搜索该关键词
+    // 如果没有关键词，根据API源数量搜索1-5个最相关的关键词，平衡数据覆盖率和API请求次数
     const keywordsToSearch = keyword 
       ? [keyword] 
-      : shortDramaKeywords.slice(0, 3); // 只搜索前3个关键词，减少API请求次数
+      : shortDramaKeywords.slice(0, Math.min(5, Math.max(1, apiSites.length))); // 动态调整搜索关键词数量
 
     console.log(`📺 [短剧API] 搜索关键词: ${keywordsToSearch.join(', ')}`);
+    console.log(`📺 [短剧API] 可用API源数量: ${apiSites.length}`);
+
+    // 添加重试机制的辅助函数
+    const retryRequest = async (fn: () => Promise<any>, maxRetries = 2, delay = 500): Promise<any> => {
+      let lastError: any;
+      for (let i = 0; i <= maxRetries; i++) {
+        try {
+          return await fn();
+        } catch (error) {
+          lastError = error;
+          if (i < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i))); // 指数退避
+          }
+        }
+      }
+      throw lastError;
+    };
 
     // 并行搜索多个关键词，但限制每个关键词的API请求并发数
     const searchPromises = keywordsToSearch.map(async (searchKeyword) => {
       // 使用限制并发的方式请求API
       const siteResults = await limitedConcurrency(apiSites, CONCURRENT_LIMIT, async (site) => {
         try {
-          const results = (await Promise.race([
-            searchFromApi(site, searchKeyword),
-            new Promise((_, reject) =>
-              setTimeout(
-                () => reject(new Error(`${site.name} timeout`)),
-                TIMEOUT_MS
-              )
-            ),
-          ])) as SearchResult[];
+          const results = await retryRequest(async () => {
+            return (await Promise.race([
+              searchFromApi(site, searchKeyword),
+              new Promise((_, reject) =>
+                setTimeout(
+                  () => reject(new Error(`${site.name} timeout`)),
+                  TIMEOUT_MS
+                )
+              ),
+            ])) as SearchResult[];
+          }, 2, 500);
 
           // 过滤出真正的短剧内容
-          const filteredResults = results.filter((result) => {
+          const filteredResults = results.filter((result: SearchResult) => {
             const isShort = isShortDrama(result.type_name, result.title, result.class);
             return isShort;
           });
 
+          // 记录每个API源的返回结果数量
+          if (!apiSiteResultsCount[site.name]) {
+            apiSiteResultsCount[site.name] = 0;
+          }
+          apiSiteResultsCount[site.name] += filteredResults.length;
+
+          console.log(`📺 [短剧API] ${site.name} 搜索 ${searchKeyword} 返回 ${filteredResults.length} 条短剧结果`);
           return filteredResults;
         } catch (error) {
-          // 忽略单个API请求失败，继续处理其他请求
+          // 记录错误信息，但不中断整体流程
+          console.error(`📺 [短剧API] ${site.name} 搜索 ${searchKeyword} 失败:`, error instanceof Error ? error.message : String(error));
           return [];
         }
       });
@@ -157,12 +207,28 @@ export async function GET(request: NextRequest) {
       console.log(`📺 [短剧API] 已获取到 ${allResults.length} 条结果，停止搜索更多关键词`);
     }
 
-    // 改进去重机制，使用更宽松的策略，合并所有片源信息
-    // 根据标题和年份进行去重，但合并所有片源信息
+    // 优化去重机制，提高去重准确性
+    // 基于标题、年份和主要分类特征进行去重，同时智能合并片源信息
     const uniqueResultsMap = new Map<string, SearchResult>();
 
+    // 生成更准确的去重键
+    const generateUniqueKey = (result: SearchResult): string => {
+      // 清理标题，移除常见的后缀和前缀
+      const cleanedTitle = result.title?.toLowerCase()
+        .replace(/\s+/g, '')
+        .replace(/[(（)）]/g, '')
+        .replace(/[\u4e00-\u9fa5]版$/g, '')
+        .replace(/[\u4e00-\u9fa5]全集$/g, '')
+        .replace(/[\u4e00-\u9fa5]完结$/g, '')
+        .replace(/[\u4e00-\u9fa5]高清$/g, '')
+        .replace(/[\u4e00-\u9fa5]无删减$/g, '') || '';
+      
+      // 使用清理后的标题和年份作为主要去重依据，添加分类信息提高准确性
+      return `${cleanedTitle}-${result.year || 'unknown'}-${result.class?.toLowerCase().substring(0, 10) || 'unknown'}`;
+    };
+
     for (const result of allResults) {
-      const key = `${result.title || ''}-${result.year || 'unknown'}`;
+      const key = generateUniqueKey(result);
       if (uniqueResultsMap.has(key)) {
         // 合并片源信息
         const existingResult = uniqueResultsMap.get(key) as SearchResult;
@@ -210,6 +276,21 @@ export async function GET(request: NextRequest) {
 
         // 更新片源数量
         existingResult.source_count = existingResult.episodes.length;
+        
+        // 选择更完整的描述信息
+        if (!existingResult.desc && result.desc) {
+          existingResult.desc = result.desc;
+        }
+        
+        // 选择更清晰的海报图片
+        if (existingResult.poster?.includes('default') && result.poster?.includes('http')) {
+          existingResult.poster = result.poster;
+        }
+        
+        // 选择更准确的评分信息
+        if (!existingResult.score && result.score) {
+          existingResult.score = result.score;
+        }
       } else {
         // 首次添加，设置初始值
         result.source_count = (result.episodes || []).length;
@@ -222,17 +303,125 @@ export async function GET(request: NextRequest) {
 
     console.log(`📺 [短剧API] 去重后保留 ${uniqueResults.length} 条结果`);
 
-    // 按年份和热度排序
-    const sortedResults = uniqueResults.sort((a, b) => {
-      // 优先按年份排序（新的在前）
+    // 添加类型、地区和年份筛选，增强筛选精确性
+    let filteredResults = [...uniqueResults];
+    
+    // 类型映射表，将用户输入的类型映射到实际可能出现的类型值
+    const typeMapping: Record<string, string[]> = {
+      'romance': ['爱情', '言情', '都市爱情', '校园爱情', '甜宠', '虐恋', '女频恋爱'],
+      'family': ['家庭', '亲情', '伦理', '生活'],
+      'modern': ['现代', '都市', '当代', '现实'],
+      'urban': ['都市', '城市', '职场', '商战'],
+      'costume': ['古装', '古代', '武侠', '仙侠', '历史'],
+      'time_travel': ['穿越', '时空', '回到', '重生'],
+      'business': ['商战', '职场', '创业', '商业'],
+      'suspense': ['悬疑', '推理', '侦探', '破案'],
+      'comedy': ['喜剧', '搞笑', '幽默', '欢乐'],
+      'youth': ['青春', '校园', '成长', '初恋']
+    };
+    
+    // 地区映射表，将用户输入的地区映射到实际可能出现的地区值
+    const regionMapping: Record<string, string[]> = {
+      'chinese': ['华语', '中文', '中国', '大陆', '港台', '香港', '台湾'],
+      'mainland_china': ['大陆', '中国大陆', '内地', '中国内地'],
+      'korean': ['韩国', '韩剧', '韩流', '韩语'],
+      'japanese': ['日本', '日剧', '动漫', '日语'],
+      'usa': ['美国', '美剧', '英语', '好莱坞'],
+      'uk': ['英国', '英剧', '英国剧'],
+      'thailand': ['泰国', '泰剧', '泰语']
+    };
+    
+    // 按类型筛选
+    if (type && type !== 'all') {
+      const targetType = type.toLowerCase();
+      const typeKeywords = typeMapping[targetType] || [targetType];
+      
+      filteredResults = filteredResults.filter(result => {
+        const resultType = result.type_name?.toLowerCase() || '';
+        const resultClass = result.class?.toLowerCase() || '';
+        const resultTitle = result.title?.toLowerCase() || '';
+        
+        // 检查是否匹配任何类型关键词
+        return typeKeywords.some(keyword => {
+          return resultType.includes(keyword) || 
+                 resultClass.includes(keyword) ||
+                 resultTitle.includes(keyword);
+        });
+      });
+    }
+    
+    // 按地区筛选
+    if (region && region !== 'all') {
+      const targetRegion = region.toLowerCase();
+      const regionKeywords = regionMapping[targetRegion] || [targetRegion];
+      
+      filteredResults = filteredResults.filter(result => {
+        const resultClass = result.class?.toLowerCase() || '';
+        const resultTitle = result.title?.toLowerCase() || '';
+        const resultType = result.type_name?.toLowerCase() || '';
+        
+        // 检查是否匹配任何地区关键词
+        return regionKeywords.some(keyword => {
+          return resultClass.includes(keyword) || 
+                 resultTitle.includes(keyword) ||
+                 resultType.includes(keyword);
+        });
+      });
+    }
+    
+    // 按年份筛选，支持精确匹配和范围匹配
+    if (year && year !== 'all') {
+      filteredResults = filteredResults.filter(result => {
+        const resultYear = result.year || '';
+        const resultTitle = result.title?.toLowerCase() || '';
+        const resultClass = result.class?.toLowerCase() || '';
+        
+        // 支持年份范围匹配，如 "2020-2023"
+        if (year.includes('-')) {
+          const [startYear, endYear] = year.split('-').map(y => parseInt(y));
+          if (!isNaN(startYear) && !isNaN(endYear)) {
+            const resultYearNum = parseInt(resultYear);
+            return !isNaN(resultYearNum) && resultYearNum >= startYear && resultYearNum <= endYear;
+          }
+        }
+        
+        // 精确匹配
+        return resultYear.includes(year) || 
+               resultTitle.includes(year) ||
+               resultClass.includes(year);
+      });
+    }
+    
+    // 按年份、评分、片源数量和标题长度排序，综合考虑短剧热度和质量
+    const sortedResults = filteredResults.sort((a, b) => {
+      // 1. 优先按年份排序（新的在前）
       const yearA = parseInt(a.year) || 0;
       const yearB = parseInt(b.year) || 0;
       if (yearA !== yearB) {
         return yearB - yearA;
       }
-      // 然后按标题长度排序（短剧通常标题较短）
-      return a.title.length - b.title.length;
+      
+      // 2. 然后按评分排序（高评分在前）
+      const scoreA = a.score || 0;
+      const scoreB = b.score || 0;
+      if (scoreA !== scoreB) {
+        return scoreB - scoreA;
+      }
+      
+      // 3. 然后按片源数量排序（多片源在前）
+      const sourceCountA = a.source_count || (a.episodes?.length || 0);
+      const sourceCountB = b.source_count || (b.episodes?.length || 0);
+      if (sourceCountA !== sourceCountB) {
+        return sourceCountB - sourceCountA;
+      }
+      
+      // 4. 最后按标题长度排序（短剧通常标题较短）
+      const titleLengthA = a.title?.length || 0;
+      const titleLengthB = b.title?.length || 0;
+      return titleLengthA - titleLengthB;
     });
+    
+    console.log(`📺 [短剧API] 排序后结果数量: ${sortedResults.length}`);
 
     // 分页
     const startIndex = (page - 1) * limit;
@@ -254,14 +443,43 @@ export async function GET(request: NextRequest) {
       hasMore: startIndex + limit < sortedResults.length,
       totalPages: Math.ceil(sortedResults.length / limit),
       debug: {
-        apiSites: apiSites.map((site) => site.name),
+        apiSites: apiSites.map((site: ApiSite) => site.name),
+        apiSiteResultsCount: apiSiteResultsCount,
         requestTime: new Date().toISOString(),
+        processingTime: Date.now() - requestStartTime,
         keyword: keyword,
         searchKeywords: shortDramaKeywords,
+        type: type,
+        region: region,
+        year: year,
+        totalResults: sortedResults.length,
+        filteredResults: filteredResults.length,
+        uniqueResults: uniqueResults.length,
+        allResultsCount: allResults.length,
       },
     };
 
-    const cacheTime = await getCacheTime();
+    // 根据请求参数和响应结果动态调整缓存时间
+    // 1. 如果有用户提供的关键词，缓存时间较短（5分钟），因为用户搜索可能需要最新数据
+    // 2. 如果是热门短剧（评分高或片源多），缓存时间较长（1小时）
+    // 3. 其他情况使用默认缓存时间
+    let cacheTime = await getCacheTime();
+    
+    // 根据请求参数调整缓存时间
+    if (keyword) {
+      cacheTime = 300; // 5分钟
+    } 
+    // 根据响应结果调整缓存时间
+    else if (sortedResults.length > 0) {
+      const hasHighScore = sortedResults.some(result => result.score && result.score > 8.0);
+      const hasManySources = sortedResults.some(result => result.source_count && result.source_count > 5);
+      
+      if (hasHighScore || hasManySources) {
+        cacheTime = 3600; // 1小时
+      }
+    }
+    
+    console.log(`📺 [短剧API] 缓存时间: ${cacheTime}秒`);
 
     return NextResponse.json(result, {
       headers: {
@@ -297,8 +515,16 @@ export async function GET(request: NextRequest) {
         debug: {
           error: error instanceof Error ? error.message : String(error),
           errorName: error instanceof Error ? error.name : 'UnknownError',
+          errorStack: error instanceof Error ? error.stack : undefined,
           requestTime: new Date().toISOString(),
           keyword: keyword,
+          type: type,
+          region: region,
+          year: year,
+          searchKeywords: shortDramaKeywords,
+          apiSitesCount: apiSites?.length || 0,
+          apiSites: apiSites?.map((site: ApiSite) => site.name) || [],
+          processingTime: Date.now() - requestStartTime,
         },
       },
       {
