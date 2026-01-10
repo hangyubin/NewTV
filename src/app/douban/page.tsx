@@ -190,8 +190,8 @@ function DoubanPageClient() {
     return () => clearTimeout(timer);
   }, [type, customCategories]);
 
-  // 生成骨架屏数据
-  const skeletonData = Array.from({ length: 25 }, (_, index) => index);
+  // 生成骨架屏数据，减少初始渲染数量，提高首屏加载速度
+  const skeletonData = Array.from({ length: 16 }, (_, index) => index);
 
   // 参数快照比较函数
   const isSnapshotEqual = useCallback(
@@ -225,6 +225,18 @@ function DoubanPageClient() {
     },
     []
   );
+  
+  // 共享的数据转换函数，优化短剧数据转换逻辑
+  const convertShortDramaData = useCallback((results: any[]): DoubanItem[] => {
+    // 使用map直接转换，避免不必要的中间变量
+    return results.map((item) => ({
+      id: item.id,
+      title: item.title,
+      poster: item.poster,
+      rate: item.score ? item.score.toFixed(1) : '', // 使用toFixed保留一位小数
+      year: item.year || '',
+    }));
+  }, []);
 
   // 生成API请求参数的辅助函数
   const getRequestParams = useCallback(
@@ -317,35 +329,29 @@ function DoubanPageClient() {
           throw new Error('没有找到对应的日期');
         }
       } else if (type === 'short-drama') {
-        // 短剧数据处理
-        const shortDramaResponse = await getShortDramaData({
-          type:
-            multiLevelValues.type !== 'all' ? multiLevelValues.type : undefined,
-          region:
-            multiLevelValues.region !== 'all'
-              ? multiLevelValues.region
-              : undefined,
-          year:
-            multiLevelValues.year !== 'all' ? multiLevelValues.year : undefined,
-          page: 1,
-          limit: 25,
-        });
+          // 短剧数据处理，减少每页请求数量，提高加载速度
+          const shortDramaResponse = await getShortDramaData({
+            type:
+              multiLevelValues.type !== 'all' ? multiLevelValues.type : undefined,
+            region:
+              multiLevelValues.region !== 'all'
+                ? multiLevelValues.region
+                : undefined,
+            year:
+              multiLevelValues.year !== 'all' ? multiLevelValues.year : undefined,
+            page: 1,
+            limit: 16, // 减少每页请求数量，提高加载速度
+          });
 
-        // 转换为豆瓣数据格式
-        data = {
-          code: 200,
-          message: 'success',
-          list: shortDramaResponse.results.map((item: any) => ({
-            id: item.id,
-            title: item.title,
-            poster: item.poster,
-            rate: '', // 短剧通常没有豆瓣评分
-            year: item.year,
-          })),
-        };
+          // 转换为豆瓣数据格式，使用优化的数据转换函数
+          data = {
+            code: 200,
+            message: 'success',
+            list: convertShortDramaData(shortDramaResponse.results),
+          };
 
-        // 直接使用API返回的hasMore字段判断是否还有更多数据
-        setHasMore(shortDramaResponse.hasMore);
+          // 直接使用API返回的hasMore字段判断是否还有更多数据
+          setHasMore(shortDramaResponse.hasMore);
       } else if (type === 'anime') {
         data = await getDoubanRecommends({
           kind: primarySelection === '番剧' ? 'tv' : 'movie',
@@ -490,7 +496,7 @@ function DoubanPageClient() {
               throw new Error('没有找到对应的分类');
             }
           } else if (type === 'short-drama') {
-            // 短剧加载更多数据
+            // 短剧加载更多数据，减少每页请求数量，提高加载速度
             const shortDramaResponse = await getShortDramaData({
               type:
                 multiLevelValues.type !== 'all'
@@ -505,20 +511,14 @@ function DoubanPageClient() {
                   ? multiLevelValues.year
                   : undefined,
               page: currentPage + 1,
-              limit: 25,
+              limit: 16, // 减少每页请求数量，提高加载速度
             });
 
-            // 转换为豆瓣数据格式
+            // 转换为豆瓣数据格式，使用优化的数据转换函数
             data = {
               code: 200,
               message: 'success',
-              list: shortDramaResponse.results.map((item: any) => ({
-                id: item.id,
-                title: item.title,
-                poster: item.poster,
-                rate: '',
-                year: item.year,
-              })),
+              list: convertShortDramaData(shortDramaResponse.results),
             };
 
             // 直接使用API返回的hasMore字段判断是否还有更多数据
@@ -617,30 +617,52 @@ function DoubanPageClient() {
     selectedWeekday,
   ]);
 
-  // 无限加载实现，参考LunaTV项目
+  // 无限加载实现，优化逻辑避免多次触发加载请求
   const lastElementRef = useCallback(
     (node: HTMLDivElement | null) => {
-      if (loading || isLoadingMore || !hasMore) return;
-      if (observerRef.current) observerRef.current.disconnect();
+      // 如果正在加载数据、没有更多数据或没有挂载节点，直接返回
+      if (loading || isLoadingMore || !hasMore || !node) {
+        // 如果存在观察者，断开连接
+        if (observerRef.current) {
+          observerRef.current.disconnect();
+        }
+        return;
+      }
+      
+      // 断开之前的观察者连接
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
 
+      // 创建新的观察者，增加rootMargin提前触发加载
       observerRef.current = new IntersectionObserver(
         (entries) => {
-          if (
-            entries[0].isIntersecting &&
-            hasMore &&
-            !isLoadingMore &&
-            !loading
-          ) {
+          const entry = entries[0];
+          // 只有当元素进入视口且满足加载条件时才触发加载
+          if (entry.isIntersecting && hasMore && !isLoadingMore && !loading) {
             setCurrentPage((prev) => prev + 1);
           }
         },
-        { threshold: 0.1 }
+        { 
+          threshold: 0.1,
+          rootMargin: '0px 0px 200px 0px' // 提前200px触发加载
+        }
       );
 
-      if (node) observerRef.current.observe(node);
+      // 观察最后一个元素
+      observerRef.current.observe(node);
     },
     [loading, isLoadingMore, hasMore]
   );
+  
+  // 组件卸载时断开观察者连接，避免内存泄漏
+  useEffect(() => {
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, []);
 
   // 处理选择器变化
   const handlePrimaryChange = useCallback(
@@ -837,17 +859,19 @@ function DoubanPageClient() {
                     }
                   >
                     <VideoCard
-                      from='douban'
-                      title={item.title}
-                      poster={item.poster}
-                      douban_id={Number(item.id)}
-                      rate={item.rate}
-                      year={item.year}
-                      type={type === 'movie' ? 'movie' : ''} // 电影类型严格控制，tv 不控
-                      isBangumi={
-                        type === 'anime' && primarySelection === '每日放送'
-                      }
-                    />
+                key={`${item.id || item.title}-${index}`}
+                from='douban'
+                title={item.title}
+                poster={item.poster}
+                douban_id={Number(item.id)}
+                rate={item.rate}
+                year={item.year}
+                type={type === 'movie' ? 'movie' : ''} // 电影类型严格控制，tv 不控
+                isBangumi={
+                  type === 'anime' && primarySelection === '每日放送'
+                }
+                origin='vod' // 明确指定origin，避免undefined
+              />
                   </div>
                 ))}
           </div>

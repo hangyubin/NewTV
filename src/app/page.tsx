@@ -69,19 +69,65 @@ function HomeClient() {
 
   const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
 
+  // 缓存机制：实现首页数据缓存，避免重复请求
+  const getCachedData = (key: string) => {
+    if (typeof localStorage === 'undefined') return null;
+    try {
+      const cached = localStorage.getItem(key);
+      if (!cached) return null;
+      
+      const { data, timestamp } = JSON.parse(cached);
+      // 缓存有效期：30分钟
+      if (Date.now() - timestamp > 30 * 60 * 1000) {
+        localStorage.removeItem(key);
+        return null;
+      }
+      
+      console.log('从缓存获取数据成功:', key);
+      return data;
+    } catch (error) {
+      console.error('从缓存获取数据失败:', error);
+      return null;
+    }
+  };
+  
+  const saveCachedData = (key: string, data: any) => {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      localStorage.setItem(key, JSON.stringify({
+        data,
+        timestamp: Date.now()
+      }));
+      console.log('保存数据到缓存成功:', key);
+    } catch (error) {
+      console.error('保存数据到缓存失败:', error);
+    }
+  };
+  
   useEffect(() => {
-    const fetchRecommendData = async () => {
+    // 优先获取核心内容：热门电影、热门剧集、热门动漫、热门综艺
+    const fetchCoreData = async () => {
       try {
         setLoading(true);
+        
+        // 尝试从缓存获取核心数据
+        const cachedCoreData = getCachedData('home-core-data');
+        if (cachedCoreData) {
+          // 如果缓存存在，直接使用缓存数据
+          setHotMovies(cachedCoreData.hotMovies);
+          setHotTvShows(cachedCoreData.hotTvShows);
+          setHotAnime(cachedCoreData.hotAnime);
+          setHotVarietyShows(cachedCoreData.hotVarietyShows);
+          setLoading(false);
+          return;
+        }
 
-        // 并行获取热门电影、热门剧集、热门动漫、热门综艺和热门短剧
-        // 使用Promise.allSettled代替Promise.all，确保即使某个请求失败，其他请求仍能完成
+        // 并行获取核心内容数据
         const [
           moviesResult,
           tvShowsResult,
           animeResult,
           varietyShowsResult,
-          shortDramaResult,
         ] = await Promise.allSettled([
           getDoubanCategories({
             kind: 'movie',
@@ -105,107 +151,87 @@ function HomeClient() {
             category: 'show',
             type: 'show',
           }),
-          getShortDramaData({
-            page: 1,
-            limit: 25,
-          }),
         ]);
 
         // 处理热门电影数据
-        if (
-          moviesResult.status === 'fulfilled' &&
-          moviesResult.value.code === 200
-        ) {
-          setHotMovies(moviesResult.value.list);
-        } else {
-          console.error(
-            '获取热门电影失败:',
-            moviesResult.status === 'rejected'
-              ? moviesResult.reason
-              : '未知错误'
-          );
-        }
+        const hotMovies = moviesResult.status === 'fulfilled' && moviesResult.value.code === 200
+          ? moviesResult.value.list
+          : [];
+        setHotMovies(hotMovies);
 
         // 处理热门剧集数据
-        if (
-          tvShowsResult.status === 'fulfilled' &&
-          tvShowsResult.value.code === 200
-        ) {
-          setHotTvShows(tvShowsResult.value.list);
-        } else {
-          console.error(
-            '获取热门剧集失败:',
-            tvShowsResult.status === 'rejected'
-              ? tvShowsResult.reason
-              : '未知错误'
-          );
-        }
+        const hotTvShows = tvShowsResult.status === 'fulfilled' && tvShowsResult.value.code === 200
+          ? tvShowsResult.value.list
+          : [];
+        setHotTvShows(hotTvShows);
 
         // 处理热门动漫数据
-        if (
-          animeResult.status === 'fulfilled' &&
-          animeResult.value.code === 200
-        ) {
-          setHotAnime(animeResult.value.list);
-        } else {
-          console.error(
-            '获取热门动漫失败:',
-            animeResult.status === 'rejected' ? animeResult.reason : '未知错误'
-          );
-        }
+        const hotAnime = animeResult.status === 'fulfilled' && animeResult.value.code === 200
+          ? animeResult.value.list
+          : [];
+        setHotAnime(hotAnime);
 
         // 处理热门综艺数据
-        if (
-          varietyShowsResult.status === 'fulfilled' &&
-          varietyShowsResult.value.code === 200
-        ) {
-          setHotVarietyShows(varietyShowsResult.value.list);
-        } else {
-          console.error(
-            '获取热门综艺失败:',
-            varietyShowsResult.status === 'rejected'
-              ? varietyShowsResult.reason
-              : '未知错误'
-          );
-        }
+        const hotVarietyShows = varietyShowsResult.status === 'fulfilled' && varietyShowsResult.value.code === 200
+          ? varietyShowsResult.value.list
+          : [];
+        setHotVarietyShows(hotVarietyShows);
 
-        // 处理短剧数据
-        if (
-          shortDramaResult.status === 'fulfilled' &&
-          shortDramaResult.value &&
-          shortDramaResult.value.results
-        ) {
-          const shortDramaList = shortDramaResult.value.results.map(
-            (item: any) => ({
-              id: item.id,
-              title: item.title,
-              poster: item.poster,
-              rate: '', // 短剧通常没有豆瓣评分
-              year: item.year || '',
-            })
-          );
-          setHotShortDramas(shortDramaList);
-          setShortDramaPage(1);
-          setShortDramaHasMore(
-            shortDramaResult.value.results.length >=
-              (shortDramaResult.value.limit || 25)
-          );
-        } else {
-          console.error(
-            '获取热门短剧失败:',
-            shortDramaResult.status === 'rejected'
-              ? shortDramaResult.reason
-              : '未知错误'
-          );
-        }
+        // 保存核心数据到缓存
+        saveCachedData('home-core-data', {
+          hotMovies,
+          hotTvShows,
+          hotAnime,
+          hotVarietyShows
+        });
+
+        // 核心内容加载完成后，立即显示页面
+        setLoading(false);
       } catch (error) {
-        console.error('获取推荐数据失败:', error);
-      } finally {
+        console.error('获取核心数据失败:', error);
         setLoading(false);
       }
     };
 
-    fetchRecommendData();
+    // 延迟获取热门短剧数据，减少首页初始加载时间
+  const fetchShortDramaData = async () => {
+    try {
+      setShortDramaLoading(true);
+      
+      // 尝试从缓存获取短剧数据 - 直接使用getShortDramaData的内置缓存
+      const shortDramaResult = await getShortDramaData({
+        page: 1,
+        limit: 25,
+      });
+
+      if (shortDramaResult.results) {
+        const shortDramaList = shortDramaResult.results.map(
+          (item: any) => ({
+            id: item.id,
+            title: item.title,
+            poster: item.poster,
+            rate: '', // 短剧通常没有豆瓣评分
+            year: item.year || '',
+          })
+        );
+        
+        setHotShortDramas(shortDramaList);
+        setShortDramaPage(1);
+        const hasMore = shortDramaResult.results.length >= (shortDramaResult.limit || 25);
+        setShortDramaHasMore(hasMore);
+      }
+    } catch (error) {
+      console.error('获取热门短剧数据失败:', error);
+    } finally {
+      setShortDramaLoading(false);
+    }
+  };
+
+    // 先获取核心数据
+    fetchCoreData();
+    
+    // 延迟500毫秒获取热门短剧数据，给核心内容加载留出时间
+    setTimeout(fetchShortDramaData, 500);
   }, []);
 
   // 处理收藏数据更新的函数
@@ -622,7 +648,7 @@ function HomeClient() {
                   </Link>
                 </div>
                 <ScrollableRow>
-                  {loading
+                  {shortDramaLoading || hotShortDramas.length === 0
                     ? // 加载状态显示灰色占位数据
                       Array.from({ length: 8 }).map((_, index) => (
                         <div
