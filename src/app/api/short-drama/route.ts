@@ -116,100 +116,84 @@ export async function GET(request: NextRequest) {
       return Promise.all(results);
     };
 
-    // 优化搜索策略：根据API源数量动态调整搜索关键词数量
-    // 如果有用户提供的关键词，只搜索该关键词
-    // 如果没有关键词，根据API源数量搜索1-3个最相关的关键词，进一步减少API请求次数
+    // 优化搜索策略：实现随机选择API源，减少服务器压力
+    // 1. 从可用API源中随机选择一个，避免同时请求所有API源
+    // 2. 只使用1个最相关的关键词，减少搜索次数
+    // 3. 缩短超时时间，避免长时间等待
+    // 4. 加载更多时可以利用不同API源的数据多样性
+    
+    // 随机选择一个API源的函数
+    const getRandomApiSite = () => {
+      if (apiSites.length === 0) return null;
+      const randomIndex = Math.floor(Math.random() * apiSites.length);
+      return apiSites[randomIndex];
+    };
+    
+    // 只使用1个最相关的关键词，减少搜索次数
     const keywordsToSearch = keyword 
       ? [keyword] 
-      : shortDramaKeywords.slice(0, Math.min(3, Math.max(1, Math.ceil(apiSites.length / 2)))); // 动态调整搜索关键词数量，进一步减少API请求次数
+      : [shortDramaKeywords[0]]; // 只使用最相关的1个关键词
 
     console.log(`📺 [短剧API] 搜索关键词: ${keywordsToSearch.join(', ')}`);
     console.log(`📺 [短剧API] 可用API源数量: ${apiSites.length}`);
-    console.log(`📺 [短剧API] 实际搜索关键词数量: ${keywordsToSearch.length}`);
-
-    // 添加重试机制的辅助函数
-    const retryRequest = async (fn: () => Promise<any>, maxRetries = 2, delay = 500): Promise<any> => {
-      let lastError: any;
-      for (let i = 0; i <= maxRetries; i++) {
-        try {
-          return await fn();
-        } catch (error) {
-          lastError = error;
-          if (i < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i))); // 指数退避
-          }
-        }
-      }
-      throw lastError;
-    };
 
     // 优化API请求策略：
-    // 1. 降低并发限制，减少服务器压力
+    // 1. 只请求1个随机API源，减少服务器压力
     // 2. 缩短超时时间，避免长时间等待
-    // 3. 减少搜索关键词数量，提高搜索效率
-    const CONCURRENT_LIMIT = 2; // 降低并发限制
-    const TIMEOUT_MS = 8000; // 缩短超时时间
+    // 3. 不使用重试机制，进一步减少延迟
+    const TIMEOUT_MS = 5000; // 超时时间，5秒
     
-    // 并行搜索多个关键词，但限制每个关键词的API请求并发数
-    const searchPromises = keywordsToSearch.map(async (searchKeyword) => {
-      // 使用限制并发的方式请求API
-      const siteResults = await limitedConcurrency(apiSites, CONCURRENT_LIMIT, async (site) => {
-        try {
-          // 只获取前100条结果，避免数据量过大
-          const results = await retryRequest(async () => {
-            const apiResults = (await Promise.race([
-              searchFromApi(site, searchKeyword),
-              new Promise((_, reject) =>
-                setTimeout(
-                  () => reject(new Error(`${site.name} timeout`)),
-                  TIMEOUT_MS
-                )
-              ),
-            ])) as SearchResult[];
-            
-            // 限制每个API源返回的结果数量，避免数据量过大
-            return apiResults.slice(0, 100);
-          }, 2, 300); // 降低重试间隔
+    // 串行搜索关键词，每次只请求1个随机API源
+    for (const searchKeyword of keywordsToSearch) {
+      const randomSite = getRandomApiSite();
+      if (!randomSite) {
+        console.log(`📺 [短剧API] 没有可用的API源，跳过搜索`);
+        break;
+      }
+      
+      console.log(`📺 [短剧API] 随机选择的API源: ${randomSite.name}`);
+      
+      try {
+        // 只获取前100条结果，避免数据量过大
+        const apiResults = (await Promise.race([
+          searchFromApi(randomSite, searchKeyword),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error(`${randomSite.name} timeout`)),
+              TIMEOUT_MS
+            )
+          ),
+        ])) as SearchResult[];
+        
+        // 过滤出真正的短剧内容
+        const filteredResults = apiResults.filter((result: SearchResult) => {
+          const isShort = isShortDrama(result.type_name, result.title, result.class);
+          return isShort;
+        });
 
-          // 过滤出真正的短剧内容
-          const filteredResults = results.filter((result: SearchResult) => {
-            const isShort = isShortDrama(result.type_name, result.title, result.class);
-            return isShort;
-          });
-
-          // 进一步限制返回的结果数量，每个API源最多返回50条短剧结果
-          const limitedResults = filteredResults.slice(0, 50);
-          
-          // 记录每个API源的返回结果数量
-          if (!apiSiteResultsCount[site.name]) {
-            apiSiteResultsCount[site.name] = 0;
-          }
-          apiSiteResultsCount[site.name] += limitedResults.length;
-
-          console.log(`📺 [短剧API] ${site.name} 搜索 ${searchKeyword} 返回 ${limitedResults.length} 条短剧结果`);
-          return limitedResults;
-        } catch (error) {
-          // 记录错误信息，但不中断整体流程
-          console.error(`📺 [短剧API] ${site.name} 搜索 ${searchKeyword} 失败:`, error instanceof Error ? error.message : String(error));
-          return [];
+        // 限制每个API源返回的结果数量，避免数据量过大
+        const limitedResults = filteredResults.slice(0, 50);
+        
+        // 记录每个API源的返回结果数量
+        if (!apiSiteResultsCount[randomSite.name]) {
+          apiSiteResultsCount[randomSite.name] = 0;
         }
-      });
+        apiSiteResultsCount[randomSite.name] += limitedResults.length;
 
-      // 等待所有站点请求完成，过滤掉拒绝的结果
-      const fulfilledResults = siteResults.filter(result => result.length > 0);
-      return fulfilledResults.flat();
-    });
+        console.log(`📺 [短剧API] ${randomSite.name} 搜索 ${searchKeyword} 返回 ${limitedResults.length} 条短剧结果`);
+        
+        // 添加到结果列表
+        allResults = [...allResults, ...limitedResults];
 
-    const keywordResults = await Promise.allSettled(searchPromises);
-    allResults = keywordResults
-      .filter((result) => result.status === 'fulfilled')
-      .map((result) => (result as PromiseFulfilledResult<SearchResult[]>).value)
-      .flat();
-
-    // 如果已经获取到足够的结果，不再继续搜索更多关键词
-    // 这样可以减少不必要的API请求
-    if (allResults.length >= 100) {
-      console.log(`📺 [短剧API] 已获取到 ${allResults.length} 条结果，停止搜索更多关键词`);
+        // 如果已经获取到足够的结果，不再继续搜索更多关键词
+        if (allResults.length >= 100) {
+          console.log(`📺 [短剧API] 已获取到 ${allResults.length} 条结果，停止搜索更多关键词`);
+          break;
+        }
+      } catch (error) {
+        // 记录错误信息，但不中断整体流程
+        console.error(`📺 [短剧API] ${randomSite.name} 搜索 ${searchKeyword} 失败:`, error instanceof Error ? error.message : String(error));
+      }
     }
 
     // 优化去重机制，提高去重准确性
