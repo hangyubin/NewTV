@@ -201,7 +201,7 @@ function HomeClient() {
       // 尝试从缓存获取短剧数据 - 直接使用getShortDramaData的内置缓存
       const shortDramaResult = await getShortDramaData({
         page: 1,
-        limit: 25,
+        limit: 16, // 调整为16条，平衡加载速度和数据量
       });
 
       if (shortDramaResult.results) {
@@ -319,7 +319,7 @@ function HomeClient() {
       const nextPage = shortDramaPage + 1;
       const shortDramaData = await getShortDramaData({
         page: nextPage,
-        limit: 25,
+        limit: 16, // 调整为16条，平衡加载速度和数据量
       });
 
       if (shortDramaData && shortDramaData.results) {
@@ -334,7 +334,7 @@ function HomeClient() {
         setHotShortDramas((prev) => [...prev, ...shortDramaList]);
         setShortDramaPage(nextPage);
         setShortDramaHasMore(
-          shortDramaData.results.length >= (shortDramaData.limit || 25)
+          shortDramaData.results.length >= (shortDramaData.limit || 16)
         );
       } else {
         setShortDramaHasMore(false);
@@ -347,7 +347,7 @@ function HomeClient() {
     }
   };
 
-  // 使用IntersectionObserver实现无限滚动
+  // 使用IntersectionObserver实现无限滚动，添加预加载功能
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -357,7 +357,7 @@ function HomeClient() {
       },
       {
         root: null,
-        rootMargin: '0px',
+        rootMargin: '0px 0px 200px 0px', // 提前200px触发加载
         threshold: 0.1,
       }
     );
@@ -649,16 +649,29 @@ function HomeClient() {
                 </div>
                 <ScrollableRow>
                   {shortDramaLoading || hotShortDramas.length === 0
-                    ? // 加载状态显示灰色占位数据
+                    ? // 加载状态显示更逼真的骨架屏
                       Array.from({ length: 8 }).map((_, index) => (
                         <div
                           key={index}
                           className='min-w-[115px] w-[115px] sm:min-w-[180px] sm:w-44'
                         >
+                          {/* 图片占位 */}
                           <div className='relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800'>
-                            <div className='absolute inset-0 bg-gray-300 dark:bg-gray-700'></div>
+                            <div className='absolute inset-0 bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-700 dark:to-gray-600'></div>
+                            {/* 播放按钮占位 */}
+                            <div className='absolute inset-0 flex items-center justify-center opacity-50'>
+                              <div className='w-12 h-12 rounded-full bg-white dark:bg-gray-500 animate-pulse'></div>
+                            </div>
                           </div>
-                          <div className='mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800'></div>
+                          {/* 标题占位 */}
+                          <div className='mt-2 space-y-2'>
+                            <div className='h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800'></div>
+                            {/* 年份和评分占位 */}
+                            <div className='flex justify-between items-center'>
+                              <div className='h-3 w-16 bg-gray-200 rounded animate-pulse dark:bg-gray-800'></div>
+                              <div className='h-3 w-8 bg-gray-200 rounded animate-pulse dark:bg-gray-800'></div>
+                            </div>
+                          </div>
                         </div>
                       ))
                     : // 显示真实数据
