@@ -1,5 +1,5 @@
+import { memo, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useEffect, useRef, useState, memo } from 'react';
 
 interface ScrollableRowProps {
   children: React.ReactNode;

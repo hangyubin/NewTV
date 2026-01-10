@@ -21,7 +21,7 @@ export interface ShortDramaResponse {
   limit: number;
   totalPages: number;
   hasMore: boolean;
-  debug?: any;
+  debug?: Record<string, unknown>;
 }
 
 // 缓存配置优化
@@ -57,10 +57,8 @@ function getFromCache(key: string): ShortDramaResponse | null {
       return null;
     }
 
-    console.log('从缓存获取短剧数据成功:', key);
     return data;
   } catch (error) {
-    console.error('从缓存获取短剧数据失败:', error);
     return null;
   }
 }
@@ -77,7 +75,6 @@ function saveToCache(key: string, data: ShortDramaResponse): void {
       data,
       timestamp: Date.now()
     }));
-    console.log('保存短剧数据到缓存成功:', key);
     
     // 清理旧缓存，限制缓存键数量
     const cacheKeys = Object.keys(localStorage)
@@ -91,13 +88,10 @@ function saveToCache(key: string, data: ShortDramaResponse): void {
     // 如果缓存键数量超过限制，删除最旧的
     if (cacheKeys.length > CACHE_KEY_LIMIT) {
       const keysToRemove = cacheKeys.slice(0, cacheKeys.length - CACHE_KEY_LIMIT);
-      keysToRemove.forEach(k => {
-        localStorage.removeItem(k);
-        console.log('删除旧缓存:', k);
-      });
+      keysToRemove.forEach(k => localStorage.removeItem(k));
     }
   } catch (error) {
-    console.error('保存短剧数据到缓存失败:', error);
+    // 静默处理缓存错误
   }
 }
 
