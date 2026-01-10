@@ -8,7 +8,8 @@ import Hls from 'hls.js';
  * @returns boolean
  */
 export function isShortDrama(typeName?: string, title?: string, classType?: string): boolean {
-  if (!typeName && !title && !classType) return false;
+  // 如果没有提供任何信息，默认返回true，避免过滤掉所有结果
+  if (!typeName && !title && !classType) return true;
 
   // 常见的短剧标识，包括type_name、class和标题中的关键词
   const shortDramaIdentifiers = [

@@ -238,23 +238,10 @@ export async function searchFromApi(
     // 智能搜索：优化短剧关键词策略，减少不必要的请求，提高效率
     let searchVariants = [];
 
-    // 如果是短剧相关查询，使用更全面的关键词，确保能获取到更多短剧数据
-    if (
-      query.includes('短剧') ||
-      query.includes('微剧') ||
-      query.includes('竖屏') ||
-      query.includes('迷你剧') ||
-      query.includes('短剧集') ||
-      query.includes('爽文') ||
-      query.includes('反转')
-    ) {
-      // 对于短剧查询，使用更全面的关键词列表，确保能获取到更多短剧数据
-      // 包括从影视分类获取短剧数据
-      searchVariants = ['短剧', '爽文短剧', '反转爽剧', '微短剧', '影视短剧', '电视剧短剧', '影视分类短剧', '短剧影视', '影视精选短剧'];
-    } else {
-      // 其他查询，使用简化的搜索变体生成，减少变体数量
-      searchVariants = [query]; // 仅使用原始查询，减少请求数量
-    }
+    // 对于所有查询，使用简化的搜索变体，减少变体数量
+    // 只使用原始查询，减少请求数量
+    searchVariants = [query];
+    
     const results: SearchResult[] = [];
     let pageCountFromFirst = 0;
 
@@ -292,44 +279,35 @@ export async function searchFromApi(
           variant,
           1,
           apiUrl,
-          25000
+          10000 // 调整超时时间为10秒，避免过多超时
         );
 
-        if (firstPageResult.results.length > 0) {
-          // 去重添加结果
-          firstPageResult.results.forEach((result) => {
-            const uniqueKey = `${result.source}_${result.id}`;
-            if (!seenIds.has(uniqueKey)) {
-              seenIds.add(uniqueKey);
-              results.push(result);
-            }
-          });
-
-          // 如果是第一个变体且找到了结果，记录页数
-          if (i === 0 && firstPageResult.pageCount) {
-            pageCountFromFirst = firstPageResult.pageCount;
+        // 无论结果多少，都添加到结果列表中
+        // 去重添加结果
+        firstPageResult.results.forEach((result) => {
+          const uniqueKey = `${result.source}_${result.id}`;
+          if (!seenIds.has(uniqueKey)) {
+            seenIds.add(uniqueKey);
+            results.push(result);
           }
+        });
 
-          // 不停止搜索，继续遍历所有变体获取更多结果
+        // 如果是第一个变体且找到了结果，记录页数
+        if (i === 0 && firstPageResult.pageCount) {
+          pageCountFromFirst = firstPageResult.pageCount;
         }
+
+        // 不停止搜索，继续遍历所有变体获取更多结果
       } catch (error) {
         // 忽略搜索变体失败，继续尝试下一个
+        console.error(`🔍 [搜索API] 搜索变体 ${variant} 失败:`, error instanceof Error ? error.message : String(error));
       }
     }
 
-    // 如果所有变体都没有结果，直接返回空数组
-    if (results.length === 0) {
-      return [];
-    }
-
-    // 使用原始查询进行后续分页
-    query = searchVariants[0];
-
-    const config = await getConfig();
-    // 对于短剧API，只获取第一页结果，显著提高响应速度
-    // 短剧内容通常在第一页就有足够的结果，后续页质量较低
+    // 返回所有找到的结果，即使数量为0
     return results;
   } catch (error) {
+    console.error(`🔍 [搜索API] 搜索失败:`, error instanceof Error ? error.message : String(error));
     return [];
   }
 }

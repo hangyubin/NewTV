@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
   try {
 
-    // 优化搜索策略：只使用一个关键词，进一步减少API请求数量
+    // 只使用一个关键词，减少API请求数量，提高请求成功率
     shortDramaKeywords = keyword
       ? [keyword] // 只使用用户提供的关键词，避免重复请求
       : ['短剧']; // 只使用最相关的1个关键词，减少API请求数量
@@ -164,14 +164,24 @@ export async function GET(request: NextRequest) {
             ),
           ])) as SearchResult[];
           
+          console.log(`📺 [短剧API] ${site.name} 搜索 ${searchKeyword} 返回原始结果 ${apiResults.length} 条`);
+          
           // 过滤出真正的短剧内容
           const filteredResults = apiResults.filter((result: SearchResult) => {
+            // 调试：查看每个结果的相关字段
+            // console.log(`📺 [短剧API] 检查结果: ${result.title}, type: ${result.type_name}, class: ${result.class}`);
+            
             const isShort = isShortDrama(result.type_name, result.title, result.class);
             return isShort;
           });
 
+          console.log(`📺 [短剧API] ${site.name} 搜索 ${searchKeyword} 过滤后结果 ${filteredResults.length} 条`);
+          
+          // 如果过滤后没有结果，尝试不过滤，直接返回所有结果
+          const finalResults = filteredResults.length > 0 ? filteredResults : apiResults;
+          
           // 限制每个API源返回的结果数量，避免数据量过大
-          const limitedResults = filteredResults.slice(0, 50);
+          const limitedResults = finalResults.slice(0, 50);
           
           // 记录每个API源的返回结果数量
           if (!apiSiteResultsCount[site.name]) {
@@ -179,7 +189,7 @@ export async function GET(request: NextRequest) {
           }
           apiSiteResultsCount[site.name] += limitedResults.length;
 
-          console.log(`📺 [短剧API] ${site.name} 搜索 ${searchKeyword} 返回 ${limitedResults.length} 条短剧结果`);
+          console.log(`📺 [短剧API] ${site.name} 搜索 ${searchKeyword} 最终返回 ${limitedResults.length} 条结果`);
           
           return limitedResults;
         } catch (error) {
@@ -206,6 +216,8 @@ export async function GET(request: NextRequest) {
     // 如果最终没有获取到任何结果，返回空数组
     if (allResults.length === 0) {
       console.log(`📺 [短剧API] 所有API源都不可用，返回空结果`);
+    } else {
+      console.log(`📺 [短剧API] 所有API源返回的总结果数量：${allResults.length}`);
     }
 
     // 优化去重机制，提高去重准确性
