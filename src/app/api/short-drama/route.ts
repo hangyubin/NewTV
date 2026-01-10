@@ -33,12 +33,10 @@ export async function GET(request: NextRequest) {
 
   try {
 
-    // 优化搜索策略：减少搜索关键词数量，只使用最相关的关键词，提高搜索效率
+    // 优化搜索策略：只使用一个关键词，进一步减少API请求数量
     shortDramaKeywords = keyword
       ? [keyword] // 只使用用户提供的关键词，避免重复请求
-      : Array.from(new Set([
-          '短剧', '微短剧', '竖屏短剧', '爽文短剧', '反转爽剧', '迷你剧', '短剧集', '影视短剧'
-        ])); // 只使用最相关的8个关键词，减少API请求数量
+      : ['短剧']; // 只使用最相关的1个关键词，减少API请求数量
     
 
     let allResults: SearchResult[] = [];
