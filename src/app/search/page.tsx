@@ -193,8 +193,8 @@ function SearchPageClient() {
       }
     >
   >(new Map());
-  const CACHE_SIZE = 15; // 优化缓存大小，支持更多搜索结果
-  const CACHE_TTL = 60 * 60 * 1000; // 延长缓存有效期到1小时
+  const CACHE_SIZE = 20; // 增加缓存大小，支持更多搜索结果
+  const CACHE_TTL = 3 * 60 * 60 * 1000; // 延长缓存有效期到3小时，与searchCache.ts保持一致
 
   const getGroupRef = (key: string) => {
     let ref = groupRefs.current.get(key);
@@ -343,7 +343,7 @@ function SearchPageClient() {
         .replaceAll(' ', '')
         .toLowerCase()
         // 移除标点符号和特殊字符
-        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\\[\]"'<>|]/g, '')
+        .replace(/[.,/#!$%^&*;:{}=\-_`~()\\[\]"'<>|]/g, '')
         // 移除常见的前缀和后缀
         .replace(/^(the|a|an|电影|电视剧|剧集|高清|超清|完整版|在线观看|免费)/g, '')
         .replace(/(高清|超清|完整版|在线观看|免费|全集)$/g, '');
@@ -482,7 +482,7 @@ function SearchPageClient() {
         .replaceAll(' ', '')
         .toLowerCase()
         // 移除标点符号和特殊字符
-        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\\[\]"'<>|]/g, '')
+        .replace(/[.,/#!$%^&*;:{}=\-_`~()\\[\]"'<>|]/g, '')
         // 移除常见的前缀和后缀
         .replace(/^(the|a|an|电影|电视剧|剧集|高清|超清|完整版|在线观看|免费)/g, '')
         .replace(/(高清|超清|完整版|在线观看|免费|全集)$/g, '');
@@ -1107,30 +1107,20 @@ function SearchPageClient() {
     };
   }, []);
 
-  // 搜索防抖：创建一个防抖函数
-  const debounce = <T extends (...args: any[]) => any>(
-    func: T,
-    delay: number
-  ): ((...args: Parameters<T>) => void) => {
+  // 防抖处理搜索建议请求，与SearchSuggestions组件保持一致的500ms延迟
+  const debouncedHandleInputChange = React.useMemo(() => {
     let timeoutId: NodeJS.Timeout;
-    return (...args: Parameters<T>) => {
+    return (value: string) => {
       clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => func(...args), delay);
-    };
-  };
-
-  // 防抖处理搜索建议请求
-  const debouncedHandleInputChange = React.useMemo(
-    () =>
-      debounce((value: string) => {
+      timeoutId = setTimeout(() => {
         if (value.trim()) {
           setShowSuggestions(true);
         } else {
           setShowSuggestions(false);
         }
-      }, 300), // 300ms延迟，平衡响应速度和API调用次数
-    []
-  );
+      }, 500); // 与搜索建议组件保持一致的500ms延迟，减少API调用频率
+    };
+  }, []);
 
   // 输入框内容变化时触发，显示搜索建议
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

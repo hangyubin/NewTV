@@ -39,33 +39,41 @@ export async function GET(request: NextRequest) {
     let apiSites: ApiSite[] = await getAvailableApiSites();
 
     // 过滤掉AV相关的API源，只保留正规影视资源
-    apiSites = apiSites.filter((site) => !site.name.includes('AV-'));
+    apiSites = apiSites.filter((site) => !site.name.includes('AV-') && !site.api.includes('AV-'));
 
-    // 如果过滤后没有可用的API源，使用默认的可靠数据源作为后备
+    // 如果过滤后没有可用的API源，直接返回空结果，不再使用硬编码的默认API源
+    // 这样可以确保只使用视频列表中配置的API源，避免不必要的API请求
     if (apiSites.length === 0) {
-      apiSites = [
+      console.log('📺 [短剧API] 没有可用的API源，返回空结果');
+      return NextResponse.json(
         {
-          key: 'caiji_dbzy5',
-          name: 'Caiji DBZY5',
-          api: 'https://caiji.dbzy5.com/api.php/provide/vod',
-          detail: 'Caiji DBZY5 API',
-          disabled: false,
+          code: 200,
+          message: 'success',
+          results: [],
+          total: 0,
+          page,
+          limit,
+          hasMore: false,
+          totalPages: 0,
+          debug: {
+            apiSites: [],
+            requestTime: new Date().toISOString(),
+            keyword: keyword,
+            searchKeywords: shortDramaKeywords,
+          },
         },
         {
-          key: 'iqiyizyapi',
-          name: 'IQIYI ZY API',
-          api: 'https://iqiyizyapi.com/api.php/provide/vod',
-          detail: 'IQIYI ZY API',
-          disabled: false,
-        },
-        {
-          key: 'tyyszy',
-          name: 'TYYSZY API',
-          api: 'https://tyyszy.com/api.php/provide/vod',
-          detail: 'TYYSZY API',
-          disabled: false,
-        },
-      ];
+          headers: {
+            'Cache-Control': `public, max-age=${await getCacheTime()}, s-maxage=${await getCacheTime()}`,
+            'CDN-Cache-Control': `public, s-maxage=${await getCacheTime()}`,
+            'Vercel-CDN-Cache-Control': `public, s-maxage=${await getCacheTime()}`,
+            'Netlify-Vary': 'query',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          },
+        }
+      );
     }
 
     // 限制并发的辅助函数，使用箭头函数表达式代替函数声明
@@ -95,8 +103,16 @@ export async function GET(request: NextRequest) {
       return Promise.all(results);
     };
 
+    // 优化搜索策略：如果有用户提供的关键词，只搜索该关键词
+    // 如果没有关键词，只搜索前3个最相关的关键词，减少API请求次数
+    const keywordsToSearch = keyword 
+      ? [keyword] 
+      : shortDramaKeywords.slice(0, 3); // 只搜索前3个关键词，减少API请求次数
+
+    console.log(`📺 [短剧API] 搜索关键词: ${keywordsToSearch.join(', ')}`);
+
     // 并行搜索多个关键词，但限制每个关键词的API请求并发数
-    const searchPromises = shortDramaKeywords.map(async (searchKeyword) => {
+    const searchPromises = keywordsToSearch.map(async (searchKeyword) => {
       // 使用限制并发的方式请求API
       const siteResults = await limitedConcurrency(apiSites, CONCURRENT_LIMIT, async (site) => {
         try {
@@ -134,6 +150,12 @@ export async function GET(request: NextRequest) {
       .map((result) => (result as PromiseFulfilledResult<SearchResult[]>).value)
       .flat();
 
+    // 如果已经获取到足够的结果，不再继续搜索更多关键词
+    // 这样可以减少不必要的API请求
+    if (allResults.length >= 100) {
+      console.log(`📺 [短剧API] 已获取到 ${allResults.length} 条结果，停止搜索更多关键词`);
+    }
+
     // 改进去重机制，使用更宽松的策略，合并所有片源信息
     // 根据标题和年份进行去重，但合并所有片源信息
     const uniqueResultsMap = new Map<string, SearchResult>();
@@ -142,7 +164,7 @@ export async function GET(request: NextRequest) {
       const key = `${result.title || ''}-${result.year || 'unknown'}`;
       if (uniqueResultsMap.has(key)) {
         // 合并片源信息
-        const existingResult = uniqueResultsMap.get(key)!;
+        const existingResult = uniqueResultsMap.get(key) as SearchResult;
 
         // 合并episodes和episodes_titles，避免重复
         const seenEpisodes = new Set(existingResult.episodes || []);

@@ -16,6 +16,12 @@ interface SuggestionItem {
   icon?: React.ReactNode;
 }
 
+// 搜索建议本地缓存接口
+interface SuggestionCacheItem {
+  suggestions: SuggestionItem[];
+  timestamp: number;
+}
+
 export default function SearchSuggestions({
   query,
   isVisible,
@@ -32,7 +38,32 @@ export default function SearchSuggestions({
   // 用于中止旧请求
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // 搜索建议本地缓存，有效期5分钟
+  const suggestionCacheRef = useRef<Map<string, SuggestionCacheItem>>(new Map());
+  const CACHE_DURATION = 5 * 60 * 1000; // 5分钟缓存
+
+  // 清理过期缓存
+  const cleanupExpiredCache = useCallback(() => {
+    const now = Date.now();
+    suggestionCacheRef.current.forEach((value, key) => {
+      if (now - value.timestamp > CACHE_DURATION) {
+        suggestionCacheRef.current.delete(key);
+      }
+    });
+  }, [CACHE_DURATION]);
+
   const fetchSuggestionsFromAPI = useCallback(async (searchQuery: string) => {
+    // 首先检查本地缓存
+    const cacheKey = searchQuery.trim().toLowerCase();
+    const cached = suggestionCacheRef.current.get(cacheKey);
+    const now = Date.now();
+    
+    if (cached && now - cached.timestamp < CACHE_DURATION) {
+      setSuggestions(cached.suggestions);
+      return;
+    }
+
+    // 缓存未命中，发起网络请求
     // 每次请求前取消上一次的请求
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -56,6 +87,12 @@ export default function SearchSuggestions({
           })
         );
         setSuggestions(apiSuggestions);
+        
+        // 保存到本地缓存
+        suggestionCacheRef.current.set(cacheKey, {
+          suggestions: apiSuggestions,
+          timestamp: now,
+        });
       }
     } catch (err: unknown) {
       // 类型保护判断 err 是否是 Error 类型
@@ -69,9 +106,9 @@ export default function SearchSuggestions({
         setSuggestions([]);
       }
     }
-  }, []);
+  }, [CACHE_DURATION]);
 
-  // 防抖触发
+  // 防抖触发，增加防抖时间到500ms
   const debouncedFetchSuggestions = useCallback(
     (searchQuery: string) => {
       if (debounceTimer.current) {
@@ -83,7 +120,7 @@ export default function SearchSuggestions({
         } else {
           setSuggestions([]);
         }
-      }, 300); //300ms
+      }, 500); // 增加防抖时间到500ms，减少API调用频率
     },
     [isVisible, fetchSuggestionsFromAPI]
   );
@@ -102,6 +139,14 @@ export default function SearchSuggestions({
       }
     };
   }, [query, isVisible, debouncedFetchSuggestions]);
+
+  // 定期清理过期缓存
+  useEffect(() => {
+    cleanupExpiredCache();
+    // 每10分钟清理一次过期缓存
+    const interval = setInterval(cleanupExpiredCache, 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [cleanupExpiredCache]);
 
   // 点击外部关闭
   useEffect(() => {
