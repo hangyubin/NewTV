@@ -173,6 +173,9 @@ class ConfigManager {
 // 导出配置管理器
 export const configManager = ConfigManager;
 
+// 配置版本控制
+let configVersion = 0;
+
 // 在模块加载时根据环境决定配置来源
 let cachedConfig: AdminConfig;
 
@@ -482,10 +485,7 @@ export async function getConfig(): Promise<AdminConfig> {
   return cachedConfig;
 }
 
-// 清除配置缓存，强制重新从数据库读取
-export function clearConfigCache(): void {
-  cachedConfig = null as any;
-}
+
 
 export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
   // 确保必要的属性存在和初始化
@@ -836,4 +836,18 @@ export async function getAvailableApiSites(user?: string): Promise<any[]> {
 
 export async function setCachedConfig(config: AdminConfig) {
   cachedConfig = config;
+  // 更新配置版本
+  configVersion++;
+}
+
+// 获取当前配置版本
+export function getConfigVersion(): number {
+  return configVersion;
+}
+
+// 清除配置缓存并更新版本
+export function clearConfigCache(): void {
+  cachedConfig = null as any;
+  // 更新配置版本
+  configVersion++;
 }
