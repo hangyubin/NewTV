@@ -557,9 +557,7 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
 
     if (isIPad) {
       // iPad使用最简单的ping测试，不创建任何video或HLS实例
-      if (process.env.NODE_ENV === 'development') {
-        console.log('iPad检测，使用简化测速避免崩溃');
-      }
+      // iPad检测，使用简化测速避免崩溃
 
       const startTime = performance.now();
       try {
@@ -630,9 +628,7 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
         try {
           if (hls) hls.destroy();
         } catch (e) {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('HLS cleanup error:', e);
-          }
+          // 忽略 HLS 清理错误
         }
         try {
           if (video && video.parentNode) {
@@ -641,9 +637,7 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
             video.remove();
           }
         } catch (e) {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('Video cleanup error:', e);
-          }
+          // 忽略视频清理错误
         }
       };
 
@@ -736,9 +730,7 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
           _event: unknown,
           data: { fatal?: boolean; type?: string; details?: string }
         ) => {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('HLS测速错误:', data);
-          }
+          // HLS测速错误处理
           if (data.fatal) {
             cleanup();
             reject(new Error(`HLS Error: ${data.type} - ${data.details}`));

@@ -87,52 +87,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 限制并发的辅助函数，使用箭头函数表达式代替函数声明
-    const limitedConcurrency = async <T>(
-      items: T[],
-      limit: number,
-      fn: (item: T) => Promise<any>
-    ): Promise<any[]> => {
-      const results: any[] = [];
-      const executing: Promise<any>[] = [];
-
-      for (const item of items) {
-        const p = Promise.resolve().then(() => fn(item));
-        results.push(p);
-
-        if (items.length > limit) {
-          const e = p.then(() => {
-            executing.splice(executing.indexOf(e), 1);
-          });
-          executing.push(e);
-          if (executing.length >= limit) {
-            await Promise.race(executing);
-          }
-        }
-      }
-
-      return Promise.all(results);
-    };
-
-    // 优化搜索策略：实现智能随机选择API源，带容错机制
-    // 1. 从可用API源中随机选择，避免同时请求所有API源
-    // 2. 添加重试机制，当一个API失效时尝试另一个
-    // 3. 只使用1个最相关的关键词，减少搜索次数
-    // 4. 缩短超时时间，避免长时间等待
-    // 5. 限制最大尝试次数，避免无限循环
-    
-    // 随机选择一个API源，避免重复选择同一个API源
-    const getRandomApiSite = (usedSites: string[] = []) => {
-      if (apiSites.length === 0) return null;
-      
-      // 过滤掉已经使用过的API源
-      const availableSites = apiSites.filter(site => !usedSites.includes(site.name));
-      if (availableSites.length === 0) return null;
-      
-      const randomIndex = Math.floor(Math.random() * availableSites.length);
-      return availableSites[randomIndex];
-    };
-    
     // 直接使用关键词进行搜索，减少搜索次数
     const keywordsToSearch = keyword 
       ? [keyword] 
@@ -142,11 +96,9 @@ export async function GET(request: NextRequest) {
     console.log(`📺 [短剧API] 可用API源数量: ${apiSites.length}`);
 
     // 优化API请求策略：
-    // 1. 智能随机选择API源，带重试机制
+    // 1. 并行请求所有API源，获取更多数据
     // 2. 缩短超时时间，避免长时间等待
-    // 3. 限制最大尝试次数，避免无限循环
     const TIMEOUT_MS = 5000; // 超时时间，5秒
-    const MAX_ATTEMPTS = 3; // 最大尝试次数，避免无限循环
     
     // 并行搜索所有可用API源，获取更多数据
     for (const searchKeyword of keywordsToSearch) {

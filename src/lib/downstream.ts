@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { API_CONFIG, ApiSite, getConfig } from '@/lib/config';
+import { API_CONFIG, ApiSite } from '@/lib/config';
 import { getCachedSearchPage, setCachedSearchPage } from '@/lib/search-cache';
 import { SearchResult } from '@/lib/types';
 import { cleanHtmlTags } from '@/lib/utils';
@@ -48,47 +48,14 @@ async function searchWithCache(
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      // 增加详细的请求日志，便于在本地Docker环境中调试
-      console.log(`🔍 [搜索API] 正在请求: ${url}`);
-      console.log(
-        `🔍 [搜索API] 请求头: ${JSON.stringify(API_CONFIG.search.headers)}`
-      );
-      console.log(`🔍 [搜索API] 请求时间: ${new Date().toISOString()}`);
-      console.log(`🔍 [搜索API] 请求源: ${apiSite.name}`);
-
-      let response;
-      try {
-        response = await fetch(url, {
-          headers: API_CONFIG.search.headers,
-          signal: controller.signal,
-        });
-        console.log(
-          `🔍 [搜索API] 响应状态: ${response.status} ${response.statusText}`
-        );
-        console.log(`🔍 [搜索API] 响应URL: ${response.url}`);
-        console.log(`🔍 [搜索API] 响应时间: ${new Date().toISOString()}`);
-      } catch (error) {
-        console.error(
-          `🔍 [搜索API] 请求失败: ${
-            error instanceof Error ? error.message : String(error)
-          }`
-        );
-        if (error instanceof Error) {
-          console.error(`🔍 [搜索API] 错误类型: ${error.name}`);
-          if (error.stack) {
-            console.error(`🔍 [搜索API] 错误堆栈: ${error.stack}`);
-          }
-        }
-        // 抛出错误，让上层处理
-        throw error;
-      }
+      const response = await fetch(url, {
+        headers: API_CONFIG.search.headers,
+        signal: controller.signal,
+      });
 
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        console.warn(
-          `🔍 [搜索API] 请求失败: ${response.status} ${response.statusText}`
-        );
         if (response.status === 403) {
           setCachedSearchPage(apiSite.key, query, page, 'forbidden', []);
           return { results: [] };
@@ -98,7 +65,6 @@ async function searchWithCache(
         if (attempt < MAX_RETRIES) {
           // 指数退避：每次重试延迟翻倍
           const delay = RETRY_DELAY * Math.pow(2, attempt);
-          console.log(`🔍 [搜索API] 重试请求，延迟 ${delay}ms`);
           await new Promise((resolve) => setTimeout(resolve, delay));
           continue;
         }
@@ -243,7 +209,6 @@ export async function searchFromApi(
     searchVariants = [query];
     
     const results: SearchResult[] = [];
-    let pageCountFromFirst = 0;
 
     // 遍历所有搜索变体，获取更多结果
     const seenIds = new Set<string>(); // 用于去重
@@ -292,196 +257,24 @@ export async function searchFromApi(
           }
         });
 
-        // 如果是第一个变体且找到了结果，记录页数
-        if (i === 0 && firstPageResult.pageCount) {
-          pageCountFromFirst = firstPageResult.pageCount;
-        }
+        
 
         // 不停止搜索，继续遍历所有变体获取更多结果
       } catch (error) {
         // 忽略搜索变体失败，继续尝试下一个
-        console.error(`🔍 [搜索API] 搜索变体 ${variant} 失败:`, error instanceof Error ? error.message : String(error));
       }
     }
 
     // 返回所有找到的结果，即使数量为0
     return results;
   } catch (error) {
-    console.error(`🔍 [搜索API] 搜索失败:`, error instanceof Error ? error.message : String(error));
     return [];
   }
 }
 
 // 匹配 m3u8 链接的正则
 const M3U8_PATTERN = /(https?:\/\/[^"'\s]+?\.m3u8)/g;
-/**
- * 生成搜索查询的多种变体，提高搜索命中率
- * @param originalQuery 原始查询
- * @returns 按优先级排序的搜索变体数组
- */
-function generateSearchVariants(originalQuery: string): string[] {
-  const variants: string[] = [];
-  const trimmed = originalQuery.trim();
 
-  // 1. 原始查询（最高优先级）
-  variants.push(trimmed);
-
-  // 2. 处理中文标点符号变体
-  const chinesePunctuationVariants =
-    generateChinesePunctuationVariants(trimmed);
-  chinesePunctuationVariants.forEach((variant) => {
-    if (!variants.includes(variant)) {
-      variants.push(variant);
-    }
-  });
-
-  // 如果包含空格，生成额外变体
-  if (trimmed.includes(' ')) {
-    // 3. 去除所有空格
-    const noSpaces = trimmed.replace(/\s+/g, '');
-    if (noSpaces !== trimmed) {
-      variants.push(noSpaces);
-    }
-
-    // 4. 标准化空格（多个空格合并为一个）
-    const normalizedSpaces = trimmed.replace(/\s+/g, ' ');
-    if (normalizedSpaces !== trimmed && !variants.includes(normalizedSpaces)) {
-      variants.push(normalizedSpaces);
-    }
-
-    // 5. 提取关键词组合（针对"中餐厅 第九季"这种情况）
-    const keywords = trimmed.split(/\s+/);
-    if (keywords.length >= 2) {
-      // 主要关键词 + 季/集等后缀
-      const mainKeyword = keywords[0];
-      const lastKeyword = keywords[keywords.length - 1];
-
-      // 如果最后一个词包含"第"、"季"、"集"等，尝试组合
-      if (/第|季|集|部|篇|章/.test(lastKeyword)) {
-        const combined = mainKeyword + lastKeyword;
-        if (!variants.includes(combined)) {
-          variants.push(combined);
-        }
-      }
-
-      // 6. 空格变冒号的变体（重要！针对"死神来了 血脉诅咒" -> "死神来了：血脉诅咒"）
-      const withColon = trimmed.replace(/\s+/g, '：');
-      if (!variants.includes(withColon)) {
-        variants.push(withColon);
-      }
-
-      // 7. 空格变英文冒号的变体
-      const withEnglishColon = trimmed.replace(/\s+/g, ':');
-      if (!variants.includes(withEnglishColon)) {
-        variants.push(withEnglishColon);
-      }
-
-      // 仅使用主关键词搜索（过滤无意义的词）
-      const meaninglessWords = [
-        'the',
-        'a',
-        'an',
-        'and',
-        'or',
-        'of',
-        'in',
-        'on',
-        'at',
-        'to',
-        'for',
-        'with',
-        'by',
-      ];
-      if (
-        !variants.includes(mainKeyword) &&
-        !meaninglessWords.includes(mainKeyword.toLowerCase()) &&
-        mainKeyword.length > 2
-      ) {
-        variants.push(mainKeyword);
-      }
-    }
-  }
-
-  // 去重并返回
-  return Array.from(new Set(variants));
-}
-
-/**
- * 生成中文标点符号的搜索变体
- * @param query 原始查询
- * @returns 标点符号变体数组
- */
-function generateChinesePunctuationVariants(query: string): string[] {
-  const variants: string[] = [];
-
-  // 检查是否包含中文标点符号
-  const chinesePunctuation = /[：；，。！？、""''（）【】《》]/;
-  if (!chinesePunctuation.test(query)) {
-    return variants;
-  }
-
-  // 中文冒号变体 (针对"死神来了：血脉诅咒"这种情况)
-  if (query.includes('：')) {
-    // 优先级1: 替换为空格 (最可能匹配，如"死神来了 血脉诅咒" 能匹配到 "死神来了6：血脉诅咒")
-    const withSpace = query.replace(/：/g, ' ');
-    variants.push(withSpace);
-
-    // 优先级2: 完全去除冒号
-    const noColon = query.replace(/：/g, '');
-    variants.push(noColon);
-
-    // 优先级3: 替换为英文冒号
-    const englishColon = query.replace(/：/g, ':');
-    variants.push(englishColon);
-
-    // 优先级4: 提取冒号前的主标题 (降低优先级，避免匹配到错误的系列)
-    const beforeColon = query.split('：')[0].trim();
-    if (beforeColon && beforeColon !== query) {
-      variants.push(beforeColon);
-    }
-
-    // 优先级5: 提取冒号后的副标题
-    const afterColon = query.split('：')[1]?.trim();
-    if (afterColon) {
-      variants.push(afterColon);
-    }
-  }
-
-  // 其他中文标点符号处理
-  let cleanedQuery = query;
-
-  // 替换中文标点为对应英文标点
-  cleanedQuery = cleanedQuery.replace(/；/g, ';');
-  cleanedQuery = cleanedQuery.replace(/，/g, ',');
-  cleanedQuery = cleanedQuery.replace(/。/g, '.');
-  cleanedQuery = cleanedQuery.replace(/！/g, '!');
-  cleanedQuery = cleanedQuery.replace(/？/g, '?');
-  cleanedQuery = cleanedQuery.replace(/"/g, '"');
-  cleanedQuery = cleanedQuery.replace(/"/g, '"');
-  cleanedQuery = cleanedQuery.replace(/'/g, "'");
-  cleanedQuery = cleanedQuery.replace(/'/g, "'");
-  cleanedQuery = cleanedQuery.replace(/（/g, '(');
-  cleanedQuery = cleanedQuery.replace(/）/g, ')');
-  cleanedQuery = cleanedQuery.replace(/【/g, '[');
-  cleanedQuery = cleanedQuery.replace(/】/g, ']');
-  cleanedQuery = cleanedQuery.replace(/《/g, '<');
-  cleanedQuery = cleanedQuery.replace(/》/g, '>');
-
-  if (cleanedQuery !== query) {
-    variants.push(cleanedQuery);
-  }
-
-  // 完全去除所有标点符号
-  const noPunctuation = query.replace(
-    /[：；，。！？、""''（）【】《》:;,.!?"'()[]<>]/g,
-    ''
-  );
-  if (noPunctuation !== query && noPunctuation.trim()) {
-    variants.push(noPunctuation);
-  }
-
-  return variants;
-}
 export async function getDetailFromApi(
   apiSite: ApiSite,
   id: string

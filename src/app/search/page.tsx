@@ -329,15 +329,53 @@ function SearchPageClient() {
     score: number;
   }
 
+  // 预告片和解说过滤函数
+  const isTrailerOrCommentary = (title: string): boolean => {
+    const filterKeywords = [
+      // 预告片相关
+      '预告片',
+      '预告',
+      'trailer',
+      'preview',
+      '[预告片]',
+      '(预告片)',
+      '【预告片】',
+      '先行版',
+      '先导版',
+      '片段',
+      '花絮',
+      '特辑',
+      'making',
+      'behind the scenes',
+      // 解说相关
+      '解说',
+      '解说版',
+      '解说视频',
+      'reaction',
+      'commentary',
+      'review',
+      '影评',
+      '解析',
+      '解读'
+    ];
+    const lowerTitle = title.toLowerCase();
+    return filterKeywords.some(keyword => lowerTitle.includes(keyword.toLowerCase()));
+  };
+
   // 优化的搜索结果去重和排序
   const enhancedSearchResults = useMemo(() => {
     if (!searchResults.length) return searchResults;
+
+    // 首先过滤掉预告片和解说视频
+    const filteredResults = searchResults.filter(item => !isTrailerOrCommentary(item.title));
+    
+    if (!filteredResults.length) return filteredResults;
 
     // 注意：这里不再进行基于标题的去重，只进行结果排序
     // 去重逻辑已经在聚合结果中实现，这里保留所有结果以便显示
     
     // 对结果进行质量评分和排序
-    const scoredItems: ScoredItem[] = searchResults.map((item: SearchResult) => {
+    const scoredItems: ScoredItem[] = filteredResults.map((item: SearchResult) => {
       let score = 0;
 
       // 评分规则：
@@ -446,8 +484,13 @@ function SearchPageClient() {
       }
       addedItems.add(itemKey);
 
+      // 首先过滤掉预告片和解说视频
+      if (isTrailerOrCommentary(item.title)) {
+        return;
+      }
+
       // 优化键生成：更彻底的标题处理，移除标点符号和特殊字符，只保留核心文字
-      const type = item.episodes.length === 1 ? 'movie' : 'tv';
+
       // 统一标题处理逻辑：
       // 1. 移除所有空格
       // 2. 转为小写
@@ -462,8 +505,8 @@ function SearchPageClient() {
         .replace(/^(the|a|an|电影|电视剧|剧集|高清|超清|完整版|在线观看|免费)/g, '')
         .replace(/(高清|超清|完整版|在线观看|免费|全集)$/g, '');
       
-      // 生成聚合键，放宽年份匹配，只使用标题和类型
-      const key = `${processedTitle}-${type}`;
+      // 生成聚合键，只使用标题，不区分电影/电视剧类型
+      const key = processedTitle;
       const arr = map.get(key) || [];
 
       // 如果是新的键，记录其顺序

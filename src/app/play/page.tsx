@@ -1439,14 +1439,6 @@ function PlayPageClient() {
       return Array.from(new Set(variants));
     };
 
-    // 检查关键词匹配的辅助函数
-    const checkAllKeywordsMatch = (query: string, title: string): boolean => {
-      const keywords = query.split(/[\s,，]+/).filter((k) => k.length > 1);
-      if (keywords.length === 0) return false;
-
-      return keywords.every((keyword) => title.includes(keyword));
-    };
-
     const fetchSourcesData = async (query: string): Promise<SearchResult[]> => {
       // 使用智能搜索变体获取全部源信息
       try {
@@ -1456,6 +1448,39 @@ function PlayPageClient() {
 
         const allResults: SearchResult[] = [];
         let bestResults: SearchResult[] = [];
+
+        // 预告片和解说过滤函数
+        const isTrailerOrCommentary = (title: string): boolean => {
+          const filterKeywords = [
+            // 预告片相关
+            '预告片',
+            '预告',
+            'trailer',
+            'preview',
+            '[预告片]',
+            '(预告片)',
+            '【预告片】',
+            '先行版',
+            '先导版',
+            '片段',
+            '花絮',
+            '特辑',
+            'making',
+            'behind the scenes',
+            // 解说相关
+            '解说',
+            '解说版',
+            '解说视频',
+            'reaction',
+            'commentary',
+            'review',
+            '影评',
+            '解析',
+            '解读'
+          ];
+          const lowerTitle = title.toLowerCase();
+          return filterKeywords.some(keyword => lowerTitle.includes(keyword.toLowerCase()));
+        };
 
         // 依次尝试每个搜索变体，采用早期退出策略
         for (const variant of searchVariants) {
@@ -1471,10 +1496,19 @@ function PlayPageClient() {
           const data = await response.json();
 
           if (data.results && data.results.length > 0) {
-            allResults.push(...data.results);
+            // 过滤掉预告片和解说视频，然后添加到结果中
+            const nonFilteredResults = data.results.filter((result: SearchResult) => {
+              const isFilteredResult = isTrailerOrCommentary(result.title);
+              if (isFilteredResult) {
+                console.log(`过滤掉预告片/解说: ${result.title}`);
+              }
+              return !isFilteredResult;
+            });
+            
+            allResults.push(...nonFilteredResults);
 
             // 处理搜索结果，使用智能模糊匹配
-            const filteredResults = data.results.filter(
+            const filteredResults = nonFilteredResults.filter(
               (result: SearchResult) => {
                 // 如果有 douban_id，优先使用 douban_id 精确匹配
                 if (
@@ -1652,6 +1686,8 @@ function PlayPageClient() {
                 ])
               ).values()
             ) as SearchResult[];
+            // 再次过滤掉任何可能的预告片和解说视频
+            finalResults = finalResults.filter(result => !isTrailerOrCommentary(result.title));
             console.log(`找到 ${finalResults.length} 个唯一匹配结果`);
           } else {
             console.log('没有找到合理的匹配，返回空结果');
