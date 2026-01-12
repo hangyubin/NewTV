@@ -11,6 +11,14 @@ import {
   UserStats,
 } from './types';
 
+const STORAGE_TYPE = 
+  (process.env.NEXT_PUBLIC_STORAGE_TYPE as 
+    | 'localstorage' 
+    | 'redis' 
+    | 'upstash' 
+    | 'kvrocks' 
+    | undefined) || 'localstorage';
+
 // 本地存储模拟实现
 class LocalStorageMock implements IStorage {
   private adminConfig: AdminConfig | null = null;
@@ -353,23 +361,100 @@ class LocalStorageMock implements IStorage {
   }
 }
 
+// 创建存储实例的异步函数
+async function createStorage(): Promise<IStorage> {
+  logger.info('创建存储实例，类型:', STORAGE_TYPE);
+
+  // 检查是否在浏览器环境中
+  const isBrowser = typeof window !== 'undefined';
+  
+  // 在浏览器环境中，始终使用本地存储，避免加载 Redis 相关模块
+  if (isBrowser) {
+    logger.info('浏览器环境：使用本地存储');
+    return new LocalStorageMock();
+  }
+
+  // 服务器环境下，根据配置选择存储类型
+  try {
+    switch (STORAGE_TYPE) {
+      case 'redis':
+        try {
+          const { RedisStorage } = await import('./redis.db');
+          return new RedisStorage();
+        } catch (error) {
+          logger.error('动态导入 RedisStorage 失败:', error as Error);
+          logger.info('回退到本地存储');
+          return new LocalStorageMock();
+        }
+      case 'upstash':
+        try {
+          const { UpstashRedisStorage } = await import('./upstash.db');
+          return new UpstashRedisStorage();
+        } catch (error) {
+          logger.error('动态导入 UpstashRedisStorage 失败:', error as Error);
+          logger.info('回退到本地存储');
+          return new LocalStorageMock();
+        }
+      case 'kvrocks':
+        try {
+          const { KvrocksStorage } = await import('./kvrocks.db');
+          return new KvrocksStorage();
+        } catch (error) {
+          logger.error('动态导入 KvrocksStorage 失败:', error as Error);
+          logger.info('回退到本地存储');
+          return new LocalStorageMock();
+        }
+      case 'localstorage':
+      default:
+        logger.info('使用本地存储模拟实现');
+        return new LocalStorageMock();
+    }
+  } catch (error) {
+    logger.error('创建存储实例失败:', error as Error);
+    logger.info('回退到本地存储');
+    return new LocalStorageMock();
+  }
+}
+
 export function generateStorageKey(source: string, id: string): string {
   return `${source}+${id}`;
 }
 
-// 简化的 DbManager，只使用本地存储，避免 Redis 相关代码
 export class DbManager {
-  private storage: IStorage;
+  private storage: IStorage | null = null;
+  private storageInitPromise: Promise<void>;
 
   constructor() {
-    logger.info('DbManager 初始化，使用本地存储');
-    this.storage = new LocalStorageMock();
+    logger.info('DbManager 初始化，存储类型:', STORAGE_TYPE);
+    this.storageInitPromise = this.initStorage();
+  }
+
+  // 异步初始化存储
+  private async initStorage(): Promise<void> {
+    try {
+      this.storage = await createStorage();
+      logger.info('DbManager 存储初始化完成，类型:', this.storage.constructor.name);
+    } catch (error) {
+      logger.error('DbManager 存储初始化失败:', error as Error);
+      // 初始化失败时使用本地存储作为回退
+      this.storage = new LocalStorageMock();
+      logger.info('DbManager 使用本地存储作为回退');
+    }
+  }
+
+  // 确保存储已初始化
+  private async ensureStorage(): Promise<IStorage> {
+    if (!this.storage) {
+      await this.storageInitPromise;
+    }
+    return this.storage!;
   }
 
   // 管理员配置方法
   async getAdminConfig(): Promise<AdminConfig | null> {
     try {
-      const config = await this.storage.getAdminConfig();
+      const storage = await this.ensureStorage();
+      const config = await storage.getAdminConfig();
       logger.info(
         '获取管理员配置成功，SourceConfig数量:',
         config?.SourceConfig?.length || 0
@@ -384,83 +469,90 @@ export class DbManager {
   async saveAdminConfig(config: AdminConfig): Promise<void> {
     logger.info('保存管理员配置开始...');
 
-    // 验证配置
-    if (!config) {
-      const errorMsg = '配置不能为空';
-      logger.error(errorMsg, new Error(errorMsg));
-      throw new Error(errorMsg);
-    }
-
-    // 确保必要字段存在
-    if (!config.SourceConfig) {
-      config.SourceConfig = [];
-      logger.info('SourceConfig 不存在，初始化为空数组');
-    }
-
-    if (!config.UserConfig) {
-      config.UserConfig = { Users: [], Tags: [] };
-      logger.info('UserConfig 不存在，初始化为空对象');
-    }
-
-    // 确保其他字段也存在
-    if (!config.ConfigSubscribtion) {
-      config.ConfigSubscribtion = {
-        URL: '',
-        AutoUpdate: false,
-        LastCheck: '',
-      };
-    }
-    if (!config.ConfigFile) {
-      config.ConfigFile = '';
-    }
-    if (!config.SiteConfig) {
-      config.SiteConfig = {
-        SiteName: 'NewTV',
-        Announcement: '二次开发的跨平台影视聚合播放站',
-        SearchDownstreamMaxPage: 2,
-        SiteInterfaceCacheTime: 3600,
-        DoubanProxyType: 'custom',
-        DoubanProxy: '',
-        DoubanImageProxyType: 'custom',
-        DoubanImageProxy: '',
-        DisableYellowFilter: false,
-        FluidSearch: true,
-      };
-    }
-    if (!config.CustomCategories) {
-      config.CustomCategories = [];
-    }
-
-    logger.info('准备保存配置:');
-    logger.info('- SourceConfig 数量:', config.SourceConfig.length);
-    logger.info(
-      '- 第一个源:',
-      config.SourceConfig[0]
-        ? {
-            key: config.SourceConfig[0].key,
-            name: config.SourceConfig[0].name,
-            from: config.SourceConfig[0].from,
-          }
-        : '空'
-    );
-
     try {
-      // 检查方法是否存在
-      if (typeof this.storage.setAdminConfig !== 'function') {
-        const errorMsg = '当前存储类型不支持管理员配置保存';
+      const storage = await this.ensureStorage();
+
+      // 验证配置
+      if (!config) {
+        const errorMsg = '配置不能为空';
         logger.error(errorMsg, new Error(errorMsg));
         throw new Error(errorMsg);
       }
 
-      // 执行保存
-      await this.storage.setAdminConfig(config);
-      logger.info('✅ 管理员配置保存成功');
+      // 确保必要字段存在
+      if (!config.SourceConfig) {
+        config.SourceConfig = [];
+        logger.info('SourceConfig 不存在，初始化为空数组');
+      }
+
+      if (!config.UserConfig) {
+        config.UserConfig = { Users: [], Tags: [] };
+        logger.info('UserConfig 不存在，初始化为空对象');
+      }
+
+      // 确保其他字段也存在
+      if (!config.ConfigSubscribtion) {
+        config.ConfigSubscribtion = {
+          URL: '',
+          AutoUpdate: false,
+          LastCheck: '',
+        };
+      }
+      if (!config.ConfigFile) {
+        config.ConfigFile = '';
+      }
+      if (!config.SiteConfig) {
+        config.SiteConfig = {
+          SiteName: 'NewTV',
+          Announcement: '二次开发的跨平台影视聚合播放站',
+          SearchDownstreamMaxPage: 2,
+          SiteInterfaceCacheTime: 3600,
+          DoubanProxyType: 'custom',
+          DoubanProxy: '',
+          DoubanImageProxyType: 'custom',
+          DoubanImageProxy: '',
+          DisableYellowFilter: false,
+          FluidSearch: true,
+        };
+      }
+      if (!config.CustomCategories) {
+        config.CustomCategories = [];
+      }
+
+      logger.info('准备保存配置:');
+      logger.info('- SourceConfig 数量:', config.SourceConfig.length);
+      logger.info(
+        '- 第一个源:',
+        config.SourceConfig[0]
+          ? {
+              key: config.SourceConfig[0].key,
+              name: config.SourceConfig[0].name,
+              from: config.SourceConfig[0].from,
+            }
+          : '空'
+      );
+
+      try {
+        // 检查方法是否存在
+        if (typeof storage.setAdminConfig !== 'function') {
+          const errorMsg = '当前存储类型不支持管理员配置保存';
+          logger.error(errorMsg, new Error(errorMsg));
+          throw new Error(errorMsg);
+        }
+
+        // 执行保存
+        await storage.setAdminConfig(config);
+        logger.info('✅ 管理员配置保存成功');
+      } catch (error) {
+        logger.error('❌ 保存管理员配置失败:', error as Error);
+
+        const errorMessage = error instanceof Error ? error.message : '未知错误';
+
+        throw new Error(`保存配置失败: ${errorMessage}`);
+      }
     } catch (error) {
-      logger.error('❌ 保存管理员配置失败:', error as Error);
-
-      const errorMessage = error instanceof Error ? error.message : '未知错误';
-
-      throw new Error(`保存配置失败: ${errorMessage}`);
+      logger.error('保存管理员配置过程中发生错误:', error as Error);
+      throw error;
     }
   }
 
@@ -470,8 +562,9 @@ export class DbManager {
     source: string,
     id: string
   ): Promise<PlayRecord | null> {
+    const storage = await this.ensureStorage();
     const key = generateStorageKey(source, id);
-    return this.storage.getPlayRecord(userName, key);
+    return storage.getPlayRecord(userName, key);
   }
 
   async savePlayRecord(
@@ -480,14 +573,16 @@ export class DbManager {
     id: string,
     record: PlayRecord
   ): Promise<void> {
+    const storage = await this.ensureStorage();
     const key = generateStorageKey(source, id);
-    await this.storage.setPlayRecord(userName, key, record);
+    await storage.setPlayRecord(userName, key, record);
   }
 
   async getAllPlayRecords(userName: string): Promise<{
     [key: string]: PlayRecord;
   }> {
-    return this.storage.getAllPlayRecords(userName);
+    const storage = await this.ensureStorage();
+    return storage.getAllPlayRecords(userName);
   }
 
   async deletePlayRecord(
@@ -495,8 +590,9 @@ export class DbManager {
     source: string,
     id: string
   ): Promise<void> {
+    const storage = await this.ensureStorage();
     const key = generateStorageKey(source, id);
-    await this.storage.deletePlayRecord(userName, key);
+    await storage.deletePlayRecord(userName, key);
   }
 
   // 收藏方法
@@ -505,8 +601,9 @@ export class DbManager {
     source: string,
     id: string
   ): Promise<Favorite | null> {
+    const storage = await this.ensureStorage();
     const key = generateStorageKey(source, id);
-    return this.storage.getFavorite(userName, key);
+    return storage.getFavorite(userName, key);
   }
 
   async saveFavorite(
@@ -515,14 +612,16 @@ export class DbManager {
     id: string,
     favorite: Favorite
   ): Promise<void> {
+    const storage = await this.ensureStorage();
     const key = generateStorageKey(source, id);
-    await this.storage.setFavorite(userName, key, favorite);
+    await storage.setFavorite(userName, key, favorite);
   }
 
   async getAllFavorites(
     userName: string
   ): Promise<{ [key: string]: Favorite }> {
-    return this.storage.getAllFavorites(userName);
+    const storage = await this.ensureStorage();
+    return storage.getAllFavorites(userName);
   }
 
   async deleteFavorite(
@@ -530,8 +629,9 @@ export class DbManager {
     source: string,
     id: string
   ): Promise<void> {
+    const storage = await this.ensureStorage();
     const key = generateStorageKey(source, id);
-    await this.storage.deleteFavorite(userName, key);
+    await storage.deleteFavorite(userName, key);
   }
 
   async isFavorited(
@@ -545,40 +645,49 @@ export class DbManager {
 
   // 用户相关方法
   async registerUser(userName: string, password: string): Promise<void> {
-    await this.storage.registerUser(userName, password);
+    const storage = await this.ensureStorage();
+    await storage.registerUser(userName, password);
   }
 
   async verifyUser(userName: string, password: string): Promise<boolean> {
-    return this.storage.verifyUser(userName, password);
+    const storage = await this.ensureStorage();
+    return storage.verifyUser(userName, password);
   }
 
   async checkUserExist(userName: string): Promise<boolean> {
-    return this.storage.checkUserExist(userName);
+    const storage = await this.ensureStorage();
+    return storage.checkUserExist(userName);
   }
 
   async changePassword(userName: string, newPassword: string): Promise<void> {
-    await this.storage.changePassword(userName, newPassword);
+    const storage = await this.ensureStorage();
+    await storage.changePassword(userName, newPassword);
   }
 
   async deleteUser(userName: string): Promise<void> {
-    await this.storage.deleteUser(userName);
+    const storage = await this.ensureStorage();
+    await storage.deleteUser(userName);
   }
 
   // 搜索历史方法
   async getSearchHistory(userName: string): Promise<string[]> {
-    return this.storage.getSearchHistory(userName);
+    const storage = await this.ensureStorage();
+    return storage.getSearchHistory(userName);
   }
 
   async addSearchHistory(userName: string, keyword: string): Promise<void> {
-    await this.storage.addSearchHistory(userName, keyword);
+    const storage = await this.ensureStorage();
+    await storage.addSearchHistory(userName, keyword);
   }
 
   async deleteSearchHistory(userName: string, keyword?: string): Promise<void> {
-    await this.storage.deleteSearchHistory(userName, keyword);
+    const storage = await this.ensureStorage();
+    await storage.deleteSearchHistory(userName, keyword);
   }
 
   async getAllUsers(): Promise<string[]> {
-    return this.storage.getAllUsers();
+    const storage = await this.ensureStorage();
+    return storage.getAllUsers();
   }
 
   // 跳过片头片尾配置方法
@@ -587,7 +696,8 @@ export class DbManager {
     source: string,
     id: string
   ): Promise<SkipConfig | null> {
-    return this.storage.getSkipConfig(userName, source, id);
+    const storage = await this.ensureStorage();
+    return storage.getSkipConfig(userName, source, id);
   }
 
   async setSkipConfig(
@@ -596,7 +706,8 @@ export class DbManager {
     id: string,
     config: SkipConfig
   ): Promise<void> {
-    await this.storage.setSkipConfig(userName, source, id, config);
+    const storage = await this.ensureStorage();
+    await storage.setSkipConfig(userName, source, id, config);
   }
 
   async deleteSkipConfig(
@@ -604,34 +715,40 @@ export class DbManager {
     source: string,
     id: string
   ): Promise<void> {
-    await this.storage.deleteSkipConfig(userName, source, id);
+    const storage = await this.ensureStorage();
+    await storage.deleteSkipConfig(userName, source, id);
   }
 
   async getAllSkipConfigs(
     userName: string
   ): Promise<{ [key: string]: SkipConfig }> {
-    return this.storage.getAllSkipConfigs(userName);
+    const storage = await this.ensureStorage();
+    return storage.getAllSkipConfigs(userName);
   }
 
   // 弹幕配置方法
   async getDanmakuConfig(userName: string): Promise<DanmakuConfig | null> {
-    return this.storage.getDanmakuConfig(userName);
+    const storage = await this.ensureStorage();
+    return storage.getDanmakuConfig(userName);
   }
 
   async saveDanmakuConfig(
     userName: string,
     config: DanmakuConfig
   ): Promise<void> {
-    await this.storage.setDanmakuConfig(userName, config);
+    const storage = await this.ensureStorage();
+    await storage.setDanmakuConfig(userName, config);
   }
 
   async deleteDanmakuConfig(userName: string): Promise<void> {
-    await this.storage.deleteDanmakuConfig(userName);
+    const storage = await this.ensureStorage();
+    await storage.deleteDanmakuConfig(userName);
   }
 
   // 用户统计数据方法
   async getUserStats(userName: string): Promise<UserStats | null> {
-    return this.storage.getUserStats(userName);
+    const storage = await this.ensureStorage();
+    return storage.getUserStats(userName);
   }
 
   async updateUserStats(
@@ -643,16 +760,19 @@ export class DbManager {
       isFullReset?: boolean;
     }
   ): Promise<void> {
-    await this.storage.updateUserStats(userName, updateData);
+    const storage = await this.ensureStorage();
+    await storage.updateUserStats(userName, updateData);
   }
 
   async clearUserStats(userName: string): Promise<void> {
-    await this.storage.clearUserStats(userName);
+    const storage = await this.ensureStorage();
+    await storage.clearUserStats(userName);
   }
 
   // 数据清理方法
   async clearAllData(): Promise<void> {
-    await this.storage.clearAllData();
+    const storage = await this.ensureStorage();
+    await storage.clearAllData();
   }
 }
 
