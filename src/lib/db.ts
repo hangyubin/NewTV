@@ -1,9 +1,7 @@
 /* eslint-disable no-console, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
 import { AdminConfig } from './admin.types';
-import { KvrocksStorage } from './kvrocks.db';
 import { logger } from './logger';
-import { RedisStorage } from './redis.db';
 import {
   DanmakuConfig,
   Favorite,
@@ -12,15 +10,6 @@ import {
   SkipConfig,
   UserStats,
 } from './types';
-import { UpstashRedisStorage } from './upstash.db';
-
-const STORAGE_TYPE =
-  (process.env.NEXT_PUBLIC_STORAGE_TYPE as
-    | 'localstorage'
-    | 'redis'
-    | 'upstash'
-    | 'kvrocks'
-    | undefined) || 'localstorage';
 
 // 本地存储模拟实现
 class LocalStorageMock implements IStorage {
@@ -52,7 +41,7 @@ class LocalStorageMock implements IStorage {
         },
       };
 
-      // 返回完整默认配置 - 注意：移除 Client 属性，因为 AdminConfig 类型中不存在
+      // 返回完整默认配置
       this.adminConfig = {
         SourceConfig: Object.entries(defaultApiSites).map(([key, site]) => ({
           key,
@@ -85,7 +74,6 @@ class LocalStorageMock implements IStorage {
           FluidSearch: true,
         },
         CustomCategories: [],
-        // 注意：移除了 Client 属性，因为 AdminConfig 类型中不存在
       };
       logger.info(
         '本地存储：创建默认管理员配置，SourceConfig数量:',
@@ -135,7 +123,6 @@ class LocalStorageMock implements IStorage {
     if (!config.CustomCategories) {
       config.CustomCategories = [];
     }
-    // 注意：移除了 Client 属性的检查，因为 AdminConfig 类型中不存在
 
     this.adminConfig = config;
     logger.info(
@@ -366,73 +353,22 @@ class LocalStorageMock implements IStorage {
   }
 }
 
-// 创建存储实例
-function createStorage(): IStorage {
-  logger.info('创建存储实例，类型:', STORAGE_TYPE);
-
-  switch (STORAGE_TYPE) {
-    case 'redis':
-      return new RedisStorage();
-    case 'upstash':
-      return new UpstashRedisStorage();
-    case 'kvrocks':
-      return new KvrocksStorage();
-    case 'localstorage':
-    default:
-      logger.info('使用本地存储模拟实现');
-      return new LocalStorageMock();
-  }
-}
-
-// 单例存储实例
-let storageInstance: IStorage | null = null;
-
-function getStorage(): IStorage {
-  if (!storageInstance) {
-    storageInstance = createStorage();
-    logger.info('存储实例创建完成，类型:', storageInstance.constructor.name);
-  }
-  return storageInstance;
-}
-
 export function generateStorageKey(source: string, id: string): string {
   return `${source}+${id}`;
 }
 
+// 简化的 DbManager，只使用本地存储，避免 Redis 相关代码
 export class DbManager {
   private storage: IStorage;
 
   constructor() {
-    logger.info('DbManager 初始化，存储类型:', STORAGE_TYPE);
-    this.storage = getStorage();
+    logger.info('DbManager 初始化，使用本地存储');
+    this.storage = new LocalStorageMock();
   }
 
-  // 测试数据库连接
-  async testConnection(): Promise<boolean> {
-    try {
-      logger.info('测试数据库连接...');
-
-      // 尝试获取管理员配置来测试连接
-      const config = await this.getAdminConfig();
-      logger.info(
-        '数据库连接测试成功，管理员配置:',
-        config ? '存在' : '不存在'
-      );
-      return true;
-    } catch (error) {
-      logger.error('数据库连接测试失败:', error as Error);
-      return false;
-    }
-  }
-
-  // ---------- 管理员配置 ----------
+  // 管理员配置方法
   async getAdminConfig(): Promise<AdminConfig | null> {
     try {
-      if (!this.storage) {
-        logger.error('存储未初始化', new Error('存储未初始化'));
-        return null;
-      }
-
       const config = await this.storage.getAdminConfig();
       logger.info(
         '获取管理员配置成功，SourceConfig数量:',
@@ -447,13 +383,6 @@ export class DbManager {
 
   async saveAdminConfig(config: AdminConfig): Promise<void> {
     logger.info('保存管理员配置开始...');
-
-    // 验证存储
-    if (!this.storage) {
-      const errorMsg = '存储未初始化';
-      logger.error(errorMsg, new Error(errorMsg));
-      throw new Error(errorMsg);
-    }
 
     // 验证配置
     if (!config) {
@@ -501,7 +430,6 @@ export class DbManager {
     if (!config.CustomCategories) {
       config.CustomCategories = [];
     }
-    // 注意：移除了 Client 属性的检查，因为 AdminConfig 类型中不存在
 
     logger.info('准备保存配置:');
     logger.info('- SourceConfig 数量:', config.SourceConfig.length);
@@ -536,13 +464,12 @@ export class DbManager {
     }
   }
 
-  // ---------- 播放记录 ----------
+  // 播放记录方法
   async getPlayRecord(
     userName: string,
     source: string,
     id: string
   ): Promise<PlayRecord | null> {
-    if (!this.storage) return null;
     const key = generateStorageKey(source, id);
     return this.storage.getPlayRecord(userName, key);
   }
@@ -553,7 +480,6 @@ export class DbManager {
     id: string,
     record: PlayRecord
   ): Promise<void> {
-    if (!this.storage) return;
     const key = generateStorageKey(source, id);
     await this.storage.setPlayRecord(userName, key, record);
   }
@@ -561,7 +487,6 @@ export class DbManager {
   async getAllPlayRecords(userName: string): Promise<{
     [key: string]: PlayRecord;
   }> {
-    if (!this.storage) return {};
     return this.storage.getAllPlayRecords(userName);
   }
 
@@ -570,18 +495,16 @@ export class DbManager {
     source: string,
     id: string
   ): Promise<void> {
-    if (!this.storage) return;
     const key = generateStorageKey(source, id);
     await this.storage.deletePlayRecord(userName, key);
   }
 
-  // ---------- 收藏 ----------
+  // 收藏方法
   async getFavorite(
     userName: string,
     source: string,
     id: string
   ): Promise<Favorite | null> {
-    if (!this.storage) return null;
     const key = generateStorageKey(source, id);
     return this.storage.getFavorite(userName, key);
   }
@@ -592,7 +515,6 @@ export class DbManager {
     id: string,
     favorite: Favorite
   ): Promise<void> {
-    if (!this.storage) return;
     const key = generateStorageKey(source, id);
     await this.storage.setFavorite(userName, key, favorite);
   }
@@ -600,7 +522,6 @@ export class DbManager {
   async getAllFavorites(
     userName: string
   ): Promise<{ [key: string]: Favorite }> {
-    if (!this.storage) return {};
     return this.storage.getAllFavorites(userName);
   }
 
@@ -609,7 +530,6 @@ export class DbManager {
     source: string,
     id: string
   ): Promise<void> {
-    if (!this.storage) return;
     const key = generateStorageKey(source, id);
     await this.storage.deleteFavorite(userName, key);
   }
@@ -623,61 +543,50 @@ export class DbManager {
     return favorite !== null;
   }
 
-  // ---------- 用户相关 ----------
+  // 用户相关方法
   async registerUser(userName: string, password: string): Promise<void> {
-    if (!this.storage) throw new Error('Storage not available');
     await this.storage.registerUser(userName, password);
   }
 
   async verifyUser(userName: string, password: string): Promise<boolean> {
-    if (!this.storage) throw new Error('Storage not available');
     return this.storage.verifyUser(userName, password);
   }
 
   async checkUserExist(userName: string): Promise<boolean> {
-    if (!this.storage) throw new Error('Storage not available');
     return this.storage.checkUserExist(userName);
   }
 
   async changePassword(userName: string, newPassword: string): Promise<void> {
-    if (!this.storage) throw new Error('Storage not available');
     await this.storage.changePassword(userName, newPassword);
   }
 
   async deleteUser(userName: string): Promise<void> {
-    if (!this.storage) throw new Error('Storage not available');
     await this.storage.deleteUser(userName);
   }
 
-  // ---------- 搜索历史 ----------
+  // 搜索历史方法
   async getSearchHistory(userName: string): Promise<string[]> {
-    if (!this.storage) return [];
     return this.storage.getSearchHistory(userName);
   }
 
   async addSearchHistory(userName: string, keyword: string): Promise<void> {
-    if (!this.storage) return;
     await this.storage.addSearchHistory(userName, keyword);
   }
 
   async deleteSearchHistory(userName: string, keyword?: string): Promise<void> {
-    if (!this.storage) return;
     await this.storage.deleteSearchHistory(userName, keyword);
   }
 
-  // 获取全部用户名
   async getAllUsers(): Promise<string[]> {
-    if (!this.storage) return [];
     return this.storage.getAllUsers();
   }
 
-  // ---------- 跳过片头片尾配置 ----------
+  // 跳过片头片尾配置方法
   async getSkipConfig(
     userName: string,
     source: string,
     id: string
   ): Promise<SkipConfig | null> {
-    if (!this.storage) return null;
     return this.storage.getSkipConfig(userName, source, id);
   }
 
@@ -687,7 +596,6 @@ export class DbManager {
     id: string,
     config: SkipConfig
   ): Promise<void> {
-    if (!this.storage) return;
     await this.storage.setSkipConfig(userName, source, id, config);
   }
 
@@ -696,22 +604,17 @@ export class DbManager {
     source: string,
     id: string
   ): Promise<void> {
-    if (!this.storage) return;
     await this.storage.deleteSkipConfig(userName, source, id);
   }
 
   async getAllSkipConfigs(
     userName: string
   ): Promise<{ [key: string]: SkipConfig }> {
-    if (!this.storage) return {};
     return this.storage.getAllSkipConfigs(userName);
   }
 
-  // ---------- 弹幕配置 ----------
+  // 弹幕配置方法
   async getDanmakuConfig(userName: string): Promise<DanmakuConfig | null> {
-    if (!this.storage) {
-      return null;
-    }
     return this.storage.getDanmakuConfig(userName);
   }
 
@@ -719,22 +622,15 @@ export class DbManager {
     userName: string,
     config: DanmakuConfig
   ): Promise<void> {
-    if (!this.storage) {
-      return;
-    }
     await this.storage.setDanmakuConfig(userName, config);
   }
 
   async deleteDanmakuConfig(userName: string): Promise<void> {
-    if (!this.storage) {
-      return;
-    }
     await this.storage.deleteDanmakuConfig(userName);
   }
 
-  // ---------- 用户统计数据 ----------
+  // 用户统计数据方法
   async getUserStats(userName: string): Promise<UserStats | null> {
-    if (!this.storage) return null;
     return this.storage.getUserStats(userName);
   }
 
@@ -747,26 +643,18 @@ export class DbManager {
       isFullReset?: boolean;
     }
   ): Promise<void> {
-    if (!this.storage) return;
     await this.storage.updateUserStats(userName, updateData);
   }
 
   async clearUserStats(userName: string): Promise<void> {
-    if (!this.storage) return;
     await this.storage.clearUserStats(userName);
   }
 
-  // ---------- 数据清理 ----------
+  // 数据清理方法
   async clearAllData(): Promise<void> {
-    if (!this.storage) {
-      throw new Error('存储未初始化');
-    }
     await this.storage.clearAllData();
   }
 }
 
 // 导出默认实例
 export const db = new DbManager();
-
-// 导出getStorage函数
-export { getStorage };

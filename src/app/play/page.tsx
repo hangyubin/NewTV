@@ -24,9 +24,9 @@ import {
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import { getDoubanDetails } from '@/lib/douban.client';
+import { CONFIG_UPDATED_EVENT, configEventEmitter } from '@/lib/events';
 import { DanmakuConfig, SearchResult } from '@/lib/types';
 import { checkVideoUpdate } from '@/lib/watching-updates';
-import { configEventEmitter, CONFIG_UPDATED_EVENT } from '@/lib/events';
 
 // 弹幕配置相关函数
 const getDanmakuConfig = async (): Promise<DanmakuConfig | null> => {
@@ -492,44 +492,6 @@ function PlayPageClient() {
     return Array.from(new Set(variants));
   };
 
-  // 获取视频详情的辅助函数
-  const fetchSourceDetail = async (
-    source: string,
-    id: string
-  ): Promise<SearchResult[]> => {
-    try {
-      const detailResponse = await fetch(
-        `/api/detail?source=${source}&id=${id}`
-      );
-      if (!detailResponse.ok) {
-        throw new Error('获取视频详情失败');
-      }
-      const detailData = (await detailResponse.json()) as SearchResult;
-      // 不要覆盖所有可用源，而是更新availableSources数组，添加新源
-      setAvailableSources((prev) => {
-        // 检查是否已存在相同的源
-        const existingIndex = prev.findIndex(
-          (s) => s.source === source && s.id === id
-        );
-        if (existingIndex >= 0) {
-          // 更新现有源
-          const updated = [...prev];
-          updated[existingIndex] = detailData;
-          return updated;
-        } else {
-          // 添加新源
-          return [...prev, detailData];
-        }
-      });
-      return [detailData];
-    } catch (err) {
-      console.error('获取视频详情失败:', err);
-      return [];
-    } finally {
-      setSourceSearchLoading(false);
-    }
-  };
-
   // 使用智能搜索变体获取全部源信息
   const fetchSourcesData = async (query: string): Promise<SearchResult[]> => {
     try {
@@ -567,10 +529,12 @@ function PlayPageClient() {
           'review',
           '影评',
           '解析',
-          '解读'
+          '解读',
         ];
         const lowerTitle = title.toLowerCase();
-        return filterKeywords.some(keyword => lowerTitle.includes(keyword.toLowerCase()));
+        return filterKeywords.some((keyword) =>
+          lowerTitle.includes(keyword.toLowerCase())
+        );
       };
 
       // 依次尝试每个搜索变体，采用早期退出策略
@@ -588,14 +552,16 @@ function PlayPageClient() {
 
         if (data.results && data.results.length > 0) {
           // 过滤掉预告片和解说视频，然后添加到结果中
-          const nonFilteredResults = data.results.filter((result: SearchResult) => {
-            const isFilteredResult = isTrailerOrCommentary(result.title);
-            if (isFilteredResult) {
-              console.log(`过滤掉预告片/解说: ${result.title}`);
+          const nonFilteredResults = data.results.filter(
+            (result: SearchResult) => {
+              const isFilteredResult = isTrailerOrCommentary(result.title);
+              if (isFilteredResult) {
+                console.log(`过滤掉预告片/解说: ${result.title}`);
+              }
+              return !isFilteredResult;
             }
-            return !isFilteredResult;
-          });
-          
+          );
+
           allResults.push(...nonFilteredResults);
 
           // 处理搜索结果，使用智能模糊匹配
@@ -618,10 +584,14 @@ function PlayPageClient() {
                 .toLowerCase();
 
               // 只使用完全匹配，确保只有精确相同的标题才会被保留
-              const titleMatch = resultTitle === queryTitle ||
+              const titleMatch =
+                resultTitle === queryTitle ||
                 // 或者使用豆瓣ID精确匹配
-                (videoDoubanIdRef.current && videoDoubanIdRef.current > 0 && result.douban_id && result.douban_id === videoDoubanIdRef.current);
-              
+                (videoDoubanIdRef.current &&
+                  videoDoubanIdRef.current > 0 &&
+                  result.douban_id &&
+                  result.douban_id === videoDoubanIdRef.current);
+
               return titleMatch;
             }
           );
@@ -668,20 +638,21 @@ function PlayPageClient() {
             .filter(
               (word) =>
                 word.length > 2 &&
-                ![                    'the',
-                    'a',
-                    'an',
-                    'and',
-                    'or',
-                    'of',
-                    'in',
-                    'on',
-                    'at',
-                    'to',
-                    'for',
-                    'with',
-                    'by',
-                  ].includes(word)
+                ![
+                  'the',
+                  'a',
+                  'an',
+                  'and',
+                  'or',
+                  'of',
+                  'in',
+                  'on',
+                  'at',
+                  'to',
+                  'for',
+                  'with',
+                  'by',
+                ].includes(word)
             );
 
           console.log('英文关键词:', queryWords);
@@ -690,7 +661,7 @@ function PlayPageClient() {
             const title = result.title.toLowerCase();
             const titleWords = title
               .replace(/[^\w\s]/g, ' ')
-              .split(/\s+/) 
+              .split(/\s+/)
               .filter((word) => word.length > 1);
 
             // 计算词汇匹配度：标题必须包含至少50%的查询关键词
@@ -709,7 +680,9 @@ function PlayPageClient() {
             const wordMatchRatio = matchedWords.length / queryWords.length;
             if (wordMatchRatio >= 0.5) {
               console.log(
-                `英文词汇匹配 (${matchedWords.length}/${queryWords.length}): "${result.title}" - 匹配词: [${matchedWords.join(', ')}]`
+                `英文词汇匹配 (${matchedWords.length}/${queryWords.length}): "${
+                  result.title
+                }" - 匹配词: [${matchedWords.join(', ')}]`
               );
               return true;
             }
@@ -748,7 +721,9 @@ function PlayPageClient() {
             const similarity = commonChars / normalizedQuery.length;
             if (similarity >= 0.7) {
               console.log(
-                `中文相似匹配 (${(similarity * 100).toFixed(1)}%): "${result.title}"`
+                `中文相似匹配 (${(similarity * 100).toFixed(1)}%): "${
+                  result.title
+                }"`
               );
               return true;
             }
@@ -764,14 +739,13 @@ function PlayPageClient() {
         if (relevantMatches.length > 0) {
           finalResults = Array.from(
             new Map(
-              relevantMatches.map((item) => [
-                `${item.source}-${item.id}`,
-                item,
-              ])
+              relevantMatches.map((item) => [`${item.source}-${item.id}`, item])
             ).values()
           ) as SearchResult[];
           // 再次过滤掉任何可能的预告片和解说视频
-          finalResults = finalResults.filter(result => !isTrailerOrCommentary(result.title));
+          finalResults = finalResults.filter(
+            (result) => !isTrailerOrCommentary(result.title)
+          );
           console.log(`找到 ${finalResults.length} 个唯一匹配结果`);
         } else {
           console.log('没有找到合理的匹配，返回空结果');
@@ -1830,10 +1804,12 @@ function PlayPageClient() {
             'review',
             '影评',
             '解析',
-            '解读'
+            '解读',
           ];
           const lowerTitle = title.toLowerCase();
-          return filterKeywords.some(keyword => lowerTitle.includes(keyword.toLowerCase()));
+          return filterKeywords.some((keyword) =>
+            lowerTitle.includes(keyword.toLowerCase())
+          );
         };
 
         // 依次尝试每个搜索变体，采用早期退出策略
@@ -1851,14 +1827,16 @@ function PlayPageClient() {
 
           if (data.results && data.results.length > 0) {
             // 过滤掉预告片和解说视频，然后添加到结果中
-            const nonFilteredResults = data.results.filter((result: SearchResult) => {
-              const isFilteredResult = isTrailerOrCommentary(result.title);
-              if (isFilteredResult) {
-                console.log(`过滤掉预告片/解说: ${result.title}`);
+            const nonFilteredResults = data.results.filter(
+              (result: SearchResult) => {
+                const isFilteredResult = isTrailerOrCommentary(result.title);
+                if (isFilteredResult) {
+                  console.log(`过滤掉预告片/解说: ${result.title}`);
+                }
+                return !isFilteredResult;
               }
-              return !isFilteredResult;
-            });
-            
+            );
+
             allResults.push(...nonFilteredResults);
 
             // 处理搜索结果，使用智能模糊匹配
@@ -1881,10 +1859,14 @@ function PlayPageClient() {
                   .toLowerCase();
 
                 // 只使用完全匹配，确保只有精确相同的标题才会被保留
-                const titleMatch = resultTitle === queryTitle ||
+                const titleMatch =
+                  resultTitle === queryTitle ||
                   // 或者使用豆瓣ID精确匹配
-                  (videoDoubanIdRef.current && videoDoubanIdRef.current > 0 && result.douban_id && result.douban_id === videoDoubanIdRef.current);
-                
+                  (videoDoubanIdRef.current &&
+                    videoDoubanIdRef.current > 0 &&
+                    result.douban_id &&
+                    result.douban_id === videoDoubanIdRef.current);
+
                 return titleMatch;
               }
             );
@@ -2041,7 +2023,9 @@ function PlayPageClient() {
               ).values()
             ) as SearchResult[];
             // 再次过滤掉任何可能的预告片和解说视频
-            finalResults = finalResults.filter(result => !isTrailerOrCommentary(result.title));
+            finalResults = finalResults.filter(
+              (result) => !isTrailerOrCommentary(result.title)
+            );
             console.log(`找到 ${finalResults.length} 个唯一匹配结果`);
           } else {
             console.log('没有找到合理的匹配，返回空结果');
