@@ -2808,7 +2808,7 @@ function PlayPageClient() {
           }
 
           // 延迟重新加载弹幕，确保视频切换完成并等待弹幕配置加载
-          setTimeout(_reloadDanmuku, 1500);
+          setTimeout(_reloadDanmaku, 1500);
 
           console.log('使用switch方法成功切换视频');
           return;
@@ -2828,6 +2828,10 @@ function PlayPageClient() {
         const Artplayer = (window as any).DynamicArtplayer;
         const artplayerPluginDanmuku = (window as any)
           .DynamicArtplayerPluginDanmuku;
+
+        // 获取设备信息
+        const deviceInfo = getDeviceInfo();
+
         // 创建新的播放器实例
         Artplayer.PLAYBACK_RATE = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
         Artplayer.USE_RAF = true;
@@ -2864,7 +2868,7 @@ function PlayPageClient() {
           lock: true,
           // AirPlay 仅在支持 WebKit API 的浏览器中启用
           // 主要是 Safari (桌面和移动端) 和 iOS 上的其他浏览器
-          airplay: isIOS || isSafari,
+          airplay: deviceInfo.isIOS || deviceInfo.isSafari,
           moreVideoAttr: {
             crossOrigin: 'anonymous',
           },
@@ -2879,6 +2883,10 @@ function PlayPageClient() {
               if (video.hls) {
                 video.hls.destroy();
               }
+
+              // 获取设备信息
+              const deviceInfo = getDeviceInfo();
+
               // 获取缓冲模式配置（standard、enhanced、max）
               const bufferMode =
                 typeof window !== 'undefined'
@@ -2904,8 +2912,8 @@ function PlayPageClient() {
                 };
 
                 // 设备调整
-                const deviceMultiplier = isMobile ? 0.5 : 1;
-                const iosAdjustment = isIOS ? 0.8 : 1;
+                const deviceMultiplier = deviceInfo.isMobile ? 0.5 : 1;
+                const iosAdjustment = deviceInfo.isIOS ? 0.8 : 1;
 
                 const params =
                   baseParams[bufferMode as keyof typeof baseParams];
@@ -2931,7 +2939,7 @@ function PlayPageClient() {
               const hls = new Hls({
                 debug: false,
                 enableWorker: true,
-                lowLatencyMode: !isMobile, // 移动设备关闭低延迟模式以节省资源
+                lowLatencyMode: !deviceInfo.isMobile, // 移动设备关闭低延迟模式以节省资源
 
                 // 缓冲/内存相关优化
                 maxBufferLength: bufferParams.maxBufferLength,
@@ -2939,18 +2947,18 @@ function PlayPageClient() {
                 maxBufferSize: bufferParams.maxBufferSize,
 
                 // 网络优化
-                maxLoadingDelay: isMobile ? 2 : 4,
-                maxBufferHole: isMobile ? 0.3 : 0.5,
+                maxLoadingDelay: deviceInfo.isMobile ? 2 : 4,
+                maxBufferHole: deviceInfo.isMobile ? 0.3 : 0.5,
 
                 // ABR（自适应码率）优化
-                abrEwmaFastLive: isMobile ? 2 : 3,
-                abrEwmaSlowLive: isMobile ? 9 : 15,
-                abrBandWidthFactor: isMobile ? 0.8 : 0.95,
-                abrBandWidthUpFactor: isMobile ? 1.5 : 1.25,
+                abrEwmaFastLive: deviceInfo.isMobile ? 2 : 3,
+                abrEwmaSlowLive: deviceInfo.isMobile ? 9 : 15,
+                abrBandWidthFactor: deviceInfo.isMobile ? 0.8 : 0.95,
+                abrBandWidthUpFactor: deviceInfo.isMobile ? 1.5 : 1.25,
 
                 // Fragment管理
                 liveDurationInfinity: false,
-                liveBackBufferLength: isMobile ? 3 : 10,
+                liveBackBufferLength: deviceInfo.isMobile ? 3 : 10,
 
                 // 自定义loader
                 loader: blockAdEnabledRef.current
@@ -3291,11 +3299,14 @@ function PlayPageClient() {
                   const memory =
                     (performance as any).memory?.jsHeapSizeLimit || 0;
 
+                  // 获取设备信息
+                  const deviceInfo = getDeviceInfo();
+
                   // 简单性能评分（0-1）
                   let score = 0;
                   score += Math.min(hardwareConcurrency / 4, 1) * 0.5; // CPU核心数权重
                   score += Math.min(memory / (1024 * 1024 * 1024), 1) * 0.3; // 内存权重
-                  score += (isMobile ? 0.2 : 0.5) * 0.2; // 设备类型权重
+                  score += (deviceInfo.isMobile ? 0.2 : 0.5) * 0.2; // 设备类型权重
 
                   if (score > 0.7) return 'high';
                   if (score > 0.4) return 'medium';
@@ -3303,6 +3314,8 @@ function PlayPageClient() {
                 };
 
                 const devicePerformance = getDevicePerformance();
+                // 获取设备信息用于配置优化
+                const deviceInfo = getDeviceInfo();
                 console.log(`🎯 设备性能等级: ${devicePerformance}`);
 
                 // 🚀 激进性能优化：针对大量弹幕的渲染策略
@@ -3450,7 +3463,7 @@ function PlayPageClient() {
                     case 'medium': // 中等性能设备 - 适度优化
                       return {
                         ...baseConfig,
-                        antiOverlap: !isMobile, // 移动端关闭防重叠
+                        antiOverlap: !deviceInfo.isMobile, // 移动端关闭防重叠
                         synchronousPlayback: true, // 保持同步播放以确保体验一致
                         useWorker: true, // v5.2.0: 中等设备也启用Worker
                       };
@@ -4460,6 +4473,9 @@ function PlayPageClient() {
           resumeTimeRef.current = null;
 
           setTimeout(() => {
+            // 获取设备信息
+            const deviceInfo = getDeviceInfo();
+
             if (
               Math.abs(artPlayerRef.current.volume - lastVolumeRef.current) >
               0.01
@@ -4470,7 +4486,7 @@ function PlayPageClient() {
               Math.abs(
                 artPlayerRef.current.playbackRate - lastPlaybackRateRef.current
               ) > 0.01 &&
-              isWebKit
+              deviceInfo.isWebKit
             ) {
               artPlayerRef.current.playbackRate = lastPlaybackRateRef.current;
             }
