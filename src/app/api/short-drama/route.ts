@@ -133,41 +133,31 @@ export async function GET(request: NextRequest) {
 
           // 2. 然后过滤黄色内容
           const config = await getConfig();
-          // 如果禁用了黄色内容过滤，直接使用所有结果
-          let finalResults: SearchResult[];
-          if (config.SiteConfig.DisableYellowFilter) {
-            finalResults = shortDramaResults;
-            console.log(
-              `📺 [短剧API] ${site.name} 搜索 ${searchKeyword} 已禁用黄色过滤，结果 ${finalResults.length} 条`
-            );
-          } else {
-            // 执行黄色内容过滤
-            const filteredResults = shortDramaResults.filter(
-              (result: SearchResult) => {
-                const typeName = result.type_name || '';
-                const className = result.class || '';
-                const title = result.title || '';
+          // 短剧内容始终过滤黄色内容，不受全局设置影响
+          const filteredResults = shortDramaResults.filter(
+            (result: SearchResult) => {
+              const typeName = result.type_name || '';
+              const className = result.class || '';
+              const title = result.title || '';
 
-                // 检查类型名、分类或标题中是否包含黄色关键词
-                const isYellow = yellowWords.some(
-                  (word: string) =>
-                    typeName.includes(word) ||
-                    className.includes(word) ||
-                    title.includes(word)
-                );
+              // 检查类型名、分类或标题中是否包含黄色关键词
+              const isYellow = yellowWords.some(
+                (word: string) =>
+                  typeName.includes(word) ||
+                  className.includes(word) ||
+                  title.includes(word)
+              );
 
-                return !isYellow;
-              }
-            );
+              return !isYellow;
+            }
+          );
 
-            console.log(
-              `📺 [短剧API] ${site.name} 搜索 ${searchKeyword} 过滤后结果 ${filteredResults.length} 条`
-            );
+          console.log(
+            `📺 [短剧API] ${site.name} 搜索 ${searchKeyword} 过滤后结果 ${filteredResults.length} 条`
+          );
 
-            // 如果过滤后没有结果，尝试不过滤，直接返回所有结果
-            finalResults =
-              filteredResults.length > 0 ? filteredResults : shortDramaResults;
-          }
+          // 短剧内容严格过滤，即使过滤后没有结果也不返回黄色内容
+          const finalResults = filteredResults;
 
           // 限制每个API源返回的结果数量，避免数据量过大
           const limitedResults = finalResults.slice(0, 50);

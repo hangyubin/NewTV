@@ -117,11 +117,26 @@ async function generateSuggestions(
         if (results && Array.isArray(results)) {
           const filteredTitles = results
             .filter(
-              (r: any) =>
-                config.SiteConfig.DisableYellowFilter ||
-                !yellowWords.some((word: string) =>
-                  (r.type_name || '').includes(word)
-                )
+              (r: any) => {
+                // 搜索建议根据全局设置决定是否过滤黄色内容
+                if (config.SiteConfig.DisableYellowFilter) {
+                  return true;
+                }
+                
+                const typeName = r.type_name || '';
+                const className = r.class || '';
+                const title = r.title || '';
+                
+                // 检查类型名、分类或标题中是否包含黄色关键词
+                const isYellow = yellowWords.some(
+                  (word: string) =>
+                    typeName.includes(word) ||
+                    className.includes(word) ||
+                    title.includes(word)
+                );
+                
+                return !isYellow;
+              }
             )
             .map((r: any) => r.title)
             .filter(Boolean);

@@ -55,10 +55,22 @@ export async function GET(request: NextRequest) {
       .filter((result) => result.status === 'fulfilled')
       .map((result) => (result as PromiseFulfilledResult<any>).value);
     let flattenedResults = successResults.flat();
+    // 搜索页内容根据全局设置决定是否过滤黄色内容
     if (!config.SiteConfig.DisableYellowFilter) {
       flattenedResults = flattenedResults.filter((result) => {
         const typeName = result.type_name || '';
-        return !yellowWords.some((word: string) => typeName.includes(word));
+        const className = result.class || '';
+        const title = result.title || '';
+        
+        // 检查类型名、分类或标题中是否包含黄色关键词
+        const isYellow = yellowWords.some(
+          (word: string) =>
+            typeName.includes(word) ||
+            className.includes(word) ||
+            title.includes(word)
+        );
+        
+        return !isYellow;
       });
     }
     const cacheTime = await getCacheTime();

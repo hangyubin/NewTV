@@ -1,5 +1,6 @@
 import he from 'he';
 import Hls from 'hls.js';
+import { yellowWords } from './yellow';
 
 /**
  * 判断是否为短剧内容

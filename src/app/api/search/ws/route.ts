@@ -87,14 +87,23 @@ export async function GET(request: NextRequest) {
 
           const results = (await searchPromise) as any[];
 
-          // 过滤黄色内容
+          // 搜索页内容根据全局设置决定是否过滤黄色内容
           let filteredResults = results;
           if (!config.SiteConfig.DisableYellowFilter) {
             filteredResults = results.filter((result) => {
               const typeName = result.type_name || '';
-              return !yellowWords.some((word: string) =>
-                typeName.includes(word)
+              const className = result.class || '';
+              const title = result.title || '';
+              
+              // 检查类型名、分类或标题中是否包含黄色关键词
+              const isYellow = yellowWords.some(
+                (word: string) =>
+                  typeName.includes(word) ||
+                  className.includes(word) ||
+                  title.includes(word)
               );
+              
+              return !isYellow;
             });
           }
 
