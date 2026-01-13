@@ -225,7 +225,7 @@ function DoubanPageClient() {
     },
     []
   );
-  
+
   // 共享的数据转换函数，优化短剧数据转换逻辑
   const convertShortDramaData = useCallback((results: any[]): DoubanItem[] => {
     // 使用map直接转换，避免不必要的中间变量
@@ -329,29 +329,29 @@ function DoubanPageClient() {
           throw new Error('没有找到对应的日期');
         }
       } else if (type === 'short-drama') {
-          // 短剧数据处理，减少每页请求数量，提高加载速度
-          const shortDramaResponse = await getShortDramaData({
-            type:
-              multiLevelValues.type !== 'all' ? multiLevelValues.type : undefined,
-            region:
-              multiLevelValues.region !== 'all'
-                ? multiLevelValues.region
-                : undefined,
-            year:
-              multiLevelValues.year !== 'all' ? multiLevelValues.year : undefined,
-            page: 1,
-            limit: 16, // 减少每页请求数量，提高加载速度
-          });
+        // 短剧数据处理，减少每页请求数量，提高加载速度
+        const shortDramaResponse = await getShortDramaData({
+          type:
+            multiLevelValues.type !== 'all' ? multiLevelValues.type : undefined,
+          region:
+            multiLevelValues.region !== 'all'
+              ? multiLevelValues.region
+              : undefined,
+          year:
+            multiLevelValues.year !== 'all' ? multiLevelValues.year : undefined,
+          page: 1,
+          limit: 16, // 减少每页请求数量，提高加载速度
+        });
 
-          // 转换为豆瓣数据格式，使用优化的数据转换函数
-          data = {
-            code: 200,
-            message: 'success',
-            list: convertShortDramaData(shortDramaResponse.results),
-          };
+        // 转换为豆瓣数据格式，使用优化的数据转换函数
+        data = {
+          code: 200,
+          message: 'success',
+          list: convertShortDramaData(shortDramaResponse.results),
+        };
 
-          // 直接使用API返回的hasMore字段判断是否还有更多数据
-          setHasMore(shortDramaResponse.hasMore);
+        // 直接使用API返回的hasMore字段判断是否还有更多数据
+        setHasMore(shortDramaResponse.hasMore);
       } else if (type === 'anime') {
         data = await getDoubanRecommends({
           kind: primarySelection === '番剧' ? 'tv' : 'movie',
@@ -628,7 +628,7 @@ function DoubanPageClient() {
         }
         return;
       }
-      
+
       // 断开之前的观察者连接
       if (observerRef.current) {
         observerRef.current.disconnect();
@@ -643,9 +643,9 @@ function DoubanPageClient() {
             setCurrentPage((prev) => prev + 1);
           }
         },
-        { 
+        {
           threshold: 0.1,
-          rootMargin: '0px 0px 200px 0px' // 提前200px触发加载
+          rootMargin: '0px 0px 200px 0px', // 提前200px触发加载
         }
       );
 
@@ -654,7 +654,7 @@ function DoubanPageClient() {
     },
     [loading, isLoadingMore, hasMore]
   );
-  
+
   // 组件卸载时断开观察者连接，避免内存泄漏
   useEffect(() => {
     return () => {
@@ -859,19 +859,19 @@ function DoubanPageClient() {
                     }
                   >
                     <VideoCard
-                key={`${item.id || item.title}-${index}`}
-                from='douban'
-                title={item.title}
-                poster={item.poster}
-                douban_id={Number(item.id)}
-                rate={item.rate}
-                year={item.year}
-                type={type === 'movie' ? 'movie' : ''} // 电影类型严格控制，tv 不控
-                isBangumi={
-                  type === 'anime' && primarySelection === '每日放送'
-                }
-                origin='vod' // 明确指定origin，避免undefined
-              />
+                      key={`${item.id || item.title}-${index}`}
+                      from='douban'
+                      title={item.title}
+                      poster={item.poster}
+                      douban_id={Number(item.id)}
+                      rate={item.rate}
+                      year={item.year}
+                      type={type === 'movie' ? 'movie' : ''} // 电影类型严格控制，tv 不控
+                      isBangumi={
+                        type === 'anime' && primarySelection === '每日放送'
+                      }
+                      origin='vod' // 明确指定origin，避免undefined
+                    />
                   </div>
                 ))}
           </div>

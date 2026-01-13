@@ -11,12 +11,12 @@ import {
   UserStats,
 } from './types';
 
-const STORAGE_TYPE = 
-  (process.env.NEXT_PUBLIC_STORAGE_TYPE as 
-    | 'localstorage' 
-    | 'redis' 
-    | 'upstash' 
-    | 'kvrocks' 
+const STORAGE_TYPE =
+  (process.env.NEXT_PUBLIC_STORAGE_TYPE as
+    | 'localstorage'
+    | 'redis'
+    | 'upstash'
+    | 'kvrocks'
     | undefined) || 'localstorage';
 
 // 本地存储模拟实现
@@ -367,7 +367,7 @@ async function createStorage(): Promise<IStorage> {
 
   // 检查是否在浏览器环境中
   const isBrowser = typeof window !== 'undefined';
-  
+
   // 在浏览器环境中，始终使用本地存储，避免加载 Redis 相关模块
   if (isBrowser) {
     logger.info('浏览器环境：使用本地存储');
@@ -433,7 +433,10 @@ export class DbManager {
   private async initStorage(): Promise<void> {
     try {
       this.storage = await createStorage();
-      logger.info('DbManager 存储初始化完成，类型:', this.storage.constructor.name);
+      logger.info(
+        'DbManager 存储初始化完成，类型:',
+        this.storage.constructor.name
+      );
     } catch (error) {
       logger.error('DbManager 存储初始化失败:', error as Error);
       // 初始化失败时使用本地存储作为回退
@@ -546,7 +549,8 @@ export class DbManager {
       } catch (error) {
         logger.error('❌ 保存管理员配置失败:', error as Error);
 
-        const errorMessage = error instanceof Error ? error.message : '未知错误';
+        const errorMessage =
+          error instanceof Error ? error.message : '未知错误';
 
         throw new Error(`保存配置失败: ${errorMessage}`);
       }

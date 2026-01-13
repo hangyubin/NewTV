@@ -39,7 +39,9 @@ export default function SearchSuggestions({
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // 搜索建议本地缓存，有效期5分钟
-  const suggestionCacheRef = useRef<Map<string, SuggestionCacheItem>>(new Map());
+  const suggestionCacheRef = useRef<Map<string, SuggestionCacheItem>>(
+    new Map()
+  );
   const CACHE_DURATION = 5 * 60 * 1000; // 5分钟缓存
 
   // 清理过期缓存
@@ -52,61 +54,64 @@ export default function SearchSuggestions({
     });
   }, [CACHE_DURATION]);
 
-  const fetchSuggestionsFromAPI = useCallback(async (searchQuery: string) => {
-    // 首先检查本地缓存
-    const cacheKey = searchQuery.trim().toLowerCase();
-    const cached = suggestionCacheRef.current.get(cacheKey);
-    const now = Date.now();
-    
-    if (cached && now - cached.timestamp < CACHE_DURATION) {
-      setSuggestions(cached.suggestions);
-      return;
-    }
+  const fetchSuggestionsFromAPI = useCallback(
+    async (searchQuery: string) => {
+      // 首先检查本地缓存
+      const cacheKey = searchQuery.trim().toLowerCase();
+      const cached = suggestionCacheRef.current.get(cacheKey);
+      const now = Date.now();
 
-    // 缓存未命中，发起网络请求
-    // 每次请求前取消上一次的请求
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    try {
-      const response = await fetch(
-        `/api/search/suggestions?q=${encodeURIComponent(searchQuery)}`,
-        {
-          signal: controller.signal,
-        }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        const apiSuggestions = data.suggestions.map(
-          (item: { text: string }) => ({
-            text: item.text,
-            type: 'related' as const,
-          })
-        );
-        setSuggestions(apiSuggestions);
-        
-        // 保存到本地缓存
-        suggestionCacheRef.current.set(cacheKey, {
-          suggestions: apiSuggestions,
-          timestamp: now,
-        });
+      if (cached && now - cached.timestamp < CACHE_DURATION) {
+        setSuggestions(cached.suggestions);
+        return;
       }
-    } catch (err: unknown) {
-      // 类型保护判断 err 是否是 Error 类型
-      if (err instanceof Error) {
-        if (err.name !== 'AbortError') {
-          // 不是取消请求导致的错误才清空
+
+      // 缓存未命中，发起网络请求
+      // 每次请求前取消上一次的请求
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      try {
+        const response = await fetch(
+          `/api/search/suggestions?q=${encodeURIComponent(searchQuery)}`,
+          {
+            signal: controller.signal,
+          }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          const apiSuggestions = data.suggestions.map(
+            (item: { text: string }) => ({
+              text: item.text,
+              type: 'related' as const,
+            })
+          );
+          setSuggestions(apiSuggestions);
+
+          // 保存到本地缓存
+          suggestionCacheRef.current.set(cacheKey, {
+            suggestions: apiSuggestions,
+            timestamp: now,
+          });
+        }
+      } catch (err: unknown) {
+        // 类型保护判断 err 是否是 Error 类型
+        if (err instanceof Error) {
+          if (err.name !== 'AbortError') {
+            // 不是取消请求导致的错误才清空
+            setSuggestions([]);
+          }
+        } else {
+          // 如果 err 不是 Error 类型，也清空提示
           setSuggestions([]);
         }
-      } else {
-        // 如果 err 不是 Error 类型，也清空提示
-        setSuggestions([]);
       }
-    }
-  }, [CACHE_DURATION]);
+    },
+    [CACHE_DURATION]
+  );
 
   // 防抖触发，增加防抖时间到500ms
   const debouncedFetchSuggestions = useCallback(

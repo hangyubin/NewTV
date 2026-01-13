@@ -753,8 +753,9 @@ function getApiHealth(key: string): {
 
 export async function getAvailableApiSites(user?: string): Promise<any[]> {
   const config = await getConfig();
+  // 只过滤掉禁用的源，不根据🔞图标过滤，让实际使用的地方根据黄色过滤器设置决定
   const allApiSites = config.SourceConfig.filter(
-    (s: any) => !s.disabled && !s.name.includes('🔞')
+    (s: any) => !s.disabled
   );
 
   if (!user) {

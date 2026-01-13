@@ -2,12 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-import {
-  ApiSite,
-  getAvailableApiSites,
-  getCacheTime,
-  getConfig,
-} from '@/lib/config';
+import { ApiSite, getAvailableApiSites, getCacheTime } from '@/lib/config';
 import { searchFromApi } from '@/lib/downstream';
 import { SearchResult } from '@/lib/types';
 import { isShortDrama } from '@/lib/utils';
@@ -52,9 +47,12 @@ export async function GET(request: NextRequest) {
     // 这样当视频源列表中被写入或导入了API，短剧API就会自动使用这些API
     apiSites = await getAvailableApiSites();
 
-    // 过滤掉AV相关的API源，只保留正规影视资源
+    // 过滤掉AV相关和带有🔞图标的API源，只保留正规影视资源
     apiSites = apiSites.filter(
-      (site) => !site.name.includes('AV-') && !site.api.includes('AV-')
+      (site) => 
+        !site.name.includes('AV-') && 
+        !site.api.includes('AV-') &&
+        !site.name.includes('🔞')
     );
 
     // 如果过滤后没有可用的API源，直接返回空结果，不再使用硬编码的默认API源
@@ -132,7 +130,6 @@ export async function GET(request: NextRequest) {
           );
 
           // 2. 然后过滤黄色内容
-          const config = await getConfig();
           // 短剧内容始终过滤黄色内容，不受全局设置影响
           const filteredResults = shortDramaResults.filter(
             (result: SearchResult) => {

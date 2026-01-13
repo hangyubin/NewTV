@@ -35,8 +35,12 @@ const CACHE_KEY_LIMIT = 50; // 限制缓存键数量，避免缓存过大
 function generateCacheKey(params: ShortDramaSearchParams): string {
   const sortedParams = Object.keys(params)
     .sort()
-    .filter(key => params[key as keyof ShortDramaSearchParams] !== undefined && params[key as keyof ShortDramaSearchParams] !== 'all')
-    .map(key => `${key}=${params[key as keyof ShortDramaSearchParams]}`)
+    .filter(
+      (key) =>
+        params[key as keyof ShortDramaSearchParams] !== undefined &&
+        params[key as keyof ShortDramaSearchParams] !== 'all'
+    )
+    .map((key) => `${key}=${params[key as keyof ShortDramaSearchParams]}`)
     .join('&');
   return `${CACHE_KEY_PREFIX}${btoa(sortedParams)}`;
 }
@@ -71,24 +75,32 @@ function saveToCache(key: string, data: ShortDramaResponse): void {
 
   try {
     // 保存数据到缓存
-    localStorage.setItem(key, JSON.stringify({
-      data,
-      timestamp: Date.now()
-    }));
-    
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        data,
+        timestamp: Date.now(),
+      })
+    );
+
     // 清理旧缓存，限制缓存键数量
     const cacheKeys = Object.keys(localStorage)
-      .filter(k => k.startsWith(CACHE_KEY_PREFIX))
+      .filter((k) => k.startsWith(CACHE_KEY_PREFIX))
       .sort((a, b) => {
-        const timeA = JSON.parse(localStorage.getItem(a) || '{}').timestamp || 0;
-        const timeB = JSON.parse(localStorage.getItem(b) || '{}').timestamp || 0;
+        const timeA =
+          JSON.parse(localStorage.getItem(a) || '{}').timestamp || 0;
+        const timeB =
+          JSON.parse(localStorage.getItem(b) || '{}').timestamp || 0;
         return timeA - timeB; // 按时间排序，旧的在前
       });
-    
+
     // 如果缓存键数量超过限制，删除最旧的
     if (cacheKeys.length > CACHE_KEY_LIMIT) {
-      const keysToRemove = cacheKeys.slice(0, cacheKeys.length - CACHE_KEY_LIMIT);
-      keysToRemove.forEach(k => localStorage.removeItem(k));
+      const keysToRemove = cacheKeys.slice(
+        0,
+        cacheKeys.length - CACHE_KEY_LIMIT
+      );
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
     }
   } catch (error) {
     // 静默处理缓存错误
@@ -103,7 +115,7 @@ export async function getShortDramaData(
 ): Promise<ShortDramaResponse> {
   // 生成缓存键
   const cacheKey = generateCacheKey(params);
-  
+
   // 尝试从缓存获取
   const cachedData = getFromCache(cacheKey);
   if (cachedData) {
@@ -134,7 +146,7 @@ export async function getShortDramaData(
 
   const response = await fetch(url, {
     credentials: 'include',
-    cache: 'no-store' // 禁用浏览器缓存，使用我们自己的缓存机制
+    cache: 'no-store', // 禁用浏览器缓存，使用我们自己的缓存机制
   });
 
   if (!response.ok) {

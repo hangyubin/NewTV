@@ -1,6 +1,5 @@
 import he from 'he';
 import Hls from 'hls.js';
-import { yellowWords } from './yellow';
 
 /**
  * 判断是否为短剧内容
@@ -8,7 +7,11 @@ import { yellowWords } from './yellow';
  * @param title 内容标题
  * @returns boolean
  */
-export function isShortDrama(typeName?: string, title?: string, classType?: string): boolean {
+export function isShortDrama(
+  typeName?: string,
+  title?: string,
+  classType?: string
+): boolean {
   // 如果没有提供任何信息，默认返回true，避免过滤掉所有结果
   if (!typeName && !title && !classType) return true;
 
@@ -387,11 +390,13 @@ export function isShortDrama(typeName?: string, title?: string, classType?: stri
 
   // 检查type_name、class和标题中是否包含任何短剧标识
   // 使用includes方法检查是否包含，更灵活
-  return shortDramaIdentifiers.some(identifier => {
+  return shortDramaIdentifiers.some((identifier) => {
     const identifierLower = identifier.toLowerCase();
-    return typeNameLower.includes(identifierLower) || 
-           classLower.includes(identifierLower) || 
-           titleLower.includes(identifierLower);
+    return (
+      typeNameLower.includes(identifierLower) ||
+      classLower.includes(identifierLower) ||
+      titleLower.includes(identifierLower)
+    );
   });
 }
 
@@ -464,17 +469,26 @@ function getDoubanImageProxyConfig(): {
   proxyUrl: string;
 } {
   // 检测是否在浏览器环境中
-  const isBrowser = typeof window !== 'undefined' && typeof localStorage !== 'undefined';
-  
+  const isBrowser =
+    typeof window !== 'undefined' && typeof localStorage !== 'undefined';
+
   const doubanImageProxyType =
     (isBrowser ? localStorage.getItem('doubanImageProxyType') : null) ||
-    (isBrowser ? (window as Window & typeof globalThis & { RUNTIME_CONFIG?: RuntimeConfig })
-      .RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY_TYPE : null) ||
+    (isBrowser
+      ? (
+          window as Window &
+            typeof globalThis & { RUNTIME_CONFIG?: RuntimeConfig }
+        ).RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY_TYPE
+      : null) ||
     'img3';
   const doubanImageProxy =
     (isBrowser ? localStorage.getItem('doubanImageProxyUrl') : null) ||
-    (isBrowser ? (window as Window & typeof globalThis & { RUNTIME_CONFIG?: RuntimeConfig })
-      .RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY : null) ||
+    (isBrowser
+      ? (
+          window as Window &
+            typeof globalThis & { RUNTIME_CONFIG?: RuntimeConfig }
+        ).RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY
+      : null) ||
     '';
   return {
     proxyType: doubanImageProxyType as
@@ -496,7 +510,7 @@ export function processImageUrl(originalUrl: string): string {
 
   // 确保URL是有效的
   const url = originalUrl;
-  
+
   // 处理相对URL
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
     // 如果是相对URL，直接返回占位图或者空字符串，避免Image组件出错

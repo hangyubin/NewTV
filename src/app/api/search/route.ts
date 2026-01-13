@@ -34,7 +34,12 @@ export async function GET(request: NextRequest) {
   }
 
   const config = await getConfig();
-  const apiSites = await getAvailableApiSites(authInfo.username);
+  let apiSites = await getAvailableApiSites(authInfo.username);
+  
+  // 根据全局黄色过滤器设置决定是否过滤带有🔞图标的API源
+  if (!config.SiteConfig.DisableYellowFilter) {
+    apiSites = apiSites.filter(site => !site.name.includes('🔞'));
+  }
 
   // 添加超时控制和错误处理，避免慢接口拖累整体响应
   const searchPromises = apiSites.map((site) =>
@@ -61,7 +66,7 @@ export async function GET(request: NextRequest) {
         const typeName = result.type_name || '';
         const className = result.class || '';
         const title = result.title || '';
-        
+
         // 检查类型名、分类或标题中是否包含黄色关键词
         const isYellow = yellowWords.some(
           (word: string) =>
@@ -69,7 +74,7 @@ export async function GET(request: NextRequest) {
             className.includes(word) ||
             title.includes(word)
         );
-        
+
         return !isYellow;
       });
     }

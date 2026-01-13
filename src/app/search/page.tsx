@@ -218,12 +218,17 @@ function SearchPageClient() {
     let max = 0;
     let res = 0;
     countMap.forEach((v, k) => {
-      if (v > max) { max = v; res = k; }
+      if (v > max) {
+        max = v;
+        res = k;
+      }
     });
     const episodes = res;
 
     // 计算源名称：直接使用 Set 收集
-    const source_names = Array.from(new Set(group.map((g) => g.source_name).filter(Boolean))) as string[];
+    const source_names = Array.from(
+      new Set(group.map((g) => g.source_name).filter(Boolean))
+    ) as string[];
 
     // 计算豆瓣ID：统计出现次数最多的豆瓣ID
     const doubanIdMap = new Map<number, number>();
@@ -235,7 +240,10 @@ function SearchPageClient() {
     let maxDoubanFreq = 0;
     let douban_id: number | undefined;
     doubanIdMap.forEach((v, k) => {
-      if (v > maxDoubanFreq) { maxDoubanFreq = v; douban_id = k; }
+      if (v > maxDoubanFreq) {
+        maxDoubanFreq = v;
+        douban_id = k;
+      }
     });
 
     return { episodes, source_names, douban_id };
@@ -356,10 +364,12 @@ function SearchPageClient() {
       'review',
       '影评',
       '解析',
-      '解读'
+      '解读',
     ];
     const lowerTitle = title.toLowerCase();
-    return filterKeywords.some(keyword => lowerTitle.includes(keyword.toLowerCase()));
+    return filterKeywords.some((keyword) =>
+      lowerTitle.includes(keyword.toLowerCase())
+    );
   };
 
   // 优化的搜索结果去重和排序
@@ -367,51 +377,55 @@ function SearchPageClient() {
     if (!searchResults.length) return searchResults;
 
     // 首先过滤掉预告片和解说视频
-    const filteredResults = searchResults.filter(item => !isTrailerOrCommentary(item.title));
-    
+    const filteredResults = searchResults.filter(
+      (item) => !isTrailerOrCommentary(item.title)
+    );
+
     if (!filteredResults.length) return filteredResults;
 
     // 注意：这里不再进行基于标题的去重，只进行结果排序
     // 去重逻辑已经在聚合结果中实现，这里保留所有结果以便显示
-    
+
     // 对结果进行质量评分和排序
-    const scoredItems: ScoredItem[] = filteredResults.map((item: SearchResult) => {
-      let score = 0;
+    const scoredItems: ScoredItem[] = filteredResults.map(
+      (item: SearchResult) => {
+        let score = 0;
 
-      // 评分规则：
-      // 1. 有评分的结果优先
-      if (item.score && typeof item.score === 'number') {
-        score += item.score * 10;
+        // 评分规则：
+        // 1. 有评分的结果优先
+        if (item.score && typeof item.score === 'number') {
+          score += item.score * 10;
+        }
+
+        // 2. 有海报的结果优先
+        if (item.poster && item.poster !== 'N/A') {
+          score += 5;
+        }
+
+        // 3. 集数完整的结果优先
+        if (item.episodes && item.episodes.length > 0) {
+          score += item.episodes.length;
+        }
+
+        // 4. 来源可靠性评分（可以根据实际情况调整）
+        const sourceScores: Record<string, number> = {
+          dbzy_tv: 10,
+          other_source: 5,
+        };
+        score += sourceScores[item.source] || 3;
+
+        // 5. 有豆瓣ID的结果优先
+        if (item.douban_id && item.douban_id > 0) {
+          score += 8;
+        }
+
+        return { item, score };
       }
-
-      // 2. 有海报的结果优先
-      if (item.poster && item.poster !== 'N/A') {
-        score += 5;
-      }
-
-      // 3. 集数完整的结果优先
-      if (item.episodes && item.episodes.length > 0) {
-        score += item.episodes.length;
-      }
-
-      // 4. 来源可靠性评分（可以根据实际情况调整）
-      const sourceScores: Record<string, number> = {
-        dbzy_tv: 10,
-        other_source: 5,
-      };
-      score += sourceScores[item.source] || 3;
-
-      // 5. 有豆瓣ID的结果优先
-      if (item.douban_id && item.douban_id > 0) {
-        score += 8;
-      }
-
-      return { item, score };
-    });
+    );
 
     // 选择评分最高的结果
     scoredItems.sort((a: ScoredItem, b: ScoredItem) => b.score - a.score);
-    const bestResults = scoredItems.map(item => item.item);
+    const bestResults = scoredItems.map((item) => item.item);
 
     // 3. 最终排序：根据相关性和质量
     const queryLower = searchQuery.toLowerCase();
@@ -502,9 +516,12 @@ function SearchPageClient() {
         // 移除标点符号和特殊字符
         .replace(/[.,/#!$%^&*;:{}=\-_`~()\\[\]"'<>|]/g, '')
         // 移除常见的前缀和后缀
-        .replace(/^(the|a|an|电影|电视剧|剧集|高清|超清|完整版|在线观看|免费)/g, '')
+        .replace(
+          /^(the|a|an|电影|电视剧|剧集|高清|超清|完整版|在线观看|免费)/g,
+          ''
+        )
         .replace(/(高清|超清|完整版|在线观看|免费|全集)$/g, '');
-      
+
       // 生成聚合键，只使用标题，不区分电影/电视剧类型
       const key = processedTitle;
       const arr = map.get(key) || [];
@@ -519,7 +536,9 @@ function SearchPageClient() {
     });
 
     // 按出现顺序返回聚合结果，保持搜索结果的原始顺序
-    return keyOrder.map(key => [key, map.get(key)!] as [string, SearchResult[]]);
+    return keyOrder.map(
+      (key) => [key, map.get(key)!] as [string, SearchResult[]]
+    );
   }, [searchResults]);
 
   // 当聚合结果变化时，如果某个聚合已存在，则调用其卡片 ref 的 set 方法增量更新
@@ -642,9 +661,12 @@ function SearchPageClient() {
         // 移除标点符号和特殊字符
         .replace(/[.,/#!$%^&*;:{}=\-_`~()\\[\]"'<>|]/g, '')
         // 移除常见的前缀和后缀
-        .replace(/^(the|a|an|电影|电视剧|剧集|高清|超清|完整版|在线观看|免费)/g, '')
+        .replace(
+          /^(the|a|an|电影|电视剧|剧集|高清|超清|完整版|在线观看|免费)/g,
+          ''
+        )
         .replace(/(高清|超清|完整版|在线观看|免费|全集)$/g, '');
-      
+
       const key = `${processedTitle}-${type}`;
       if (!titleYearMap.has(key)) {
         titleYearMap.set(key, []);

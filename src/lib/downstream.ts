@@ -207,7 +207,7 @@ export async function searchFromApi(
     // 对于所有查询，使用简化的搜索变体，减少变体数量
     // 只使用原始查询，减少请求数量
     searchVariants = [query];
-    
+
     const results: SearchResult[] = [];
 
     // 遍历所有搜索变体，获取更多结果
@@ -234,7 +234,8 @@ export async function searchFromApi(
         )}&limit=50`; // 每页返回50条结果，平衡数据量和性能
       } else {
         // 传统API源，使用原有格式
-        apiUrl = apiBaseUrl + API_CONFIG.search.path + encodeURIComponent(variant);
+        apiUrl =
+          apiBaseUrl + API_CONFIG.search.path + encodeURIComponent(variant);
       }
 
       try {
@@ -256,8 +257,6 @@ export async function searchFromApi(
             results.push(result);
           }
         });
-
-        
 
         // 不停止搜索，继续遍历所有变体获取更多结果
       } catch (error) {
