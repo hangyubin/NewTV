@@ -75,14 +75,14 @@ function HomeClient() {
     try {
       const cached = localStorage.getItem(key);
       if (!cached) return null;
-      
+
       const { data, timestamp } = JSON.parse(cached);
       // 缓存有效期：30分钟
       if (Date.now() - timestamp > 30 * 60 * 1000) {
         localStorage.removeItem(key);
         return null;
       }
-      
+
       console.log('从缓存获取数据成功:', key);
       return data;
     } catch (error) {
@@ -90,26 +90,29 @@ function HomeClient() {
       return null;
     }
   };
-  
+
   const saveCachedData = (key: string, data: any) => {
     if (typeof localStorage === 'undefined') return;
     try {
-      localStorage.setItem(key, JSON.stringify({
-        data,
-        timestamp: Date.now()
-      }));
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          data,
+          timestamp: Date.now(),
+        })
+      );
       console.log('保存数据到缓存成功:', key);
     } catch (error) {
       console.error('保存数据到缓存失败:', error);
     }
   };
-  
+
   useEffect(() => {
     // 优先获取核心内容：热门电影、热门剧集、热门动漫、热门综艺
     const fetchCoreData = async () => {
       try {
         setLoading(true);
-        
+
         // 尝试从缓存获取核心数据
         const cachedCoreData = getCachedData('home-core-data');
         if (cachedCoreData) {
@@ -123,58 +126,60 @@ function HomeClient() {
         }
 
         // 并行获取核心内容数据
-        const [
-          moviesResult,
-          tvShowsResult,
-          animeResult,
-          varietyShowsResult,
-        ] = await Promise.allSettled([
-          getDoubanCategories({
-            kind: 'movie',
-            category: '热门',
-            type: '全部',
-          }),
-          getDoubanCategories({
-            kind: 'tv',
-            category: 'tv',
-            type: 'tv',
-          }),
-          getDoubanRecommends({
-            kind: 'tv',
-            pageLimit: 25,
-            pageStart: 0,
-            category: '动画',
-            sort: 'U',
-          }),
-          getDoubanCategories({
-            kind: 'tv',
-            category: 'show',
-            type: 'show',
-          }),
-        ]);
+        const [moviesResult, tvShowsResult, animeResult, varietyShowsResult] =
+          await Promise.allSettled([
+            getDoubanCategories({
+              kind: 'movie',
+              category: '热门',
+              type: '全部',
+            }),
+            getDoubanCategories({
+              kind: 'tv',
+              category: 'tv',
+              type: 'tv',
+            }),
+            getDoubanRecommends({
+              kind: 'tv',
+              pageLimit: 25,
+              pageStart: 0,
+              category: '动画',
+              sort: 'U',
+            }),
+            getDoubanCategories({
+              kind: 'tv',
+              category: 'show',
+              type: 'show',
+            }),
+          ]);
 
         // 处理热门电影数据
-        const hotMovies = moviesResult.status === 'fulfilled' && moviesResult.value.code === 200
-          ? moviesResult.value.list
-          : [];
+        const hotMovies =
+          moviesResult.status === 'fulfilled' && moviesResult.value.code === 200
+            ? moviesResult.value.list
+            : [];
         setHotMovies(hotMovies);
 
         // 处理热门剧集数据
-        const hotTvShows = tvShowsResult.status === 'fulfilled' && tvShowsResult.value.code === 200
-          ? tvShowsResult.value.list
-          : [];
+        const hotTvShows =
+          tvShowsResult.status === 'fulfilled' &&
+          tvShowsResult.value.code === 200
+            ? tvShowsResult.value.list
+            : [];
         setHotTvShows(hotTvShows);
 
         // 处理热门动漫数据
-        const hotAnime = animeResult.status === 'fulfilled' && animeResult.value.code === 200
-          ? animeResult.value.list
-          : [];
+        const hotAnime =
+          animeResult.status === 'fulfilled' && animeResult.value.code === 200
+            ? animeResult.value.list
+            : [];
         setHotAnime(hotAnime);
 
         // 处理热门综艺数据
-        const hotVarietyShows = varietyShowsResult.status === 'fulfilled' && varietyShowsResult.value.code === 200
-          ? varietyShowsResult.value.list
-          : [];
+        const hotVarietyShows =
+          varietyShowsResult.status === 'fulfilled' &&
+          varietyShowsResult.value.code === 200
+            ? varietyShowsResult.value.list
+            : [];
         setHotVarietyShows(hotVarietyShows);
 
         // 保存核心数据到缓存
@@ -182,7 +187,7 @@ function HomeClient() {
           hotMovies,
           hotTvShows,
           hotAnime,
-          hotVarietyShows
+          hotVarietyShows,
         });
 
         // 核心内容加载完成后，立即显示页面
@@ -194,42 +199,63 @@ function HomeClient() {
     };
 
     // 延迟获取热门短剧数据，减少首页初始加载时间
-  const fetchShortDramaData = async () => {
-    try {
-      setShortDramaLoading(true);
-      
-      // 尝试从缓存获取短剧数据 - 直接使用getShortDramaData的内置缓存
-      const shortDramaResult = await getShortDramaData({
-        page: 1,
-        limit: 16, // 调整为16条，平衡加载速度和数据量
-      });
+    const fetchShortDramaData = async () => {
+      try {
+        setShortDramaLoading(true);
 
-      if (shortDramaResult.results) {
-        const shortDramaList = shortDramaResult.results.map(
-          (item: any) => ({
-            id: item.id,
-            title: item.title,
-            poster: item.poster,
-            rate: '', // 短剧通常没有豆瓣评分
-            year: item.year || '',
-          })
-        );
-        
-        setHotShortDramas(shortDramaList);
-        setShortDramaPage(1);
-        const hasMore = shortDramaResult.results.length >= (shortDramaResult.limit || 25);
-        setShortDramaHasMore(hasMore);
+        // 尝试从缓存获取短剧数据 - 直接使用getShortDramaData的内置缓存
+        const shortDramaResult = await getShortDramaData({
+          page: 1,
+          limit: 16, // 调整为16条，平衡加载速度和数据量
+        });
+
+        if (shortDramaResult.results) {
+          // 客户端额外去重，增强去重效果
+          const seenTitles = new Set();
+
+          const shortDramaList = shortDramaResult.results
+            .map((item: any) => ({
+              id: item.id,
+              title: item.title,
+              poster: item.poster,
+              rate: '', // 短剧通常没有豆瓣评分
+              year: item.year || '',
+            }))
+            // 客户端去重：移除标题重复的短剧
+            .filter((drama: any) => {
+              // 清理标题，用于去重比较
+              const cleanedTitle = drama.title
+                .toLowerCase()
+                .replace(/\s+/g, '')
+                .replace(/[(（)）]/g, '')
+                .replace(
+                  /(版|全集|完结|高清|无删减|短剧|微剧|微电影|竖屏剧)$/g,
+                  ''
+                );
+
+              if (seenTitles.has(cleanedTitle)) {
+                return false;
+              }
+              seenTitles.add(cleanedTitle);
+              return true;
+            });
+
+          setHotShortDramas(shortDramaList);
+          setShortDramaPage(1);
+          const hasMore =
+            shortDramaResult.results.length >= (shortDramaResult.limit || 25);
+          setShortDramaHasMore(hasMore);
+        }
+      } catch (error) {
+        console.error('获取热门短剧数据失败:', error);
+      } finally {
+        setShortDramaLoading(false);
       }
-    } catch (error) {
-      console.error('获取热门短剧数据失败:', error);
-    } finally {
-      setShortDramaLoading(false);
-    }
-  };
+    };
 
     // 先获取核心数据
     fetchCoreData();
-    
+
     // 延迟500毫秒获取热门短剧数据，给核心内容加载留出时间
     setTimeout(fetchShortDramaData, 500);
   }, []);
@@ -331,7 +357,30 @@ function HomeClient() {
           year: item.year || '',
         }));
 
-        setHotShortDramas((prev) => [...prev, ...shortDramaList]);
+        // 客户端去重：合并新数据与现有数据，移除重复项
+        setHotShortDramas((prev) => {
+          const allDramas = [...prev, ...shortDramaList];
+          const seenTitles = new Set();
+
+          return allDramas.filter((drama: any) => {
+            // 清理标题，用于去重比较
+            const cleanedTitle = drama.title
+              .toLowerCase()
+              .replace(/\s+/g, '')
+              .replace(/[(（)）]/g, '')
+              .replace(
+                /(版|全集|完结|高清|无删减|短剧|微剧|微电影|竖屏剧)$/g,
+                ''
+              );
+
+            if (seenTitles.has(cleanedTitle)) {
+              return false;
+            }
+            seenTitles.add(cleanedTitle);
+            return true;
+          });
+        });
+
         setShortDramaPage(nextPage);
         setShortDramaHasMore(
           shortDramaData.results.length >= (shortDramaData.limit || 16)
