@@ -2,10 +2,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-import { ApiSite, getAvailableApiSites, getCacheTime } from '@/lib/config';
+import { ApiSite, getAvailableApiSites, getCacheTime, getConfig } from '@/lib/config';
 import { searchFromApi } from '@/lib/downstream';
 import { SearchResult } from '@/lib/types';
 import { isShortDrama } from '@/lib/utils';
+import { yellowWords } from '@/lib/yellow';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -118,13 +119,31 @@ export async function GET(request: NextRequest) {
           
           console.log(`📺 [短剧API] ${site.name} 搜索 ${searchKeyword} 返回原始结果 ${apiResults.length} 条`);
           
-          // 过滤出真正的短剧内容
-          const filteredResults = apiResults.filter((result: SearchResult) => {
-            // 调试：查看每个结果的相关字段
-            // console.log(`📺 [短剧API] 检查结果: ${result.title}, type: ${result.type_name}, class: ${result.class}`);
+          // 1. 先过滤出真正的短剧内容
+          const shortDramaResults = apiResults.filter((result: SearchResult) => {
+            return isShortDrama(result.type_name, result.title, result.class);
+          });
+          
+          // 2. 然后过滤黄色内容
+          const config = await getConfig();
+          const filteredResults = shortDramaResults.filter((result: SearchResult) => {
+            // 如果禁用黄色内容过滤，或者不是黄色内容，就保留
+            if (config.SiteConfig.DisableYellowFilter) {
+              return true;
+            }
             
-            const isShort = isShortDrama(result.type_name, result.title, result.class);
-            return isShort;
+            const typeName = result.type_name || '';
+            const className = result.class || '';
+            const title = result.title || '';
+            
+            // 检查类型名、分类或标题中是否包含黄色关键词
+            const isYellow = yellowWords.some((word: string) => 
+              typeName.includes(word) || 
+              className.includes(word) || 
+              title.includes(word)
+            );
+            
+            return !isYellow;
           });
 
           console.log(`📺 [短剧API] ${site.name} 搜索 ${searchKeyword} 过滤后结果 ${filteredResults.length} 条`);
