@@ -421,7 +421,6 @@ function PlayPageClient() {
   >('initing');
 
   // 播放进度保存相关
-  const saveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSaveTimeRef = useRef<number>(0);
 
   // 弹幕加载状态管理，防止重复加载
@@ -1233,40 +1232,195 @@ function PlayPageClient() {
     }
   };
 
+  // 设备检测辅助函数
+  const getDeviceInfo = () => {
+    const userAgent =
+      typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    const isIOS =
+      /iPad|iPhone|iPod/i.test(userAgent) && !(window as any).MSStream;
+    const isSafari = /^(?:(?!chrome|android).)*safari/i.test(userAgent);
+    const isMobile =
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        userAgent
+      ) || isIOS;
+
+    return {
+      isIOS,
+      isSafari,
+      isMobile,
+      isWebKit: isSafari || isIOS,
+    };
+  };
+
+  // 弹幕重新加载辅助函数
+  const _reloadDanmaku = async () => {
+    // 等待弹幕配置加载完成
+    while (!danmakuConfigLoaded) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    console.log(
+      '视频切换完成，弹幕配置已加载，当前开关状态:',
+      externalDanmuEnabledRef.current
+    );
+
+    try {
+      if (artPlayerRef.current?.plugins?.artplayerPluginDanmuku) {
+        const plugin = artPlayerRef.current.plugins.artplayerPluginDanmuku;
+
+        // 根据用户开关状态同步弹幕插件的显示/隐藏状态
+        if (externalDanmuEnabledRef.current) {
+          // 用户开启了弹幕，确保插件显示并加载数据
+          if (plugin.isHide) {
+            plugin.show();
+            console.log('换源：根据用户设置开启弹幕显示');
+          }
+
+          // 停止并重置弹幕，防止重复
+          plugin.load();
+          plugin.reset();
+          console.log('换源：已停止并重置弹幕插件');
+
+          const externalDanmu = await loadExternalDanmu();
+          console.log('切换后重新加载弹幕结果:', externalDanmu);
+
+          if (externalDanmu.length > 0) {
+            console.log(
+              '切换后向播放器插件加载弹幕数据:',
+              externalDanmu.length,
+              '条'
+            );
+            plugin.load(externalDanmu);
+            plugin.start();
+            artPlayerRef.current.notice.show = `已加载 ${externalDanmu.length} 条弹幕`;
+          } else {
+            console.log('切换后没有弹幕数据可加载');
+            // 延迟显示无弹幕提示，避免在加载过程中误显示
+            setTimeout(() => {
+              if (externalDanmuEnabledRef.current && artPlayerRef.current) {
+                artPlayerRef.current.notice.show = '暂无弹幕数据';
+              }
+            }, 2000);
+          }
+        } else {
+          // 用户关闭了弹幕，确保插件隐藏并清空数据
+          if (!plugin.isHide) {
+            plugin.hide();
+            console.log('换源：根据用户设置关闭弹幕显示');
+          }
+          plugin.load([]);
+          console.log('换源：弹幕开关关闭，已清空弹幕数据');
+        }
+
+        // 更新按钮状态
+        if (updateButtonStateRef.current) {
+          updateButtonStateRef.current();
+        }
+      }
+    } catch (error) {
+      console.error('切换后重新加载外部弹幕失败:', error);
+    }
+  };
+
   // 清理播放器资源的统一函数（添加更完善的清理逻辑）
   const cleanupPlayer = () => {
     if (artPlayerRef.current) {
       try {
-        // 1. 清理弹幕插件的WebWorker
+        console.log('开始清理播放器资源...');
+
+        // 1. 清理弹幕插件资源
         if (artPlayerRef.current.plugins?.artplayerPluginDanmuku) {
           const danmukuPlugin =
             artPlayerRef.current.plugins.artplayerPluginDanmuku;
+          console.log('开始清理弹幕插件资源...');
 
-          // 尝试获取并清理WebWorker
+          // 停止弹幕播放
+          if (typeof danmukuPlugin.stop === 'function') {
+            danmukuPlugin.stop();
+            console.log('弹幕播放已停止');
+          }
+
+          // 隐藏弹幕显示
+          if (typeof danmukuPlugin.hide === 'function') {
+            danmukuPlugin.hide();
+            console.log('弹幕显示已隐藏');
+          }
+
+          // 清空弹幕数据
+          if (typeof danmukuPlugin.reset === 'function') {
+            danmukuPlugin.reset();
+            console.log('弹幕数据已清空');
+          }
+
+          // 清空弹幕队列和缓冲区（如果支持）
+          if (typeof danmukuPlugin.clear === 'function') {
+            danmukuPlugin.clear();
+            console.log('弹幕队列已清空');
+          }
+
+          // 清理弹幕插件的WebWorker
           if (
             danmukuPlugin.worker &&
             typeof danmukuPlugin.worker.terminate === 'function'
           ) {
             danmukuPlugin.worker.terminate();
             console.log('弹幕WebWorker已清理');
+            // 清空worker引用，以便垃圾回收
+            danmukuPlugin.worker = null;
           }
 
-          // 清空弹幕数据
-          if (typeof danmukuPlugin.reset === 'function') {
-            danmukuPlugin.reset();
+          // 断开所有事件监听器
+          if (typeof danmukuPlugin.off === 'function') {
+            danmukuPlugin.off();
+            console.log('弹幕插件事件监听器已移除');
+          } else if (typeof danmukuPlugin.removeEventListener === 'function') {
+            danmukuPlugin.removeEventListener();
+            console.log('弹幕插件事件监听器已移除');
           }
+
+          // 清空插件引用，以便垃圾回收
+          delete artPlayerRef.current.plugins.artplayerPluginDanmuku;
+          console.log('弹幕插件引用已清空');
         }
 
         // 2. 销毁HLS实例
         if (artPlayerRef.current.video.hls) {
+          // 移除HLS事件监听器
+          artPlayerRef.current.video.hls.off(Hls.Events.ERROR);
+          artPlayerRef.current.video.hls.off(Hls.Events.MANIFEST_PARSED);
+          artPlayerRef.current.video.hls.off(Hls.Events.LEVEL_LOADED);
+          artPlayerRef.current.video.hls.off(Hls.Events.FRAG_LOADED);
+
+          // 销毁HLS实例
           artPlayerRef.current.video.hls.destroy();
           console.log('HLS实例已销毁');
+          // 清空引用，以便垃圾回收
+          artPlayerRef.current.video.hls = null;
         }
-        // 3. 销毁ArtPlayer实例 (使用false参数避免DOM清理冲突)
+
+        // 3. 移除视频元素事件监听器
+        if (artPlayerRef.current.video) {
+          const video = artPlayerRef.current.video;
+          video.removeEventListener('loadedmetadata', undefined);
+          video.removeEventListener('timeupdate', undefined);
+          video.removeEventListener('ended', undefined);
+          video.removeEventListener('error', undefined);
+          video.removeEventListener('stalled', undefined);
+
+          // 清空视频源，释放资源
+          video.src = '';
+          video.srcObject = null;
+          video.load();
+        }
+
+        // 4. 销毁ArtPlayer实例
         artPlayerRef.current.destroy(false);
+        console.log('ArtPlayer实例已销毁');
+
+        // 5. 清空引用，确保垃圾回收
         artPlayerRef.current = null;
 
-        console.log('播放器资源已清理');
+        console.log('播放器资源已彻底清理');
       } catch (err) {
         console.warn('清理播放器资源时出错:', err);
         // 即使出错也要确保引用被清空
@@ -2521,16 +2675,7 @@ function PlayPageClient() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [currentEpisodeIndex, detail, artPlayerRef.current]);
-
-  // 清理定时器
-  useEffect(() => {
-    return () => {
-      if (saveIntervalRef.current) {
-        clearInterval(saveIntervalRef.current);
-      }
-    };
-  }, []);
+  }, [currentEpisodeIndex, detail]);
 
   // ---------------------------------------------------------------------------
   // 收藏相关
@@ -2627,49 +2772,16 @@ function PlayPageClient() {
       }
       console.log(videoUrl);
 
-      // 检测移动设备和浏览器类型
-      const userAgent =
-        typeof navigator !== 'undefined' ? navigator.userAgent : '';
-      const isSafari = /^(?:(?!chrome|android).)*safari/i.test(userAgent);
-      const isIOS =
-        /iPad|iPhone|iPod/i.test(userAgent) && !(window as any).MSStream;
-      const isMobile =
-        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-          userAgent
-        ) || isIOS;
-      const isWebKit = isSafari || isIOS;
-      // Chrome浏览器检测 - 只有真正的Chrome才支持Chromecast
-      // 排除各种厂商浏览器，即使它们的UA包含Chrome字样
-      const isChrome =
-        /Chrome/i.test(userAgent) &&
-        !/Edg/i.test(userAgent) && // 排除Edge
-        !/OPR/i.test(userAgent) && // 排除Opera
-        !/SamsungBrowser/i.test(userAgent) && // 排除三星浏览器
-        !/OPPO/i.test(userAgent) && // 排除OPPO浏览器
-        !/OppoBrowser/i.test(userAgent) && // 排除OppoBrowser
-        !/HeyTapBrowser/i.test(userAgent) && // 排除HeyTapBrowser (OPPO新版浏览器)
-        !/OnePlus/i.test(userAgent) && // 排除OnePlus浏览器
-        !/Xiaomi/i.test(userAgent) && // 排除小米浏览器
-        !/MIUI/i.test(userAgent) && // 排除MIUI浏览器
-        !/Huawei/i.test(userAgent) && // 排除华为浏览器
-        !/Vivo/i.test(userAgent) && // 排除Vivo浏览器
-        !/UCBrowser/i.test(userAgent) && // 排除UC浏览器
-        !/QQBrowser/i.test(userAgent) && // 排除QQ浏览器
-        !/Baidu/i.test(userAgent) && // 排除百度浏览器
-        !/SogouMobileBrowser/i.test(userAgent); // 排除搜狗浏览器
+      // 获取设备信息
+      const deviceInfo = getDeviceInfo();
 
-      // 调试信息：输出设备检测结果和投屏策略
+      // 调试信息：输出设备检测结果
       console.log('🔍 设备检测结果:', {
-        userAgent,
-        isIOS,
-        isSafari,
-        isMobile,
-        isWebKit,
-        isChrome,
-        AirPlay按钮: isIOS || isSafari ? '✅ 显示' : '❌ 隐藏',
-        Chromecast按钮: '❌ 已移除',
-        投屏策略:
-          isIOS || isSafari ? '🍎 AirPlay (WebKit)' : '❌ Chromecast已移除',
+        isIOS: deviceInfo.isIOS,
+        isSafari: deviceInfo.isSafari,
+        isMobile: deviceInfo.isMobile,
+        AirPlay按钮:
+          deviceInfo.isIOS || deviceInfo.isSafari ? '✅ 显示' : '❌ 隐藏',
       });
 
       // 优先使用ArtPlayer的switch方法，避免重建播放器
@@ -2696,78 +2808,7 @@ function PlayPageClient() {
           }
 
           // 延迟重新加载弹幕，确保视频切换完成并等待弹幕配置加载
-          setTimeout(async () => {
-            // 等待弹幕配置加载完成
-            while (!danmakuConfigLoaded) {
-              await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-
-            console.log(
-              '视频切换完成，弹幕配置已加载，当前开关状态:',
-              externalDanmuEnabledRef.current
-            );
-
-            try {
-              if (artPlayerRef.current?.plugins?.artplayerPluginDanmuku) {
-                const plugin =
-                  artPlayerRef.current.plugins.artplayerPluginDanmuku;
-
-                // 根据用户开关状态同步弹幕插件的显示/隐藏状态
-                if (externalDanmuEnabledRef.current) {
-                  // 用户开启了弹幕，确保插件显示并加载数据
-                  if (plugin.isHide) {
-                    plugin.show();
-                    console.log('换源：根据用户设置开启弹幕显示');
-                  }
-
-                  // 停止并重置弹幕，防止重复
-                  plugin.load();
-                  plugin.reset();
-                  console.log('换源：已停止并重置弹幕插件');
-
-                  const externalDanmu = await loadExternalDanmu();
-                  console.log('切换后重新加载弹幕结果:', externalDanmu);
-
-                  if (externalDanmu.length > 0) {
-                    console.log(
-                      '切换后向播放器插件加载弹幕数据:',
-                      externalDanmu.length,
-                      '条'
-                    );
-                    plugin.load(externalDanmu);
-                    plugin.start();
-                    artPlayerRef.current.notice.show = `已加载 ${externalDanmu.length} 条弹幕`;
-                  } else {
-                    console.log('切换后没有弹幕数据可加载');
-                    // 延迟显示无弹幕提示，避免在加载过程中误显示
-                    setTimeout(() => {
-                      if (
-                        externalDanmuEnabledRef.current &&
-                        artPlayerRef.current
-                      ) {
-                        artPlayerRef.current.notice.show = '暂无弹幕数据';
-                      }
-                    }, 2000);
-                  }
-                } else {
-                  // 用户关闭了弹幕，确保插件隐藏并清空数据
-                  if (!plugin.isHide) {
-                    plugin.hide();
-                    console.log('换源：根据用户设置关闭弹幕显示');
-                  }
-                  plugin.load([]);
-                  console.log('换源：弹幕开关关闭，已清空弹幕数据');
-                }
-
-                // 更新按钮状态
-                if (updateButtonStateRef.current) {
-                  updateButtonStateRef.current();
-                }
-              }
-            } catch (error) {
-              console.error('切换后重新加载外部弹幕失败:', error);
-            }
-          }, 1500);
+          setTimeout(_reloadDanmuku, 1500);
 
           console.log('使用switch方法成功切换视频');
           return;
@@ -2923,6 +2964,14 @@ function PlayPageClient() {
 
               ensureVideoSource(video, url);
 
+              // 初始化错误计数器
+              (hls as any).errorCount = {
+                fragLoadError: 0,
+                networkError: 0,
+                mediaError: 0,
+                muxError: 0,
+              };
+
               hls.on(Hls.Events.ERROR, function (event: any, data: any) {
                 console.error('HLS Error:', event, data);
 
@@ -2930,14 +2979,95 @@ function PlayPageClient() {
                 if (!data.fatal) {
                   switch (data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
-                      console.log('非致命网络错误，忽略:', data.details);
+                      // 处理非致命网络错误
+                      console.log('非致命网络错误:', data.details);
+
+                      // 针对不同类型的网络错误进行特殊处理
+                      switch (data.details) {
+                        case 'fragLoadError':
+                          console.log('片段加载错误，尝试恢复...');
+
+                          // 递增片段加载错误计数
+                          (hls as any).errorCount.fragLoadError++;
+
+                          // 策略1：如果错误次数较少，尝试重新加载当前片段
+                          if ((hls as any).errorCount.fragLoadError < 3) {
+                            console.log(
+                              `尝试重新加载片段，第${
+                                (hls as any).errorCount.fragLoadError
+                              }次`
+                            );
+                            // 尝试恢复当前片段加载
+                            if (hls.currentLevel !== -1) {
+                              hls.loadLevel = hls.currentLevel;
+                            }
+                          }
+                          // 策略2：如果错误次数中等，尝试切换到更低的码率
+                          else if ((hls as any).errorCount.fragLoadError < 6) {
+                            console.log(
+                              '片段加载错误次数较多，尝试切换到更低的码率'
+                            );
+                            // 尝试切换到更低的码率
+                            if (hls.currentLevel > 0) {
+                              hls.currentLevel--;
+                              // 重置错误计数
+                              (hls as any).errorCount.fragLoadError = 0;
+                            }
+                          }
+                          // 策略3：如果错误次数过多，考虑切换到自动码率
+                          else {
+                            console.log('片段加载错误次数过多，切换到自动码率');
+                            hls.startLoad();
+                            // 重置所有错误计数
+                            (hls as any).errorCount = {
+                              fragLoadError: 0,
+                              networkError: 0,
+                              mediaError: 0,
+                              muxError: 0,
+                            };
+                          }
+                          break;
+
+                        case 'manifestLoadError':
+                        case 'levelLoadError':
+                          console.log('清单或层级加载错误，尝试重新加载...');
+                          (hls as any).errorCount.networkError++;
+
+                          if ((hls as any).errorCount.networkError < 3) {
+                            setTimeout(() => {
+                              hls.startLoad();
+                            }, 1000);
+                          }
+                          break;
+
+                        default:
+                          console.log('其他网络错误，忽略:', data.details);
+                          break;
+                      }
                       break;
+
                     case Hls.ErrorTypes.MEDIA_ERROR:
-                      console.log('非致命媒体错误，忽略:', data.details);
+                      console.log('非致命媒体错误:', data.details);
+                      (hls as any).errorCount.mediaError++;
+
+                      // 尝试恢复媒体错误
+                      if ((hls as any).errorCount.mediaError < 3) {
+                        hls.recoverMediaError();
+                      }
                       break;
+
                     case Hls.ErrorTypes.MUX_ERROR:
-                      console.log('非致命MUX错误，忽略:', data.details);
+                      console.log('非致命MUX错误:', data.details);
+                      (hls as any).errorCount.muxError++;
+
+                      // 尝试重新加载层级数据
+                      if ((hls as any).errorCount.muxError < 2) {
+                        if (hls.currentLevel !== -1) {
+                          hls.loadLevel = hls.currentLevel;
+                        }
+                      }
                       break;
+
                     default:
                       console.log('非致命错误，忽略:', data.details);
                       break;
@@ -2946,49 +3076,92 @@ function PlayPageClient() {
                 }
 
                 // 致命错误处理
+                console.error('致命HLS错误:', data.type, data.details);
+
                 switch (data.type) {
                   case Hls.ErrorTypes.NETWORK_ERROR: {
                     console.log('致命网络错误，尝试恢复...');
+
                     // 检查是否有重试次数限制
-                    const retryCount = (hls as any).retryCount || 0;
-                    if (retryCount < 3) {
-                      (hls as any).retryCount = retryCount + 1;
+                    (hls as any).errorCount.networkError++;
+
+                    if ((hls as any).errorCount.networkError < 3) {
+                      console.log(
+                        `尝试重新加载资源，第${
+                          (hls as any).errorCount.networkError
+                        }次`
+                      );
                       // 延迟重试，避免立即重试
                       setTimeout(() => {
                         hls.startLoad();
-                      }, 1000 * retryCount);
+                      }, 1000 * (hls as any).errorCount.networkError);
                     } else {
-                      console.log('网络错误重试次数已达上限，切换备用方案...');
-                      // 可以在这里添加备用播放方案
+                      console.log(
+                        '网络错误重试次数已达上限，尝试切换到自动码率...'
+                      );
+                      // 尝试切换到自动码率
+                      hls.currentLevel = -1;
+                      hls.startLoad();
+                      // 重置错误计数
+                      (hls as any).errorCount.networkError = 0;
                     }
                     break;
                   }
 
                   case Hls.ErrorTypes.MEDIA_ERROR:
                     console.log('致命媒体错误，尝试恢复...');
+                    (hls as any).errorCount.mediaError++;
+
                     // 尝试恢复媒体错误
-                    hls.recoverMediaError();
+                    if ((hls as any).errorCount.mediaError < 3) {
+                      hls.recoverMediaError();
+                    } else {
+                      console.log('媒体错误恢复失败，重新初始化HLS实例...');
+                      // 重新初始化HLS实例
+                      hls.destroy();
+                      const newHls = new Hls(hls.config);
+                      newHls.loadSource(url);
+                      newHls.attachMedia(video);
+                      video.hls = newHls;
+                    }
                     break;
 
                   case Hls.ErrorTypes.MUX_ERROR: {
                     console.log('致命MUX错误，尝试恢复...');
-                    // 重置缓冲区并重新加载
-                    hls.destroy();
-                    const newHls = new Hls(hls.config);
-                    newHls.loadSource(url);
-                    newHls.attachMedia(video);
-                    video.hls = newHls;
+                    (hls as any).errorCount.muxError++;
+
+                    if ((hls as any).errorCount.muxError < 2) {
+                      // 尝试重新加载当前层级
+                      if (hls.currentLevel !== -1) {
+                        hls.loadLevel = hls.currentLevel;
+                      } else {
+                        hls.startLoad();
+                      }
+                    } else {
+                      console.log('MUX错误恢复失败，重新初始化HLS实例...');
+                      // 重新初始化HLS实例
+                      hls.destroy();
+                      const newHls = new Hls(hls.config);
+                      newHls.loadSource(url);
+                      newHls.attachMedia(video);
+                      video.hls = newHls;
+                    }
                     break;
                   }
 
                   case Hls.ErrorTypes.KEY_SYSTEM_ERROR:
                     console.log('密钥系统错误，尝试降级播放...');
-                    // 可以在这里添加降级播放逻辑
+                    // 尝试切换到更低的码率或不同的流
+                    if (hls.currentLevel > 0) {
+                      hls.currentLevel--;
+                    }
                     break;
 
                   default:
                     console.log('无法恢复的致命错误:', data.type);
+                    // 销毁HLS实例，避免资源泄漏
                     hls.destroy();
+                    video.hls = null;
                     break;
                 }
               });
@@ -4429,11 +4602,6 @@ function PlayPageClient() {
   // 当组件卸载时清理定时器、Wake Lock 和播放器资源
   useEffect(() => {
     return () => {
-      // 清理定时器
-      if (saveIntervalRef.current) {
-        clearInterval(saveIntervalRef.current);
-      }
-
       // 清理弹幕重置定时器
       if (seekResetTimeoutRef.current) {
         clearTimeout(seekResetTimeoutRef.current);

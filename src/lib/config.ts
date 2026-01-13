@@ -485,8 +485,6 @@ export async function getConfig(): Promise<AdminConfig> {
   return cachedConfig;
 }
 
-
-
 export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
   // 确保必要的属性存在和初始化
   if (!adminConfig.UserConfig) {
@@ -755,7 +753,9 @@ function getApiHealth(key: string): {
 
 export async function getAvailableApiSites(user?: string): Promise<any[]> {
   const config = await getConfig();
-  const allApiSites = config.SourceConfig.filter((s: any) => !s.disabled);
+  const allApiSites = config.SourceConfig.filter(
+    (s: any) => !s.disabled && !s.name.includes('🔞')
+  );
 
   if (!user) {
     return allApiSites;
