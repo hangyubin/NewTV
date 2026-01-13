@@ -133,36 +133,41 @@ export async function GET(request: NextRequest) {
 
           // 2. 然后过滤黄色内容
           const config = await getConfig();
-          const filteredResults = shortDramaResults.filter(
-            (result: SearchResult) => {
-              // 如果禁用黄色内容过滤，或者不是黄色内容，就保留
-              if (config.SiteConfig.DisableYellowFilter) {
-                return true;
+          // 如果禁用了黄色内容过滤，直接使用所有结果
+          let finalResults: SearchResult[];
+          if (config.SiteConfig.DisableYellowFilter) {
+            finalResults = shortDramaResults;
+            console.log(
+              `📺 [短剧API] ${site.name} 搜索 ${searchKeyword} 已禁用黄色过滤，结果 ${finalResults.length} 条`
+            );
+          } else {
+            // 执行黄色内容过滤
+            const filteredResults = shortDramaResults.filter(
+              (result: SearchResult) => {
+                const typeName = result.type_name || '';
+                const className = result.class || '';
+                const title = result.title || '';
+
+                // 检查类型名、分类或标题中是否包含黄色关键词
+                const isYellow = yellowWords.some(
+                  (word: string) =>
+                    typeName.includes(word) ||
+                    className.includes(word) ||
+                    title.includes(word)
+                );
+
+                return !isYellow;
               }
+            );
 
-              const typeName = result.type_name || '';
-              const className = result.class || '';
-              const title = result.title || '';
+            console.log(
+              `📺 [短剧API] ${site.name} 搜索 ${searchKeyword} 过滤后结果 ${filteredResults.length} 条`
+            );
 
-              // 检查类型名、分类或标题中是否包含黄色关键词
-              const isYellow = yellowWords.some(
-                (word: string) =>
-                  typeName.includes(word) ||
-                  className.includes(word) ||
-                  title.includes(word)
-              );
-
-              return !isYellow;
-            }
-          );
-
-          console.log(
-            `📺 [短剧API] ${site.name} 搜索 ${searchKeyword} 过滤后结果 ${filteredResults.length} 条`
-          );
-
-          // 如果过滤后没有结果，尝试不过滤，直接返回所有结果
-          const finalResults =
-            filteredResults.length > 0 ? filteredResults : apiResults;
+            // 如果过滤后没有结果，尝试不过滤，直接返回所有结果
+            finalResults =
+              filteredResults.length > 0 ? filteredResults : shortDramaResults;
+          }
 
           // 限制每个API源返回的结果数量，避免数据量过大
           const limitedResults = finalResults.slice(0, 50);
@@ -213,47 +218,47 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 优化去重机制，提高去重准确性
-    // 基于标题、年份和主要分类特征进行去重，同时智能合并片源信息
+    // 优化去重机制，确保标题一致的视频卡片正确去重
+    // 基于标题进行严格去重，同时智能合并片源信息，避免重复显示相同标题的卡片
     const uniqueResultsMap = new Map<string, SearchResult>();
 
-    // 生成更准确的去重键
+    // 生成去重键：使用清理后的标题作为唯一标识
     const generateUniqueKey = (result: SearchResult): string => {
-      // 清理标题，移除常见的后缀和前缀，增强去重准确性
+      // 清理标题，移除所有可能导致相同内容不同标题的因素
       const cleanedTitle =
         result.title
           ?.toLowerCase()
-          // 移除所有空白字符
+          // 移除所有空白字符（包括空格、换行等）
           .replace(/\s+/g, '')
-          // 移除括号及内容
-          .replace(/[(（][^)）]*[)）]/g, '')
-          // 移除常见后缀
+          // 移除所有括号及其内容（如：(高清版)、（完整版））
+          .replace(/[(（)）[【】{}]|[^\w\u4e00-\u9fa5]/g, '')
+          // 移除所有常见后缀
           .replace(
-            /(版|全集|完结|高清|无删减|完整版|超清|蓝光|修复版|字幕版|普通话版|粤语版|国语版|英语版|日语版|韩语版|泰语版|配音版|原声版|中字版|生肉|熟肉)$/g,
+            /(版|全集|完结|高清|无删减|完整版|超清|蓝光|修复版|字幕版|普通话版|粤语版|国语版|英语版|日语版|韩语版|泰语版|配音版|原声版|中字版|生肉|熟肉|短剧|微剧|微电影|竖屏剧|小剧场|迷你剧|短剧集|微短剧)$/g,
             ''
           )
-          // 移除广告性质的前缀和后缀
+          // 移除所有广告性质的前缀
           .replace(
             /^(热门|推荐|热播|最新|精选|独家|抢先看|热播中|热播剧|爆款|高分|必看|强推|力荐|经典|好看|优质|精选|精品|精彩|好看的|热门的|推荐的|热播的|最新的|精选的|独家的|抢先看的|热播中的|热播剧的|爆款的|高分的|必看的|强推的|力荐的|经典的|好看的|优质的|精选的|精品的|精彩的)/g,
             ''
           )
-          // 移除数字后缀
-          .replace(/\d+$/, '')
-          // 移除短剧相关的标识
-          .replace(
-            /(短剧|微剧|微电影|竖屏剧|小剧场|迷你剧|短剧集|微短剧)$/g,
-            ''
-          ) || '';
+          // 移除所有数字后缀
+          .replace(/\d+$/, '') || '';
 
-      // 使用清理后的标题作为主要去重依据，简化去重键生成逻辑，提高去重成功率
-      // 去掉年份和分类，因为不同年份和分类可能存在相同标题的短剧
-      return `${cleanedTitle}`;
+      // 使用清理后的标题作为唯一去重依据，确保相同内容的短剧只显示一个卡片
+      return cleanedTitle;
     };
 
     for (const result of allResults) {
+      // 跳过标题为空的结果
+      if (!result.title?.trim()) continue;
+
       const key = generateUniqueKey(result);
+      // 跳过空的去重键
+      if (!key) continue;
+
       if (uniqueResultsMap.has(key)) {
-        // 合并片源信息
+        // 合并片源信息：相同标题的短剧只保留一个卡片，但合并所有片源
         const existingResult = uniqueResultsMap.get(key) as SearchResult;
 
         // 合并episodes和episodes_titles，避免重复
@@ -280,7 +285,7 @@ export async function GET(request: NextRequest) {
           }
         });
 
-        // 更新现有结果的片源信息
+        // 更新现有结果的剧集信息
         existingResult.episodes = Array.from(seenEpisodes);
 
         // 生成新的episodes_titles数组
@@ -307,7 +312,8 @@ export async function GET(request: NextRequest) {
 
         // 选择更清晰的海报图片
         if (
-          existingResult.poster?.includes('default') &&
+          (existingResult.poster?.includes('default') ||
+            !existingResult.poster) &&
           result.poster?.includes('http')
         ) {
           existingResult.poster = result.poster;
@@ -318,16 +324,21 @@ export async function GET(request: NextRequest) {
           existingResult.score = result.score;
         }
       } else {
-        // 首次添加，设置初始值
+        // 首次添加，初始化片源信息
         result.source_count = (result.episodes || []).length;
         result.source_sites = [result.source_name];
         uniqueResultsMap.set(key, result);
       }
     }
 
-    const uniqueResults = Array.from(uniqueResultsMap.values());
+    // 转换为数组并排序
+    const uniqueResults = Array.from(uniqueResultsMap.values())
+      // 按片源数量排序，片源多的优先显示
+      .sort((a, b) => (b.source_count || 0) - (a.source_count || 0));
 
-    console.log(`📺 [短剧API] 去重后保留 ${uniqueResults.length} 条结果`);
+    console.log(
+      `📺 [短剧API] 去重前 ${allResults.length} 条，去重后保留 ${uniqueResults.length} 条结果`
+    );
 
     // 添加类型、地区和年份筛选，增强筛选精确性
     let filteredResults = [...uniqueResults];
