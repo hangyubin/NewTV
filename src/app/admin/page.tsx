@@ -15,6 +15,9 @@ import AlertModal from '@/components/admin/AlertModal';
 import UserConfig from '@/components/admin/UserConfig';
 import SiteConfig from '@/components/admin/SiteConfig';
 import SourceConfig from '@/components/admin/SourceConfig';
+import ConfigSubscription from '@/components/admin/ConfigSubscription';
+import LiveSourceConfig from '@/components/admin/LiveSourceConfig';
+import CategoryConfig from '@/components/admin/CategoryConfig';
 import CollapsibleTab from '@/components/admin/CollapsibleTab';
 import { useAlertModal } from '@/components/admin/useAlertModal';
 
@@ -99,6 +102,14 @@ const AdminPage = () => {
 
         {/* 配置面板 */}
         <div className='space-y-6'>
+          {/* 配置文件与订阅 */}
+          <ConfigSubscription 
+            config={config} 
+            role={role} 
+            refreshConfig={refreshConfig} 
+            setConfig={setConfig} 
+          />
+
           {/* 站点配置 */}
           <SiteConfig 
             config={config} 
@@ -109,6 +120,22 @@ const AdminPage = () => {
 
           {/* 视频源管理 */}
           <SourceConfig 
+            config={config} 
+            role={role} 
+            refreshConfig={refreshConfig} 
+            setConfig={setConfig} 
+          />
+
+          {/* 直播源管理 */}
+          <LiveSourceConfig 
+            config={config} 
+            role={role} 
+            refreshConfig={refreshConfig} 
+            setConfig={setConfig} 
+          />
+
+          {/* 分类管理 */}
+          <CategoryConfig 
             config={config} 
             role={role} 
             refreshConfig={refreshConfig} 
