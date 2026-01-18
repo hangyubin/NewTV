@@ -50,9 +50,7 @@ const AdminPage = () => {
       const res = await fetch('/api/admin/config');
       if (res.ok) {
         const result = (await res.json()) as AdminConfigResult;
-        if (result.success) {
-          setConfig(result.data as AdminConfig);
-        }
+        setConfig(result.Config as AdminConfig);
       }
     } finally {
       setIsLoading(false);
