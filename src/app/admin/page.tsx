@@ -130,7 +130,7 @@ const AdminPage = () => {
             isExpanded={expandedTabs.migration}
             onToggle={() => toggleTab('migration')}
           >
-            <DataMigration onSuccess={() => refreshConfig()} />
+            <DataMigration onRefreshConfig={() => refreshConfig()} />
           </CollapsibleTab>
         </div>
       </div>
