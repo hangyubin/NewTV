@@ -353,14 +353,14 @@ const CategoryConfig = ({
                     <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2'>
                       <button
                         onClick={() => handleStartEditCategory(category)}
-                        disabled={isLoading(`category_edit_${category.name || category.query.substring(0, 10)}`)} or category.from === 'config'
+                        disabled={isLoading(`category_edit_${category.name || category.query.substring(0, 10)}`) || category.from === 'config'}
                         className={`${buttonStyles.roundedPrimary} ${(isLoading(`category_edit_${category.name || category.query.substring(0, 10)}`) || category.from === 'config') ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         编辑
                       </button>
                       <button
                         onClick={() => handleCategoryAction('delete', category)}
-                        disabled={isLoading(`category_delete_${category.name || category.query.substring(0, 10)}`)} or category.from === 'config'
+                        disabled={isLoading(`category_delete_${category.name || category.query.substring(0, 10)}`) || category.from === 'config'}
                         className={`${buttonStyles.roundedDanger} ${(isLoading(`category_delete_${category.name || category.query.substring(0, 10)}`) || category.from === 'config') ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         删除
