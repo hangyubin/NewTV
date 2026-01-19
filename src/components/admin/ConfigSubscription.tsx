@@ -286,14 +286,52 @@ const ConfigSubscription = ({
           <div className='p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800'>
             <div className='space-y-4'>
               {/* 文件上传功能 */}
-              <div className='flex items-center gap-3'>
-                <div className='flex items-center gap-2'>
-                  <input
-                    type='file'
-                    accept='.json'
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
+              <div className='mb-4'>
+                <input
+                  type='file'
+                  accept='.json'
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        const content = event.target?.result as string;
+                        setJsonConfig(content);
+                        validateJson(content);
+                      };
+                      reader.readAsText(file);
+                    }
+                    // 清空文件选择，允许重复选择同一文件
+                    e.target.value = '';
+                  }}
+                  className='text-sm text-gray-500 file:mr-2 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-600 dark:file:text-blue-200 dark:hover:file:bg-blue-700 cursor-pointer'
+                  disabled={isSubscribedConfig}
+                />
+              </div>
+              
+              {/* 配置文件编辑器 */}
+              <div>
+                <div className='font-medium text-gray-900 dark:text-gray-100 mb-2'>
+                  配置文件编辑
+                </div>
+                {/* 拖放容器 - 覆盖整个编辑器区域 */}
+                <div className='relative overflow-auto max-h-[50rem] min-h-[500px] rounded-lg border border-dashed border-gray-300 dark:border-gray-600 transition-colors hover:border-blue-300 dark:hover:border-blue-500'>
+                  {/* 拖放提示层 */}
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.currentTarget.classList.add('bg-blue-50/50', 'dark:bg-blue-900/20');
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      e.currentTarget.classList.remove('bg-blue-50/50', 'dark:bg-blue-900/20');
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.currentTarget.classList.remove('bg-blue-50/50', 'dark:bg-blue-900/20');
+                      
+                      const file = e.dataTransfer.files[0];
+                      if (file && file.type === 'application/json') {
                         const reader = new FileReader();
                         reader.onload = (event) => {
                           const content = event.target?.result as string;
@@ -303,56 +341,20 @@ const ConfigSubscription = ({
                         reader.readAsText(file);
                       }
                     }}
-                    className='text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-600 dark:file:text-blue-200 dark:hover:file:bg-blue-700 cursor-pointer'
-                    disabled={isSubscribedConfig}
-                  />
-                  <span className='text-xs text-gray-500 dark:text-gray-400'>
-                    支持新旧两种JSON格式
-                  </span>
-                </div>
-              </div>
-              
-              {/* 配置文件编辑器 */}
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.currentTarget.classList.add('border-2', 'border-blue-400');
-                }}
-                onDragLeave={(e) => {
-                  e.preventDefault();
-                  e.currentTarget.classList.remove('border-2', 'border-blue-400');
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  e.currentTarget.classList.remove('border-2', 'border-blue-400');
-                  
-                  const file = e.dataTransfer.files[0];
-                  if (file && file.type === 'application/json') {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                      const content = event.target?.result as string;
-                      setJsonConfig(content);
-                      validateJson(content);
-                    };
-                    reader.readAsText(file);
-                  }
-                }}
-                className='border border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 transition-colors hover:border-blue-300 dark:hover:border-blue-500'
-              >
-                <div className='font-medium text-gray-900 dark:text-gray-100 mb-2'>
-                  配置文件编辑
-                </div>
-                <div className='overflow-auto max-h-[50rem] min-h-[500px] relative'>
-                  <div className='absolute inset-0 flex items-center justify-center text-gray-500 dark:text-gray-400 pointer-events-none opacity-0 hover:opacity-50 transition-opacity'>
+                    className='absolute inset-0 flex items-center justify-center text-gray-500 dark:text-gray-400 pointer-events-none opacity-0 hover:opacity-100 transition-all duration-200 bg-transparent hover:border-2 hover:border-blue-400 rounded-lg'
+                  >
                     <div className='text-center'>
                       <div className='text-lg font-medium mb-2'>拖放JSON文件到此处</div>
                       <div className='text-sm'>支持新旧两种JSON格式</div>
                     </div>
                   </div>
+                  
+                  {/* 编辑器文本区域 */}
                   <textarea
                     value={jsonConfig}
                     onChange={handleJsonChange}
-                    className={`w-full h-full p-0 m-0 bg-transparent border-none resize-none text-xs text-gray-800 dark:text-gray-200 font-mono ${isSubscribedConfig ? 'opacity-60' : ''}`}
+                    className={`w-full h-full p-4 m-0 bg-white dark:bg-gray-900 border-none resize-none text-xs text-gray-800 dark:text-gray-200 font-mono ${isSubscribedConfig ? 'opacity-60' : ''}`}
+                    style={{ minHeight: '500px' }}
                     spellCheck={false}
                     disabled={isSubscribedConfig}
                   />
