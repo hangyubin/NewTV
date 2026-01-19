@@ -12,6 +12,8 @@ export interface LiveSourceConfigProps {
   role: 'owner' | 'admin' | null;
   refreshConfig: () => Promise<void>;
   setConfig: React.Dispatch<React.SetStateAction<AdminConfig | null>>;
+  isExpanded?: boolean;
+  onToggle?: () => void;
 }
 
 // 直播源管理组件
@@ -20,6 +22,8 @@ const LiveSourceConfig = ({
   role,
   refreshConfig,
   setConfig,
+  isExpanded = true,
+  onToggle = () => {},
 }: LiveSourceConfigProps) => {
   const { alertModal, showAlert, hideAlert } = useAlertModal();
   const { isLoading, withLoading } = useLoadingState();
@@ -196,8 +200,8 @@ const LiveSourceConfig = ({
     <CollapsibleTab
       title="直播源管理"
       icon={<Tv className="w-6 h-6 text-blue-500" />}
-      isExpanded={true}
-      onToggle={() => {}}
+      isExpanded={isExpanded}
+      onToggle={onToggle}
     >
       <div className='space-y-6'>
         {/* 直播源列表 */}

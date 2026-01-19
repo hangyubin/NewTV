@@ -12,6 +12,8 @@ export interface ConfigSubscriptionProps {
   role: 'owner' | 'admin' | null;
   refreshConfig: () => Promise<void>;
   setConfig: React.Dispatch<React.SetStateAction<AdminConfig | null>>;
+  isExpanded?: boolean;
+  onToggle?: () => void;
 }
 
 // 配置文件和订阅管理组件
@@ -20,6 +22,8 @@ const ConfigSubscription = ({
   role,
   refreshConfig,
   setConfig,
+  isExpanded = true,
+  onToggle = () => {},
 }: ConfigSubscriptionProps) => {
   const { alertModal, showAlert, hideAlert } = useAlertModal();
   const { isLoading, withLoading } = useLoadingState();
@@ -36,8 +40,8 @@ const ConfigSubscription = ({
     <CollapsibleTab
       title="配置文件与订阅"
       icon={<Database className="w-6 h-6 text-blue-500" />}
-      isExpanded={true}
-      onToggle={() => {}}
+      isExpanded={isExpanded}
+      onToggle={onToggle}
     >
       <div className='space-y-6'>
         {/* 配置文件信息 */}
@@ -46,46 +50,94 @@ const ConfigSubscription = ({
             配置文件
           </h4>
           <div className='p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800'>
-            <div className='flex items-center justify-between'>
-              <div>
-                <div className='font-medium text-gray-900 dark:text-gray-100'>
-                  配置文件路径
+            <div className='space-y-4'>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <div className='font-medium text-gray-900 dark:text-gray-100'>
+                    配置文件路径
+                  </div>
+                  <div className='text-sm text-gray-600 dark:text-gray-400 break-all max-w-lg'>
+                    {config.ConfigFile}
+                  </div>
                 </div>
-                <div className='text-sm text-gray-600 dark:text-gray-400 break-all max-w-lg'>
-                  {config.ConfigFile}
+                <div className='flex items-center space-x-2'>
+                  <button
+                    onClick={async () => {
+                      await withLoading('checkConfigUpdate', async () => {
+                        try {
+                          const response = await fetch('/api/admin/config/check-update', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                          });
+                          if (response.ok) {
+                            showAlert({
+                              type: 'success',
+                              title: '检查成功',
+                              message: '配置文件检查更新完成',
+                              timer: 2000,
+                            });
+                            await refreshConfig();
+                          } else {
+                            throw new Error('检查更新失败');
+                          }
+                        } catch (err) {
+                          showError(
+                            err instanceof Error ? err.message : '检查更新失败',
+                            showAlert
+                          );
+                        }
+                      });
+                    }}
+                    className={buttonStyles.primary}
+                  >
+                    检查更新
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await withLoading('writeConfigFile', async () => {
+                        try {
+                          const response = await fetch('/api/admin/config/write', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(config),
+                          });
+                          if (response.ok) {
+                            showAlert({
+                              type: 'success',
+                              title: '写入成功',
+                              message: '配置已成功写入JSON文件',
+                              timer: 2000,
+                            });
+                            await refreshConfig();
+                          } else {
+                            throw new Error('写入配置文件失败');
+                          }
+                        } catch (err) {
+                          showError(
+                            err instanceof Error ? err.message : '写入失败',
+                            showAlert
+                          );
+                        }
+                      });
+                    }}
+                    className={buttonStyles.success}
+                  >
+                    写入JSON文件
+                  </button>
                 </div>
               </div>
-              <button
-                onClick={async () => {
-                  await withLoading('checkConfigUpdate', async () => {
-                    try {
-                      const response = await fetch('/api/admin/config/check-update', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                      });
-                      if (response.ok) {
-                        showAlert({
-                          type: 'success',
-                          title: '检查成功',
-                          message: '配置文件检查更新完成',
-                          timer: 2000,
-                        });
-                        await refreshConfig();
-                      } else {
-                        throw new Error('检查更新失败');
-                      }
-                    } catch (err) {
-                      showError(
-                        err instanceof Error ? err.message : '检查更新失败',
-                        showAlert
-                      );
-                    }
-                  });
-                }}
-                className={buttonStyles.primary}
-              >
-                检查更新
-              </button>
+              
+              {/* JSON配置预览 */}
+              <div>
+                <div className='font-medium text-gray-900 dark:text-gray-100 mb-2'>
+                  配置文件预览
+                </div>
+                <div className='p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-300 dark:border-gray-700 overflow-auto max-h-48'>
+                  <pre className='text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap'>
+                    {JSON.stringify(config, null, 2)}
+                  </pre>
+                </div>
+              </div>
             </div>
           </div>
         </div>

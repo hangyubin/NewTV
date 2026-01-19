@@ -12,6 +12,8 @@ export interface SiteConfigProps {
   role: 'owner' | 'admin' | null;
   refreshConfig: () => Promise<void>;
   setConfig: React.Dispatch<React.SetStateAction<AdminConfig | null>>;
+  isExpanded?: boolean;
+  onToggle?: () => void;
 }
 
 // 站点配置组件
@@ -20,6 +22,8 @@ const SiteConfig = ({
   role,
   refreshConfig,
   setConfig,
+  isExpanded = true,
+  onToggle = () => {},
 }: SiteConfigProps) => {
   const { alertModal, showAlert, hideAlert } = useAlertModal();
   const { isLoading, withLoading } = useLoadingState();
@@ -36,8 +40,8 @@ const SiteConfig = ({
     <CollapsibleTab
       title="站点配置"
       icon={<Settings className="w-6 h-6 text-blue-500" />}
-      isExpanded={true}
-      onToggle={() => {}}
+      isExpanded={isExpanded}
+      onToggle={onToggle}
     >
       <div className='space-y-6'>
         {/* 站点基本设置 */}

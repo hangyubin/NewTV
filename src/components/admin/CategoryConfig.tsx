@@ -12,6 +12,8 @@ export interface CategoryConfigProps {
   role: 'owner' | 'admin' | null;
   refreshConfig: () => Promise<void>;
   setConfig: React.Dispatch<React.SetStateAction<AdminConfig | null>>;
+  isExpanded?: boolean;
+  onToggle?: () => void;
 }
 
 // 分类管理组件
@@ -20,6 +22,8 @@ const CategoryConfig = ({
   role,
   refreshConfig,
   setConfig,
+  isExpanded = true,
+  onToggle = () => {},
 }: CategoryConfigProps) => {
   const { alertModal, showAlert, hideAlert } = useAlertModal();
   const { isLoading, withLoading } = useLoadingState();
@@ -179,8 +183,8 @@ const CategoryConfig = ({
     <CollapsibleTab
       title="分类管理"
       icon={<Tv className="w-6 h-6 text-blue-500" />}
-      isExpanded={true}
-      onToggle={() => {}}
+      isExpanded={isExpanded}
+      onToggle={onToggle}
     >
       <div className='space-y-6'>
         {/* 分类列表 */}

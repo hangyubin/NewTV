@@ -32,10 +32,13 @@ const AdminPage = () => {
   // 标签页状态
   const [activeTab, setActiveTab] = useState<string>('site');
   const [expandedTabs, setExpandedTabs] = useState<Record<string, boolean>>({
+    config: false,
     site: true,
-    source: true,
-    user: true,
-    migration: true,
+    source: false,
+    live: false,
+    category: false,
+    user: false,
+    migration: false,
   });
 
   // 切换标签页展开状态
@@ -108,6 +111,8 @@ const AdminPage = () => {
             role={role} 
             refreshConfig={refreshConfig} 
             setConfig={setConfig} 
+            isExpanded={expandedTabs.config}
+            onToggle={() => toggleTab('config')}
           />
 
           {/* 站点配置 */}
@@ -116,6 +121,8 @@ const AdminPage = () => {
             role={role} 
             refreshConfig={refreshConfig} 
             setConfig={setConfig} 
+            isExpanded={expandedTabs.site}
+            onToggle={() => toggleTab('site')}
           />
 
           {/* 视频源管理 */}
@@ -124,6 +131,8 @@ const AdminPage = () => {
             role={role} 
             refreshConfig={refreshConfig} 
             setConfig={setConfig} 
+            isExpanded={expandedTabs.source}
+            onToggle={() => toggleTab('source')}
           />
 
           {/* 直播源管理 */}
@@ -132,6 +141,8 @@ const AdminPage = () => {
             role={role} 
             refreshConfig={refreshConfig} 
             setConfig={setConfig} 
+            isExpanded={expandedTabs.live}
+            onToggle={() => toggleTab('live')}
           />
 
           {/* 分类管理 */}
@@ -140,6 +151,8 @@ const AdminPage = () => {
             role={role} 
             refreshConfig={refreshConfig} 
             setConfig={setConfig} 
+            isExpanded={expandedTabs.category}
+            onToggle={() => toggleTab('category')}
           />
 
           {/* 用户管理 */}
@@ -148,6 +161,8 @@ const AdminPage = () => {
             role={role} 
             refreshConfig={refreshConfig} 
             setConfig={setConfig} 
+            isExpanded={expandedTabs.user}
+            onToggle={() => toggleTab('user')}
           />
 
           {/* 数据迁移 */}

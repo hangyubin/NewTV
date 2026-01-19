@@ -13,6 +13,8 @@ export interface UserConfigProps {
   role: 'owner' | 'admin' | null;
   refreshConfig: () => Promise<void>;
   setConfig: React.Dispatch<React.SetStateAction<AdminConfig | null>>;
+  isExpanded?: boolean;
+  onToggle?: () => void;
 }
 
 // 用户配置组件
@@ -21,6 +23,8 @@ const UserConfig = ({
   role,
   refreshConfig,
   setConfig,
+  isExpanded = true,
+  onToggle = () => {},
 }: UserConfigProps) => {
   const { alertModal, showAlert, hideAlert } = useAlertModal();
   const { isLoading, withLoading } = useLoadingState();
@@ -544,8 +548,8 @@ const UserConfig = ({
     <CollapsibleTab
       title="用户管理"
       icon={<Users className="w-6 h-6 text-blue-500" />}
-      isExpanded={true}
-      onToggle={() => {}}
+      isExpanded={isExpanded}
+      onToggle={onToggle}
     >
       <div className='space-y-6'>
         {/* 用户注册设置 - 仅站长可见 */}
