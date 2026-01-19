@@ -31,7 +31,6 @@ const ConfigSubscription = ({
   // JSON编辑状态
   const [jsonConfig, setJsonConfig] = React.useState<string>('');
   const [jsonError, setJsonError] = React.useState<string | null>(null);
-  const [isEditing, setIsEditing] = React.useState<boolean>(false);
   
   // 当配置变化时，更新JSON文本
   React.useEffect(() => {
@@ -60,52 +59,6 @@ const ConfigSubscription = ({
     validateJson(value);
   };
   
-  // 应用JSON配置
-  const applyJsonConfig = async () => {
-    if (!validateJson(jsonConfig)) {
-      showAlert({
-        type: 'error',
-        title: 'JSON格式错误',
-        message: jsonError || '无效的JSON格式',
-        showConfirm: true,
-      });
-      return;
-    }
-    
-    await withLoading('applyJsonConfig', async () => {
-      try {
-        // 写入JSON文件 - 使用正确的API端点
-        const response = await fetch('/api/admin/config_file', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ configFile: jsonConfig }),
-        });
-        if (response.ok) {
-          // 先关闭编辑模式，提升用户体验
-          setIsEditing(false);
-          
-          // 重新获取配置，确保视频源列表正确更新
-          await refreshConfig();
-          
-          showAlert({
-            type: 'success',
-            title: '应用成功',
-            message: 'JSON配置已成功应用并保存，视频源列表已更新',
-            timer: 2000,
-          });
-        } else {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || '写入配置文件失败');
-        }
-      } catch (err) {
-        showError(
-          err instanceof Error ? err.message : '应用失败',
-          showAlert
-        );
-      }
-    });
-  };
-  
   if (!config) {
     return (
       <div className='text-center text-gray-500 dark:text-gray-400'>
@@ -122,153 +75,6 @@ const ConfigSubscription = ({
       onToggle={onToggle}
     >
       <div className='space-y-6'>
-        {/* 配置文件信息 */}
-        <div>
-          <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
-            配置文件
-          </h4>
-          <div className='p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800'>
-            <div className='space-y-4'>
-              <div className='flex items-center justify-between'>
-                <div>
-                  <div className='font-medium text-gray-900 dark:text-gray-100'>
-                    配置文件路径
-                  </div>
-                  <div className='text-sm text-gray-600 dark:text-gray-400 break-all max-w-lg'>
-                    {config.ConfigFile}
-                  </div>
-                </div>
-                <div className='flex items-center space-x-2'>
-                  <button
-                    onClick={async () => {
-                      await withLoading('checkConfigUpdate', async () => {
-                        try {
-                          const response = await fetch('/api/admin/config/check-update', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                          });
-                          if (response.ok) {
-                            showAlert({
-                              type: 'success',
-                              title: '检查成功',
-                              message: '配置文件检查更新完成',
-                              timer: 2000,
-                            });
-                            await refreshConfig();
-                          } else {
-                            throw new Error('检查更新失败');
-                          }
-                        } catch (err) {
-                          showError(
-                            err instanceof Error ? err.message : '检查更新失败',
-                            showAlert
-                          );
-                        }
-                      });
-                    }}
-                    className={buttonStyles.primary}
-                  >
-                    检查更新
-                  </button>
-                  <button
-                    onClick={async () => {
-                      await withLoading('writeConfigFile', async () => {
-                        try {
-                          // 使用正确的API端点
-                          const response = await fetch('/api/admin/config_file', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ configFile: JSON.stringify(config) }),
-                          });
-                          if (response.ok) {
-                            showAlert({
-                              type: 'success',
-                              title: '写入成功',
-                              message: '配置已成功写入JSON文件，视频源列表已更新',
-                              timer: 2000,
-                            });
-                            await refreshConfig();
-                          } else {
-                            const errorData = await response.json().catch(() => ({}));
-                            throw new Error(errorData.error || '写入配置文件失败');
-                          }
-                        } catch (err) {
-                          showError(
-                            err instanceof Error ? err.message : '写入失败',
-                            showAlert
-                          );
-                        }
-                      });
-                    }}
-                    className={buttonStyles.success}
-                    disabled={isEditing}
-                  >
-                    写入JSON文件
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (isEditing) {
-                        // 取消编辑，恢复原始配置
-                        setJsonConfig(JSON.stringify(config, null, 2));
-                        setJsonError(null);
-                        setIsEditing(false);
-                      } else {
-                        // 开始编辑
-                        setIsEditing(true);
-                      }
-                    }}
-                    className={isEditing ? buttonStyles.warning : buttonStyles.secondary}
-                  >
-                    {isEditing ? '取消编辑' : '编辑JSON'}
-                  </button>
-                </div>
-              </div>
-              
-              {/* JSON配置编辑/预览 */}
-              <div>
-                <div className='font-medium text-gray-900 dark:text-gray-100 mb-2'>
-                  {isEditing ? '配置文件编辑' : '配置文件预览'}
-                </div>
-                {isEditing ? (
-                  <>
-                    <div className='p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-300 dark:border-gray-700 overflow-auto max-h-96'>
-                      <textarea
-                        value={jsonConfig}
-                        onChange={handleJsonChange}
-                        className='w-full h-full p-0 m-0 bg-transparent border-none resize-none text-xs text-gray-800 dark:text-gray-200 font-mono'
-                        style={{ minHeight: '300px' }}
-                        spellCheck={false}
-                      />
-                    </div>
-                    {jsonError && (
-                      <div className='p-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800'>
-                        <div className='text-sm text-red-700 dark:text-red-300'>
-                          JSON语法错误: {jsonError}
-                        </div>
-                      </div>
-                    )}
-                    <div className='flex justify-end space-x-2 mt-2'>
-                      <button
-                        onClick={applyJsonConfig}
-                        disabled={!!jsonError || isLoading('applyJsonConfig')}
-                        className={`${buttonStyles.success} ${(!!jsonError || isLoading('applyJsonConfig')) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        应用配置
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <div className='p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-300 dark:border-gray-700 overflow-auto max-h-48'>
-                    <pre className='text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap'>
-                      {JSON.stringify(config, null, 2)}
-                    </pre>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-        
         {/* 订阅管理 */}
         <div>
           <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
@@ -392,41 +198,37 @@ const ConfigSubscription = ({
                 </div>
               </div>
             </div>
-            
-            {/* 手动更新按钮 */}
-            <div className='flex justify-end'>
-              <button
-                onClick={async () => {
-                  await withLoading('manualUpdateConfig', async () => {
-                    try {
-                      const response = await fetch('/api/admin/config/update', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(config.ConfigSubscribtion),
-                      });
-                      if (response.ok) {
-                        showAlert({
-                          type: 'success',
-                          title: '更新成功',
-                          message: '配置已成功更新',
-                          timer: 2000,
-                        });
-                        await refreshConfig();
-                      } else {
-                        throw new Error('更新失败');
-                      }
-                    } catch (err) {
-                      showError(
-                        err instanceof Error ? err.message : '更新失败',
-                        showAlert
-                      );
-                    }
-                  });
-                }}
-                className={buttonStyles.success}
-              >
-                手动更新配置
-              </button>
+          </div>
+        </div>
+        
+        {/* 配置文件信息 */}
+        <div>
+          <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
+            配置文件
+          </h4>
+          <div className='p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800'>
+            <div className='space-y-4'>
+              <div>
+                <div className='font-medium text-gray-900 dark:text-gray-100 mb-2'>
+                  配置文件编辑
+                </div>
+                <div className='p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-300 dark:border-gray-700 overflow-auto max-h-[50rem]'>
+                  <textarea
+                    value={jsonConfig}
+                    onChange={handleJsonChange}
+                    className='w-full h-full p-0 m-0 bg-transparent border-none resize-none text-xs text-gray-800 dark:text-gray-200 font-mono'
+                    style={{ minHeight: '500px' }}
+                    spellCheck={false}
+                  />
+                </div>
+                {jsonError && (
+                  <div className='p-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800'>
+                    <div className='text-sm text-red-700 dark:text-red-300'>
+                      JSON语法错误: {jsonError}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -435,18 +237,44 @@ const ConfigSubscription = ({
         <div className='flex justify-end'>
           <button
             onClick={async () => {
+              // 验证JSON语法
+              if (!validateJson(jsonConfig)) {
+                showAlert({
+                  type: 'error',
+                  title: 'JSON格式错误',
+                  message: jsonError || '无效的JSON格式',
+                  showConfirm: true,
+                });
+                return;
+              }
+              
               await withLoading('saveConfigSubscription', async () => {
                 try {
-                  const response = await fetch('/api/admin/config', {
+                  // 解析JSON配置
+                  const parsedConfig = JSON.parse(jsonConfig);
+                  
+                  // 更新配置状态
+                  setConfig(parsedConfig as AdminConfig);
+                  
+                  // 保存配置到数据库
+                  const saveResponse = await fetch('/api/admin/config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(config),
+                    body: jsonConfig,
                   });
-                  if (response.ok) {
+                  
+                  // 写入JSON文件
+                  const writeResponse = await fetch('/api/admin/config_file', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ configFile: jsonConfig }),
+                  });
+                  
+                  if (saveResponse.ok && writeResponse.ok) {
                     showAlert({
                       type: 'success',
                       title: '保存成功',
-                      message: '配置订阅设置已成功保存',
+                      message: '配置已成功保存并写入JSON文件，视频源列表已更新',
                       timer: 2000,
                     });
                     await refreshConfig();
