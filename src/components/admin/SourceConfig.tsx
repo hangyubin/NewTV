@@ -444,13 +444,18 @@ const SourceConfig = ({
                       >
                         编辑
                       </button>
-                      <button
-                        onClick={() => handleSourceAction('delete', source)}
-                        disabled={isLoading(`source_delete_${source.key}`)}
-                        className={`${buttonStyles.roundedDanger} ${isLoading(`source_delete_${source.key}`) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        删除
-                      </button>
+                      {/* 只有当用户写入了新的配置文件后，旧的源才显示删除按钮，与是否禁用无关 */}
+                      {source.from === 'config' && 
+                       config.ConfigFile && 
+                       config.ConfigFile.trim() !== '' && (
+                        <button
+                          onClick={() => handleSourceAction('delete', source)}
+                          disabled={isLoading(`source_delete_${source.key}`)}
+                          className={`${buttonStyles.roundedDanger} ${isLoading(`source_delete_${source.key}`) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          删除
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
