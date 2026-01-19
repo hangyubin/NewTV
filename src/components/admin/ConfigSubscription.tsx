@@ -96,7 +96,7 @@ const ConfigSubscription = ({
                   配置订阅的远程URL，用于自动更新配置
                 </div>
               </div>
-              <div className='md:col-span-2'>
+              <div className='md:col-span-2 flex flex-col sm:flex-row gap-2'>
                 <input
                   type='text'
                   placeholder='订阅URL'
@@ -110,8 +110,40 @@ const ConfigSubscription = ({
                       },
                     }));
                   }}
-                  className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                  className='flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                 />
+                <button
+                  onClick={async () => {
+                    await withLoading('checkConfigUpdate', async () => {
+                      try {
+                        const response = await fetch('/api/admin/config/check-update', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                        });
+                        if (response.ok) {
+                          showAlert({
+                            type: 'success',
+                            title: '检查成功',
+                            message: '订阅链接可用，配置文件检查更新完成',
+                            timer: 2000,
+                          });
+                          await refreshConfig();
+                        } else {
+                          throw new Error('订阅链接不可用或检查更新失败');
+                        }
+                      } catch (err) {
+                        showError(
+                          err instanceof Error ? err.message : '检查更新失败',
+                          showAlert
+                        );
+                      }
+                    });
+                  }}
+                  className={buttonStyles.primary}
+                  disabled={!config.ConfigSubscribtion.URL.trim()}
+                >
+                  检查更新
+                </button>
               </div>
             </div>
             
