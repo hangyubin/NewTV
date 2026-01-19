@@ -86,15 +86,17 @@ async function refreshConfig() {
 
       const configContent = await response.text();
 
-      // 对 configContent 进行 base58 解码
+      // 智能处理订阅内容：先尝试 base58 解码，失败则直接使用原始内容
       let decodedContent;
       try {
         const bs58 = (await import('bs58')).default;
         const decodedBytes = bs58.decode(configContent);
         decodedContent = new TextDecoder().decode(decodedBytes);
+        console.log('Base58 解码成功');
       } catch (decodeError) {
-        console.warn('Base58 解码失败:', decodeError);
-        throw decodeError;
+        console.warn('Base58 解码失败，尝试直接使用原始内容:', decodeError);
+        // 解码失败，直接使用原始内容（可能是普通 JSON）
+        decodedContent = configContent;
       }
 
       try {
