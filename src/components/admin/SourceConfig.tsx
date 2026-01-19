@@ -28,6 +28,10 @@ const SourceConfig = ({
   const { alertModal, showAlert, hideAlert } = useAlertModal();
   const { isLoading, withLoading } = useLoadingState();
   
+  // 保存滚动位置的ref
+  const tableContainerRef = React.useRef<HTMLDivElement>(null);
+  const scrollPositionRef = React.useRef<number>(0);
+  
   // 表单状态管理
   const [showAddSourceForm, setShowAddSourceForm] = React.useState(false);
   const [showEditSourceForm, setShowEditSourceForm] = React.useState(false);
@@ -51,6 +55,20 @@ const SourceConfig = ({
   // 选择框状态管理
   const [selectedSources, setSelectedSources] = React.useState<string[]>([]);
   const [selectAll, setSelectAll] = React.useState(false);
+  
+  // 保存滚动位置
+  const saveScrollPosition = () => {
+    if (tableContainerRef.current) {
+      scrollPositionRef.current = tableContainerRef.current.scrollTop;
+    }
+  };
+  
+  // 恢复滚动位置
+  const restoreScrollPosition = () => {
+    if (tableContainerRef.current) {
+      tableContainerRef.current.scrollTop = scrollPositionRef.current;
+    }
+  };
   
   // 切换单个源的选择状态
   const toggleSourceSelection = (sourceKey: string) => {
@@ -107,6 +125,9 @@ const SourceConfig = ({
   ) => {
     return withLoading(`source_${action}_${source.key}`, async () => {
       try {
+        // 保存当前滚动位置
+        saveScrollPosition();
+        
         // 根据不同操作构建不同的请求体格式
         let requestBody: any = { action };
         
@@ -136,6 +157,9 @@ const SourceConfig = ({
         }
 
         await refreshConfig();
+        
+        // 恢复滚动位置
+        restoreScrollPosition();
 
         if (action === 'add') {
           setNewSource({ name: '', key: '', api: '', detail: '' });
@@ -421,7 +445,7 @@ const SourceConfig = ({
           )}
 
           {/* 视频源列表表格 */}
-          <div className='border border-gray-200 dark:border-gray-700 rounded-lg max-h-[40rem] overflow-y-auto overflow-x-auto relative'>
+          <div ref={tableContainerRef} className='border border-gray-200 dark:border-gray-700 rounded-lg max-h-[40rem] overflow-y-auto overflow-x-auto relative'>
             <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
               <thead className='bg-gray-50 dark:bg-gray-900 sticky top-0 z-10'>
                 <tr>

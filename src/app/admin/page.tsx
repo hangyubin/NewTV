@@ -41,12 +41,16 @@ const AdminPage = () => {
     migration: false,
   });
 
-  // 切换标签页展开状态
+  // 切换标签页展开状态 - 实现手风琴效果
   const toggleTab = useCallback((tab: string) => {
-    setExpandedTabs((prev) => ({
-      ...prev,
-      [tab]: !prev[tab],
-    }));
+    setExpandedTabs((prev) => {
+      // 手风琴效果：展开当前标签页，关闭其他所有标签页
+      const newExpandedTabs: Record<string, boolean> = {};
+      Object.keys(prev).forEach(key => {
+        newExpandedTabs[key] = key === tab && !prev[key];
+      });
+      return newExpandedTabs;
+    });
   }, []);
 
   // 刷新配置数据
