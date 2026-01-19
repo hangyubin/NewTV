@@ -313,16 +313,46 @@ const ConfigSubscription = ({
               </div>
               
               {/* 配置文件编辑器 */}
-              <div>
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.add('border-2', 'border-blue-400');
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove('border-2', 'border-blue-400');
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove('border-2', 'border-blue-400');
+                  
+                  const file = e.dataTransfer.files[0];
+                  if (file && file.type === 'application/json') {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      const content = event.target?.result as string;
+                      setJsonConfig(content);
+                      validateJson(content);
+                    };
+                    reader.readAsText(file);
+                  }
+                }}
+                className='border border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 transition-colors hover:border-blue-300 dark:hover:border-blue-500'
+              >
                 <div className='font-medium text-gray-900 dark:text-gray-100 mb-2'>
                   配置文件编辑
                 </div>
-                <div className='overflow-auto max-h-[50rem]'>
+                <div className='overflow-auto max-h-[50rem] min-h-[500px] relative'>
+                  <div className='absolute inset-0 flex items-center justify-center text-gray-500 dark:text-gray-400 pointer-events-none opacity-0 hover:opacity-50 transition-opacity'>
+                    <div className='text-center'>
+                      <div className='text-lg font-medium mb-2'>拖放JSON文件到此处</div>
+                      <div className='text-sm'>支持新旧两种JSON格式</div>
+                    </div>
+                  </div>
                   <textarea
                     value={jsonConfig}
                     onChange={handleJsonChange}
                     className={`w-full h-full p-0 m-0 bg-transparent border-none resize-none text-xs text-gray-800 dark:text-gray-200 font-mono ${isSubscribedConfig ? 'opacity-60' : ''}`}
-                    style={{ minHeight: '500px' }}
                     spellCheck={false}
                     disabled={isSubscribedConfig}
                   />
