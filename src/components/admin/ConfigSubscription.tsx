@@ -285,6 +285,34 @@ const ConfigSubscription = ({
           </h4>
           <div className='p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800'>
             <div className='space-y-4'>
+              {/* 文件上传功能 */}
+              <div className='flex items-center gap-3'>
+                <div className='flex items-center gap-2'>
+                  <input
+                    type='file'
+                    accept='.json'
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          const content = event.target?.result as string;
+                          setJsonConfig(content);
+                          validateJson(content);
+                        };
+                        reader.readAsText(file);
+                      }
+                    }}
+                    className='text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-600 dark:file:text-blue-200 dark:hover:file:bg-blue-700 cursor-pointer'
+                    disabled={isSubscribedConfig}
+                  />
+                  <span className='text-xs text-gray-500 dark:text-gray-400'>
+                    支持新旧两种JSON格式
+                  </span>
+                </div>
+              </div>
+              
+              {/* 配置文件编辑器 */}
               <div>
                 <div className='font-medium text-gray-900 dark:text-gray-100 mb-2'>
                   配置文件编辑
