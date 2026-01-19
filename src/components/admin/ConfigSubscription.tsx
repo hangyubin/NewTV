@@ -286,15 +286,10 @@ const ConfigSubscription = ({
           <div className='p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800'>
             <div className='space-y-4'>
               <div>
-                <div className='font-medium text-gray-900 dark:text-gray-100 mb-2 flex items-center justify-between'>
+                <div className='font-medium text-gray-900 dark:text-gray-100 mb-2'>
                   配置文件编辑
-                  {isSubscribedConfig && (
-                    <div className='text-sm font-normal text-blue-600 dark:text-blue-400'>
-                      该配置来自订阅连接，无法直接编辑
-                    </div>
-                  )}
                 </div>
-                <div className='p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-300 dark:border-gray-700 overflow-auto max-h-[50rem]'>
+                <div className='overflow-auto max-h-[50rem]'>
                   <textarea
                     value={jsonConfig}
                     onChange={handleJsonChange}
@@ -305,16 +300,9 @@ const ConfigSubscription = ({
                   />
                 </div>
                 {jsonError && !isSubscribedConfig && (
-                  <div className='p-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800'>
+                  <div className='p-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 mt-2'>
                     <div className='text-sm text-red-700 dark:text-red-300'>
                       JSON语法错误: {jsonError}
-                    </div>
-                  </div>
-                )}
-                {isSubscribedConfig && (
-                  <div className='p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 mt-2'>
-                    <div className='text-sm text-blue-700 dark:text-blue-300'>
-                      提示：订阅配置只能通过修改订阅URL或在视频源管理中进行管理
                     </div>
                   </div>
                 )}
