@@ -185,7 +185,7 @@ const SourceConfig = ({
   const handleBatchToggleSources = async (disabled: boolean) => {
     if (selectedSources.length === 0) {
       showAlert({
-        type: 'info',
+        type: 'warning',
         title: '提示',
         message: '请先选择要操作的视频源',
         timer: 2000,
