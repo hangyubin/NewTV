@@ -36,9 +36,13 @@ export async function GET(request: NextRequest) {
   const config = await getConfig();
   let apiSites = await getAvailableApiSites(authInfo.username);
   
-  // 根据全局黄色过滤器设置决定是否过滤带有🔞图标的API源
+  // 根据全局黄色过滤器设置决定是否过滤黄色内容源
   if (!config.SiteConfig.DisableYellowFilter) {
-    apiSites = apiSites.filter(site => !site.name.includes('🔞'));
+    apiSites = apiSites.filter(site => 
+      !site.name.includes('🔞') && 
+      !site.name.startsWith('AV') && 
+      !site.name.includes('18禁')
+    );
   }
 
   try {

@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-import { ApiSite, getAvailableApiSites, getCacheTime } from '@/lib/config';
+import { ApiSite, getAvailableApiSites, getCacheTime, getConfig } from '@/lib/config';
 import { searchFromApi } from '@/lib/downstream';
 import { SearchResult } from '@/lib/types';
 import { isShortDrama } from '@/lib/utils';
@@ -46,14 +46,19 @@ export async function GET(request: NextRequest) {
     // 从视频源管理中获取可用的API源
     // 这样当视频源列表中被写入或导入了API，短剧API就会自动使用这些API
     apiSites = await getAvailableApiSites();
+    
+    // 获取全局配置
+    const config = await getConfig();
 
-    // 过滤掉AV相关和带有🔞图标的API源，只保留正规影视资源
-    apiSites = apiSites.filter(
-      (site) => 
-        !site.name.includes('AV-') && 
-        !site.api.includes('AV-') &&
-        !site.name.includes('🔞')
-    );
+    // 根据全局黄色过滤器设置决定是否过滤黄色内容源
+    if (!config.SiteConfig.DisableYellowFilter) {
+      apiSites = apiSites.filter(site => 
+        !site.name.includes('🔞') && 
+        !site.name.startsWith('AV') && 
+        !site.name.includes('18禁') &&
+        !site.api.includes('AV-')
+      );
+    }
 
     // 如果过滤后没有可用的API源，直接返回空结果，不再使用硬编码的默认API源
     // 这样可以确保只使用视频列表中配置的API源，避免不必要的API请求
