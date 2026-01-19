@@ -107,19 +107,27 @@ const SourceConfig = ({
   ) => {
     return withLoading(`source_${action}_${source.key}`, async () => {
       try {
+        // 根据不同操作构建不同的请求体格式
+        let requestBody: any = { action };
+        
+        if (action === 'delete') {
+          // 删除操作：key直接在顶层
+          requestBody.key = source.key;
+        } else if (action === 'add' || action === 'edit' || action === 'toggle') {
+          // 其他操作：使用source对象
+          requestBody.source = {
+            key: source.key,
+            name: source.name,
+            api: source.api,
+            detail: source.detail,
+            disabled: source.disabled,
+          };
+        }
+        
         const res = await fetch('/api/admin/source', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action,
-            source: {
-              key: source.key,
-              name: source.name,
-              api: source.api,
-              detail: source.detail,
-              disabled: source.disabled,
-            },
-          }),
+          body: JSON.stringify(requestBody),
         });
 
         if (!res.ok) {
