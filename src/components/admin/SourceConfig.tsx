@@ -56,6 +56,10 @@ const SourceConfig = ({
   const [selectedSources, setSelectedSources] = React.useState<string[]>([]);
   const [selectAll, setSelectAll] = React.useState(false);
   
+  // 有效性检测状态
+  const [checkKeyword, setCheckKeyword] = React.useState<string>('电影');
+  const [isCheckingHealth, setIsCheckingHealth] = React.useState<boolean>(false);
+  
   // 保存滚动位置
   const saveScrollPosition = () => {
     if (tableContainerRef.current) {
@@ -90,6 +94,52 @@ const SourceConfig = ({
     } else {
       // 取消全选
       setSelectedSources([]);
+    }
+  };
+  
+  // 有效性检测函数
+  const checkSourcesHealth = async () => {
+    if (!checkKeyword.trim()) {
+      showAlert({
+        type: 'warning',
+        title: '提示',
+        message: '请输入检测关键词',
+        timer: 2000,
+      });
+      return;
+    }
+    
+    setIsCheckingHealth(true);
+    
+    try {
+      // 使用API端点检查所有视频源的健康状态
+      const response = await fetch('/api/admin/source/check-health', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyword: checkKeyword }),
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          // 刷新配置，获取最新的健康状态
+          await refreshConfig();
+          showAlert({
+            type: 'success',
+            title: '检测完成',
+            message: '视频源有效性检测已完成',
+            timer: 2000,
+          });
+        } else {
+          throw new Error(result.error || '检测失败');
+        }
+      } else {
+        throw new Error(`请求失败: ${response.status} ${response.statusText}`);
+      }
+    } catch (error) {
+      showError(error instanceof Error ? error.message : '检测失败', showAlert);
+    } finally {
+      setIsCheckingHealth(false);
     }
   };
   
@@ -131,17 +181,17 @@ const SourceConfig = ({
         // 根据不同操作构建不同的请求体格式
         let requestBody: any = { action };
         
-        if (action === 'delete') {
-          // 删除操作：key直接在顶层
+        if (action === 'delete' || action === 'enable' || action === 'disable') {
+          // delete/enable/disable 操作：key 直接在顶层
           requestBody.key = source.key;
-        } else if (action === 'add' || action === 'edit' || action === 'enable' || action === 'disable') {
-          // 其他操作：使用source对象
+        } else if (action === 'add' || action === 'edit') {
+          // add/edit 操作：使用 source 对象
           requestBody.source = {
             key: source.key,
             name: source.name,
             api: source.api,
             detail: source.detail,
-            disabled: action === 'disable',
+            disabled: source.disabled,
           };
         }
         
@@ -267,40 +317,61 @@ const SourceConfig = ({
       <div className='space-y-6'>
         {/* 视频源列表 */}
         <div>
-          <div className='flex items-center justify-between mb-3'>
-            <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-              视频源列表
-            </h4>
-            <div className='flex items-center space-x-2'>
-              {/* 批量操作按钮 */}
-              <button
-                onClick={() => handleBatchToggleSources(true)}
-                className={buttonStyles.warning}
-              >
-                批量禁用
-              </button>
-              <button
-                onClick={() => handleBatchToggleSources(false)}
-                className={buttonStyles.success}
-              >
-                批量启用
-              </button>
-              <button
-                onClick={() => {
-                  setShowAddSourceForm(!showAddSourceForm);
-                  if (showEditSourceForm) {
-                    setShowEditSourceForm(false);
-                    setEditingSource(null);
+          <div className='mb-3'>
+            <div className='flex items-center justify-between mb-3'>
+              <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+                视频源列表
+              </h4>
+              <div className='flex items-center space-x-2'>
+                {/* 有效性检测控件 */}
+                <div className='flex items-center space-x-2'>
+                  <input
+                    type='text'
+                    placeholder='检测关键词'
+                    value={checkKeyword}
+                    onChange={(e) => setCheckKeyword(e.target.value)}
+                    className='px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                    disabled={isCheckingHealth}
+                  />
+                  <button
+                    onClick={checkSourcesHealth}
+                    disabled={isCheckingHealth}
+                    className={`${buttonStyles.primary} ${isCheckingHealth ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {isCheckingHealth ? '检测中...' : '检测有效性'}
+                  </button>
+                </div>
+                
+                {/* 批量操作按钮 */}
+                <button
+                  onClick={() => handleBatchToggleSources(true)}
+                  className={buttonStyles.warning}
+                >
+                  批量禁用
+                </button>
+                <button
+                  onClick={() => handleBatchToggleSources(false)}
+                  className={buttonStyles.success}
+                >
+                  批量启用
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAddSourceForm(!showAddSourceForm);
+                    if (showEditSourceForm) {
+                      setShowEditSourceForm(false);
+                      setEditingSource(null);
+                    }
+                  }}
+                  className={
+                    showAddSourceForm
+                      ? buttonStyles.secondary
+                      : buttonStyles.primary
                   }
-                }}
-                className={
-                  showAddSourceForm
-                    ? buttonStyles.secondary
-                    : buttonStyles.primary
-                }
-              >
-                {showAddSourceForm ? '取消' : '添加视频源'}
-              </button>
+                >
+                  {showAddSourceForm ? '取消' : '添加视频源'}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -461,13 +532,19 @@ const SourceConfig = ({
                     名称
                   </th>
                   <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                    Key
+                  </th>
+                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
                     API地址
                   </th>
                   <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
-                    来源
+                    Detail地址
                   </th>
                   <th className='px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
                     状态
+                  </th>
+                  <th className='px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                    有效性
                   </th>
                   <th className='px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
                     操作
@@ -489,18 +566,12 @@ const SourceConfig = ({
                       />
                     </td>
                     <td className='px-6 py-4 whitespace-nowrap'>
-                      <div className='flex items-center'>
-                        <div className='flex flex-col'>
-                          <div className='text-sm font-medium text-gray-900 dark:text-gray-100'>
-                            {source.name}
-                          </div>
-                          {source.detail && (
-                            <div className='text-xs text-gray-500 dark:text-gray-400'>
-                              {source.detail}
-                            </div>
-                          )}
-                        </div>
+                      <div className='text-sm font-medium text-gray-900 dark:text-gray-100'>
+                        {source.name}
                       </div>
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 font-mono'>
+                      {source.key}
                     </td>
                     <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 break-all'>
                       <a
@@ -513,16 +584,8 @@ const SourceConfig = ({
                         <span className='text-xs'>🔗</span>
                       </a>
                     </td>
-                    <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400'>
-                      {source.from === 'config' ? (
-                        <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'>
-                          内置
-                        </span>
-                      ) : (
-                        <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'>
-                          自定义
-                        </span>
-                      )}
+                    <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300'>
+                      {source.detail || '-'}
                     </td>
                     <td className='px-6 py-4 whitespace-nowrap'>
                       <div className='flex justify-center'>
@@ -540,6 +603,11 @@ const SourceConfig = ({
                           />
                         </button>
                       </div>
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap text-center'>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${source.health ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}>
+                        {source.health ? '有效' : '无效'}
+                      </span>
                     </td>
                     <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2'>
                       <button
@@ -565,7 +633,7 @@ const SourceConfig = ({
                 {config.SourceConfig.length === 0 && (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={8}
                       className='px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400'
                     >
                       暂无视频源，请添加视频源来获取影视内容

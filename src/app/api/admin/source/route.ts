@@ -22,7 +22,8 @@ type Action =
   | 'batch'
   | 'import'
   | 'validate_and_fix'
-  | 'export';
+  | 'export'
+  | 'check-health';
 
 interface BaseBody {
   action?: Action;
@@ -367,6 +368,7 @@ export async function POST(request: NextRequest) {
       'import',
       'validate_and_fix',
       'export',
+      'check-health',
     ];
     if (!username || !action || !ACTIONS.includes(action)) {
       console.log('参数格式错误:', { username, action });
@@ -1065,6 +1067,61 @@ export async function POST(request: NextRequest) {
           fixed: 0,
           needManualFix: issues.length,
         });
+      }
+
+      case 'check-health': {
+        console.log('=== 检查视频源健康状态 ===');
+        const { keyword } = body as { keyword?: string };
+        if (!keyword) {
+          console.log('缺少关键词参数');
+          return NextResponse.json({ error: '缺少关键词参数' }, { status: 400 });
+        }
+
+        console.log('检测关键词:', keyword);
+        console.log('开始检测视频源健康状态...');
+
+        // 遍历所有视频源，检查健康状态
+        for (const source of adminConfig.SourceConfig) {
+          try {
+            console.log(`检测视频源: ${source.key} - ${source.name}`);
+            
+            // 使用关键词进行搜索，测试API是否有效
+            const searchUrl = new URL(source.api);
+            searchUrl.searchParams.append('ac', 'videolist');
+            searchUrl.searchParams.append('wd', keyword);
+            
+            const response = await fetch(searchUrl.toString(), {
+              method: 'GET',
+              timeout: 5000, // 设置5秒超时
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                Accept: 'application/json',
+              },
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              // 如果返回了结果或者没有错误，则认为API有效
+              source.health = data.success || (data.list && data.list.length > 0) || (data.results && data.results.length > 0);
+              console.log(`视频源 ${source.key} 健康状态: ${source.health ? '有效' : '无效'}`);
+            } else {
+              source.health = false;
+              console.log(`视频源 ${source.key} 健康状态: 无效 (HTTP ${response.status})`);
+            }
+          } catch (error) {
+            source.health = false;
+            console.log(`视频源 ${source.key} 健康状态: 无效 (${error instanceof Error ? error.message : '未知错误'})`);
+          }
+        }
+
+        // 保存配置
+        console.log('保存检测结果...');
+        await db.saveAdminConfig(adminConfig);
+        clearConfigCache();
+        configEventEmitter.emit(CONFIG_UPDATED_EVENT, adminConfig);
+
+        console.log('视频源健康状态检测完成');
+        return NextResponse.json({ success: true, message: '视频源健康状态检测完成' });
       }
 
       case 'export': {

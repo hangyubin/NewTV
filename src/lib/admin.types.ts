@@ -46,6 +46,7 @@ export interface AdminConfig {
     detail?: string;
     from: 'config' | 'custom';
     disabled?: boolean;
+    health?: boolean;
   }[];
   CustomCategories: {
     name?: string;
