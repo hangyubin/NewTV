@@ -275,6 +275,7 @@ const SourceConfig = ({
           {/* 添加视频源表单 */}
           {showAddSourceForm && (
             <div className='mb-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700'>
+              <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>添加视频源</h4>
               <div className='space-y-4'>
                 <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                   <input
@@ -333,6 +334,78 @@ const SourceConfig = ({
                     className={`${buttonStyles.success} ${isLoading('source_add_' + newSource.key) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     确定
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* 编辑视频源表单 */}
+          {showEditSourceForm && editingSource && (
+            <div className='mb-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700'>
+              <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>编辑视频源</h4>
+              <div className='space-y-4'>
+                <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                  <input
+                    type='text'
+                    placeholder='名称'
+                    value={editingSource.name}
+                    onChange={(e) =>
+                      setEditingSource((prev) => ({
+                        ...prev!,
+                        name: e.target.value,
+                      }))
+                    }
+                    className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                  />
+                  <input
+                    type='text'
+                    placeholder='唯一标识'
+                    value={editingSource.key}
+                    disabled
+                    className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                  />
+                </div>
+                <input
+                  type='text'
+                  placeholder='API地址'
+                  value={editingSource.api}
+                  onChange={(e) =>
+                    setEditingSource((prev) => ({
+                      ...prev!,
+                      api: e.target.value,
+                    }))
+                  }
+                  className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                />
+                <input
+                  type='text'
+                  placeholder='描述（可选）'
+                  value={editingSource.detail || ''}
+                  onChange={(e) =>
+                    setEditingSource((prev) => ({
+                      ...prev!,
+                      detail: e.target.value,
+                    }))
+                  }
+                  className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                />
+                <div className='flex justify-end space-x-2'>
+                  <button
+                    onClick={() => {
+                      setShowEditSourceForm(false);
+                      setEditingSource(null);
+                    }}
+                    className={buttonStyles.secondary}
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={handleEditSource}
+                    disabled={isLoading('source_edit_' + editingSource.key)}
+                    className={`${buttonStyles.success} ${isLoading('source_edit_' + editingSource.key) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    保存
                   </button>
                 </div>
               </div>
@@ -426,7 +499,7 @@ const SourceConfig = ({
                           className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${source.disabled ? buttonStyles.toggleOff : buttonStyles.toggleOn}`}
                           role='switch'
                           aria-checked={!source.disabled}
-                          onClick={() => handleSourceAction('toggle', source)}
+                          onClick={() => handleSourceAction('toggle', { ...source, disabled: !source.disabled })}
                           disabled={isLoading(`source_toggle_${source.key}`)}
                         >
                           <span
@@ -439,15 +512,13 @@ const SourceConfig = ({
                     <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2'>
                       <button
                         onClick={() => handleStartEditSource(source)}
-                        disabled={isLoading(`source_edit_${source.key}`) || source.from === 'config'}
-                        className={`${buttonStyles.roundedPrimary} ${(isLoading(`source_edit_${source.key}`) || source.from === 'config') ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        disabled={isLoading(`source_edit_${source.key}`)}
+                        className={`${buttonStyles.roundedPrimary} ${isLoading(`source_edit_${source.key}`) ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         编辑
                       </button>
-                      {/* 只有当用户写入了新的配置文件后，旧的源才显示删除按钮，与是否禁用无关 */}
-                      {source.from === 'config' && 
-                       config.ConfigFile && 
-                       config.ConfigFile.trim() !== '' && (
+                      {/* 只有非config源或重写后的旧源才显示删除按钮 */}
+                      {source.from !== 'config' && (
                         <button
                           onClick={() => handleSourceAction('delete', source)}
                           disabled={isLoading(`source_delete_${source.key}`)}

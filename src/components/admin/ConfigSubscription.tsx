@@ -36,29 +36,69 @@ const ConfigSubscription = ({
   // 当配置变化时，更新JSON文本
   React.useEffect(() => {
     if (config) {
+      // 安全检查：确保ConfigSubscribtion存在
+      const subscribtion = config.ConfigSubscribtion || { URL: '', AutoUpdate: false, LastCheck: '' };
       // 检查是否有订阅URL，如果有则标记为订阅配置
-      setIsSubscribedConfig(!!config.ConfigSubscribtion.URL.trim());
+      setIsSubscribedConfig(!!subscribtion.URL.trim());
       setJsonConfig(JSON.stringify(config, null, 2));
       setJsonError(null);
     }
   }, [config]);
   
-  // 验证JSON语法
+  // 智能JSON清理：移除无效字符，使JSON符合标准格式
+  const cleanupJson = (jsonStr: string): string => {
+    let cleaned = jsonStr;
+    
+    // 移除所有反引号
+    cleaned = cleaned.replace(/`/g, '');
+    
+    // 移除可能的HTML标签
+    cleaned = cleaned.replace(/<[^>]*>/g, '');
+    
+    // 移除可能的注释
+    cleaned = cleaned.replace(/\/\/.*$/gm, '');
+    cleaned = cleaned.replace(/\/\*[\s\S]*?\*\//g, '');
+    
+    // 确保字符串使用双引号
+    // 注意：这个处理比较简单，可能需要根据实际情况调整
+    cleaned = cleaned.replace(/'([^']*)'/g, '"$1"');
+    
+    return cleaned;
+  };
+  
+  // 验证JSON语法 - 支持清理后再验证
   const validateJson = (jsonStr: string): boolean => {
     try {
       JSON.parse(jsonStr);
       setJsonError(null);
       return true;
     } catch (err) {
-      setJsonError(err instanceof Error ? err.message : '无效的JSON格式');
-      return false;
+      // 尝试清理后再验证
+      try {
+        const cleanedJson = cleanupJson(jsonStr);
+        JSON.parse(cleanedJson);
+        setJsonError(null);
+        return true;
+      } catch (cleanedErr) {
+        // 提供更友好的错误信息
+        let errorMsg = '无效的JSON格式';
+        if (cleanedErr instanceof Error) {
+          errorMsg = `JSON语法错误: ${cleanedErr.message}`;
+          // 添加常见错误提示
+          if (cleanedErr.message.includes('Unexpected token')) {
+            errorMsg += '，系统已尝试自动清理无效字符，但仍无法解析';
+          }
+        }
+        setJsonError(errorMsg);
+        return false;
+      }
     }
   };
   
   // 处理JSON文本变化 - 只有非订阅配置才能修改
   const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (!isSubscribedConfig) {
-      const value = e.target.value;
+      let value = e.target.value;
       setJsonConfig(value);
       validateJson(value);
     }
@@ -301,38 +341,124 @@ const ConfigSubscription = ({
                 
                 await withLoading('saveConfigSubscription', async () => {
                   try {
-                    // 解析JSON配置
-                    const parsedConfig = JSON.parse(jsonConfig);
+                    // 添加详细日志，帮助调试
+                    console.log('开始保存配置...');
+                    console.log('原始JSON配置:', jsonConfig);
                     
-                    // 更新配置状态
-                    setConfig(parsedConfig as AdminConfig);
+                    // 智能清理JSON，确保符合标准格式
+                    const cleanedJson = cleanupJson(jsonConfig);
+                    console.log('清理后的JSON配置:', cleanedJson);
                     
-                    // 保存配置到数据库
-                    const saveResponse = await fetch('/api/admin/config', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: jsonConfig,
-                    });
+                    // 首先验证JSON配置
+                    let parsedConfig: unknown;
+                    try {
+                      parsedConfig = JSON.parse(cleanedJson);
+                      console.log('JSON解析成功:', typeof parsedConfig);
+                    } catch (parseErr) {
+                      console.error('JSON解析失败:', parseErr);
+                      throw new Error(`JSON解析错误: ${parseErr instanceof Error ? parseErr.message : '无效的JSON格式'}`);
+                    }
                     
-                    // 写入JSON文件
-                    const writeResponse = await fetch('/api/admin/config_file', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ configFile: jsonConfig }),
-                    });
+                    // 验证解析后的配置结构
+                    if (!parsedConfig || typeof parsedConfig !== 'object') {
+                      console.error('配置结构无效:', parsedConfig);
+                      throw new Error('解析后的配置必须是一个对象');
+                    }
+                    
+                    // 更新配置状态 - 添加错误捕获
+                    try {
+                      setConfig(parsedConfig as AdminConfig);
+                      console.log('配置状态更新成功');
+                    } catch (setConfigErr) {
+                      console.error('配置状态更新失败:', setConfigErr);
+                      throw new Error(`配置状态更新失败: ${setConfigErr instanceof Error ? setConfigErr.message : '未知错误'}`);
+                    }
+                    
+                    // 保存配置到数据库 - 使用清理后的JSON
+                    console.log('开始保存到数据库...');
+                    let saveResponse: Response;
+                    try {
+                      // 设置5秒超时
+                      const savePromise = fetch('/api/admin/config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: cleanedJson,
+                      });
+                      saveResponse = await Promise.race([
+                        savePromise,
+                        new Promise<Response>((_, reject) => 
+                          setTimeout(() => reject(new Error('数据库保存超时')), 5000)
+                        )
+                      ]);
+                      console.log('数据库保存响应:', saveResponse.status, saveResponse.statusText);
+                    } catch (saveErr) {
+                      console.error('数据库保存失败:', saveErr);
+                      throw new Error(`数据库保存失败: ${saveErr instanceof Error ? saveErr.message : '未知错误'}`);
+                    }
+                    
+                    // 写入JSON文件 - 使用清理后的JSON
+                    console.log('开始写入JSON文件...');
+                    let writeResponse: Response;
+                    try {
+                      // 设置5秒超时
+                      const writePromise = fetch('/api/admin/config_file', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ configFile: cleanedJson }),
+                      });
+                      writeResponse = await Promise.race([
+                        writePromise,
+                        new Promise<Response>((_, reject) => 
+                          setTimeout(() => reject(new Error('JSON文件写入超时')), 5000)
+                        )
+                      ]);
+                      console.log('JSON文件写入响应:', writeResponse.status, writeResponse.statusText);
+                    } catch (writeErr) {
+                      console.error('JSON文件写入失败:', writeErr);
+                      throw new Error(`JSON文件写入失败: ${writeErr instanceof Error ? writeErr.message : '未知错误'}`);
+                    }
                     
                     if (saveResponse.ok && writeResponse.ok) {
+                      console.log('保存成功');
                       showAlert({
                         type: 'success',
                         title: '保存成功',
                         message: '配置已成功保存并写入JSON文件，视频源列表已更新',
                         timer: 2000,
                       });
-                      await refreshConfig();
+                      // 刷新配置 - 添加错误捕获
+                      try {
+                        await refreshConfig();
+                        console.log('配置刷新成功');
+                      } catch (refreshErr) {
+                        console.error('配置刷新失败:', refreshErr);
+                        // 刷新失败不影响保存成功的结果，只记录日志
+                      }
                     } else {
-                      throw new Error('保存配置失败');
+                      // 获取详细错误信息
+                      let saveErrorMsg = '';
+                      let writeErrorMsg = '';
+                      
+                      try {
+                        const saveError = await saveResponse.json();
+                        saveErrorMsg = saveError.error || `HTTP ${saveResponse.status}: ${saveResponse.statusText}`;
+                      } catch {
+                        saveErrorMsg = `HTTP ${saveResponse.status}: ${saveResponse.statusText}`;
+                      }
+                      
+                      try {
+                        const writeError = await writeResponse.json();
+                        writeErrorMsg = writeError.error || `HTTP ${writeResponse.status}: ${writeResponse.statusText}`;
+                      } catch {
+                        writeErrorMsg = `HTTP ${writeResponse.status}: ${writeResponse.statusText}`;
+                      }
+                      
+                      const errorMsg = `保存失败 - 数据库: ${saveErrorMsg}, JSON文件: ${writeErrorMsg}`;
+                      console.error(errorMsg);
+                      throw new Error(errorMsg);
                     }
                   } catch (err) {
+                    console.error('保存设置总错误:', err);
                     showError(
                       err instanceof Error ? err.message : '保存失败',
                       showAlert
