@@ -48,6 +48,33 @@ const SourceConfig = ({
     detail?: string;
   } | null>(null);
   
+  // 选择框状态管理
+  const [selectedSources, setSelectedSources] = React.useState<string[]>([]);
+  const [selectAll, setSelectAll] = React.useState(false);
+  
+  // 切换单个源的选择状态
+  const toggleSourceSelection = (sourceKey: string) => {
+    setSelectedSources(prev => {
+      if (prev.includes(sourceKey)) {
+        return prev.filter(key => key !== sourceKey);
+      } else {
+        return [...prev, sourceKey];
+      }
+    });
+  };
+  
+  // 切换全选状态
+  const toggleSelectAll = () => {
+    setSelectAll(!selectAll);
+    if (!selectAll) {
+      // 全选
+      setSelectedSources(config!.SourceConfig.map(source => source.key));
+    } else {
+      // 取消全选
+      setSelectedSources([]);
+    }
+  };
+  
   if (!config) {
     return (
       <div className='text-center text-gray-500 dark:text-gray-400'>
@@ -156,8 +183,15 @@ const SourceConfig = ({
   
   // 批量禁用/启用视频源
   const handleBatchToggleSources = async (disabled: boolean) => {
-    const selectedSources = config.SourceConfig.filter(source => source.disabled !== disabled);
-    if (selectedSources.length === 0) return;
+    if (selectedSources.length === 0) {
+      showAlert({
+        type: 'info',
+        title: '提示',
+        message: '请先选择要操作的视频源',
+        timer: 2000,
+      });
+      return;
+    }
     
     await withLoading(`batchToggleSources_${disabled ? 'disable' : 'enable'}`, async () => {
       try {
@@ -166,7 +200,7 @@ const SourceConfig = ({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'batchToggle',
-            sources: selectedSources.map(source => source.key),
+            sources: selectedSources,
             disabled,
           }),
         });
@@ -181,6 +215,9 @@ const SourceConfig = ({
           disabled ? '视频源已批量禁用' : '视频源已批量启用',
           showAlert
         );
+        // 清空选择
+        setSelectedSources([]);
+        setSelectAll(false);
       } catch (err) {
         showError(err instanceof Error ? err.message : '操作失败', showAlert);
         throw err;
@@ -307,6 +344,14 @@ const SourceConfig = ({
             <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
               <thead className='bg-gray-50 dark:bg-gray-900 sticky top-0 z-10'>
                 <tr>
+                  <th className='px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                    <input
+                      type='checkbox'
+                      checked={selectAll}
+                      onChange={toggleSelectAll}
+                      className='rounded text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800'
+                    />
+                  </th>
                   <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
                     名称
                   </th>
@@ -330,6 +375,14 @@ const SourceConfig = ({
                     key={source.key}
                     className='hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'
                   >
+                    <td className='px-6 py-4 whitespace-nowrap text-center'>
+                      <input
+                        type='checkbox'
+                        checked={selectedSources.includes(source.key)}
+                        onChange={() => toggleSourceSelection(source.key)}
+                        className='rounded text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800'
+                      />
+                    </td>
                     <td className='px-6 py-4 whitespace-nowrap'>
                       <div className='flex items-center'>
                         <div className='flex flex-col'>
@@ -393,8 +446,8 @@ const SourceConfig = ({
                       </button>
                       <button
                         onClick={() => handleSourceAction('delete', source)}
-                        disabled={isLoading(`source_delete_${source.key}`) || source.from === 'config'}
-                        className={`${buttonStyles.roundedDanger} ${(isLoading(`source_delete_${source.key}`) || source.from === 'config') ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        disabled={isLoading(`source_delete_${source.key}`)}
+                        className={`${buttonStyles.roundedDanger} ${isLoading(`source_delete_${source.key}`) ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         删除
                       </button>
@@ -404,7 +457,7 @@ const SourceConfig = ({
                 {config.SourceConfig.length === 0 && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className='px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400'
                     >
                       暂无视频源，请添加视频源来获取影视内容
