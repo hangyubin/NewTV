@@ -96,7 +96,7 @@ const SourceConfig = ({
   
   // 处理视频源相关操作
   const handleSourceAction = async (
-    action: 'add' | 'edit' | 'delete' | 'toggle',
+    action: 'add' | 'edit' | 'delete' | 'enable' | 'disable',
     source: {
       name: string;
       key: string;
@@ -113,14 +113,14 @@ const SourceConfig = ({
         if (action === 'delete') {
           // 删除操作：key直接在顶层
           requestBody.key = source.key;
-        } else if (action === 'add' || action === 'edit' || action === 'toggle') {
+        } else if (action === 'add' || action === 'edit' || action === 'enable' || action === 'disable') {
           // 其他操作：使用source对象
           requestBody.source = {
             key: source.key,
             name: source.name,
             api: source.api,
             detail: source.detail,
-            disabled: source.disabled,
+            disabled: action === 'disable',
           };
         }
         
@@ -152,9 +152,9 @@ const SourceConfig = ({
             ? '视频源更新成功'
             : action === 'delete'
             ? '视频源删除成功'
-            : source.disabled
-            ? '视频源已禁用'
-            : '视频源已启用',
+            : action === 'enable'
+            ? '视频源已启用'
+            : '视频源已禁用',
           showAlert
         );
       } catch (err) {
@@ -203,13 +203,13 @@ const SourceConfig = ({
     
     await withLoading(`batchToggleSources_${disabled ? 'disable' : 'enable'}`, async () => {
       try {
+        const action = disabled ? 'batch_disable' : 'batch_enable';
         const res = await fetch('/api/admin/source', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            action: 'batchToggle',
-            sources: selectedSources,
-            disabled,
+            action,
+            keys: selectedSources,
           }),
         });
 
@@ -507,7 +507,7 @@ const SourceConfig = ({
                           className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${source.disabled ? buttonStyles.toggleOff : buttonStyles.toggleOn}`}
                           role='switch'
                           aria-checked={!source.disabled}
-                          onClick={() => handleSourceAction('toggle', { ...source, disabled: !source.disabled })}
+                          onClick={() => handleSourceAction(source.disabled ? 'enable' : 'disable', source)}
                           disabled={isLoading(`source_toggle_${source.key}`)}
                         >
                           <span
