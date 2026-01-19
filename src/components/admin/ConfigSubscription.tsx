@@ -28,6 +28,84 @@ const ConfigSubscription = ({
   const { alertModal, showAlert, hideAlert } = useAlertModal();
   const { isLoading, withLoading } = useLoadingState();
   
+  // JSON编辑状态
+  const [jsonConfig, setJsonConfig] = React.useState<string>('');
+  const [jsonError, setJsonError] = React.useState<string | null>(null);
+  const [isEditing, setIsEditing] = React.useState<boolean>(false);
+  
+  // 当配置变化时，更新JSON文本
+  React.useEffect(() => {
+    if (config) {
+      setJsonConfig(JSON.stringify(config, null, 2));
+      setJsonError(null);
+    }
+  }, [config]);
+  
+  // 验证JSON语法
+  const validateJson = (jsonStr: string): boolean => {
+    try {
+      JSON.parse(jsonStr);
+      setJsonError(null);
+      return true;
+    } catch (err) {
+      setJsonError(err instanceof Error ? err.message : '无效的JSON格式');
+      return false;
+    }
+  };
+  
+  // 处理JSON文本变化
+  const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setJsonConfig(value);
+    validateJson(value);
+  };
+  
+  // 应用JSON配置
+  const applyJsonConfig = async () => {
+    if (!validateJson(jsonConfig)) {
+      showAlert({
+        type: 'error',
+        title: 'JSON格式错误',
+        message: jsonError || '无效的JSON格式',
+        showConfirm: true,
+      });
+      return;
+    }
+    
+    await withLoading('applyJsonConfig', async () => {
+      try {
+        // 写入JSON文件 - 使用正确的API端点
+        const response = await fetch('/api/admin/config_file', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ configFile: jsonConfig }),
+        });
+        if (response.ok) {
+          // 先关闭编辑模式，提升用户体验
+          setIsEditing(false);
+          
+          // 重新获取配置，确保视频源列表正确更新
+          await refreshConfig();
+          
+          showAlert({
+            type: 'success',
+            title: '应用成功',
+            message: 'JSON配置已成功应用并保存，视频源列表已更新',
+            timer: 2000,
+          });
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || '写入配置文件失败');
+        }
+      } catch (err) {
+        showError(
+          err instanceof Error ? err.message : '应用失败',
+          showAlert
+        );
+      }
+    });
+  };
+  
   if (!config) {
     return (
       <div className='text-center text-gray-500 dark:text-gray-400'>
@@ -96,21 +174,23 @@ const ConfigSubscription = ({
                     onClick={async () => {
                       await withLoading('writeConfigFile', async () => {
                         try {
-                          const response = await fetch('/api/admin/config/write', {
+                          // 使用正确的API端点
+                          const response = await fetch('/api/admin/config_file', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(config),
+                            body: JSON.stringify({ configFile: JSON.stringify(config) }),
                           });
                           if (response.ok) {
                             showAlert({
                               type: 'success',
                               title: '写入成功',
-                              message: '配置已成功写入JSON文件',
+                              message: '配置已成功写入JSON文件，视频源列表已更新',
                               timer: 2000,
                             });
                             await refreshConfig();
                           } else {
-                            throw new Error('写入配置文件失败');
+                            const errorData = await response.json().catch(() => ({}));
+                            throw new Error(errorData.error || '写入配置文件失败');
                           }
                         } catch (err) {
                           showError(
@@ -121,22 +201,69 @@ const ConfigSubscription = ({
                       });
                     }}
                     className={buttonStyles.success}
+                    disabled={isEditing}
                   >
                     写入JSON文件
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (isEditing) {
+                        // 取消编辑，恢复原始配置
+                        setJsonConfig(JSON.stringify(config, null, 2));
+                        setJsonError(null);
+                        setIsEditing(false);
+                      } else {
+                        // 开始编辑
+                        setIsEditing(true);
+                      }
+                    }}
+                    className={isEditing ? buttonStyles.warning : buttonStyles.secondary}
+                  >
+                    {isEditing ? '取消编辑' : '编辑JSON'}
                   </button>
                 </div>
               </div>
               
-              {/* JSON配置预览 */}
+              {/* JSON配置编辑/预览 */}
               <div>
                 <div className='font-medium text-gray-900 dark:text-gray-100 mb-2'>
-                  配置文件预览
+                  {isEditing ? '配置文件编辑' : '配置文件预览'}
                 </div>
-                <div className='p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-300 dark:border-gray-700 overflow-auto max-h-48'>
-                  <pre className='text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap'>
-                    {JSON.stringify(config, null, 2)}
-                  </pre>
-                </div>
+                {isEditing ? (
+                  <>
+                    <div className='p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-300 dark:border-gray-700 overflow-auto max-h-96'>
+                      <textarea
+                        value={jsonConfig}
+                        onChange={handleJsonChange}
+                        className='w-full h-full p-0 m-0 bg-transparent border-none resize-none text-xs text-gray-800 dark:text-gray-200 font-mono'
+                        style={{ minHeight: '300px' }}
+                        spellCheck={false}
+                      />
+                    </div>
+                    {jsonError && (
+                      <div className='p-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800'>
+                        <div className='text-sm text-red-700 dark:text-red-300'>
+                          JSON语法错误: {jsonError}
+                        </div>
+                      </div>
+                    )}
+                    <div className='flex justify-end space-x-2 mt-2'>
+                      <button
+                        onClick={applyJsonConfig}
+                        disabled={!!jsonError || isLoading('applyJsonConfig')}
+                        className={`${buttonStyles.success} ${(!!jsonError || isLoading('applyJsonConfig')) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        应用配置
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className='p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-300 dark:border-gray-700 overflow-auto max-h-48'>
+                    <pre className='text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap'>
+                      {JSON.stringify(config, null, 2)}
+                    </pre>
+                  </div>
+                )}
               </div>
             </div>
           </div>
