@@ -31,10 +31,13 @@ const ConfigSubscription = ({
   // JSON编辑状态
   const [jsonConfig, setJsonConfig] = React.useState<string>('');
   const [jsonError, setJsonError] = React.useState<string | null>(null);
+  const [isSubscribedConfig, setIsSubscribedConfig] = React.useState<boolean>(false);
   
   // 当配置变化时，更新JSON文本
   React.useEffect(() => {
     if (config) {
+      // 检查是否有订阅URL，如果有则标记为订阅配置
+      setIsSubscribedConfig(!!config.ConfigSubscribtion.URL.trim());
       setJsonConfig(JSON.stringify(config, null, 2));
       setJsonError(null);
     }
@@ -52,11 +55,13 @@ const ConfigSubscription = ({
     }
   };
   
-  // 处理JSON文本变化
+  // 处理JSON文本变化 - 只有非订阅配置才能修改
   const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    setJsonConfig(value);
-    validateJson(value);
+    if (!isSubscribedConfig) {
+      const value = e.target.value;
+      setJsonConfig(value);
+      validateJson(value);
+    }
   };
   
   if (!config) {
@@ -209,22 +214,35 @@ const ConfigSubscription = ({
           <div className='p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800'>
             <div className='space-y-4'>
               <div>
-                <div className='font-medium text-gray-900 dark:text-gray-100 mb-2'>
+                <div className='font-medium text-gray-900 dark:text-gray-100 mb-2 flex items-center justify-between'>
                   配置文件编辑
+                  {isSubscribedConfig && (
+                    <div className='text-sm font-normal text-blue-600 dark:text-blue-400'>
+                      该配置来自订阅连接，无法直接编辑
+                    </div>
+                  )}
                 </div>
                 <div className='p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-300 dark:border-gray-700 overflow-auto max-h-[50rem]'>
                   <textarea
                     value={jsonConfig}
                     onChange={handleJsonChange}
-                    className='w-full h-full p-0 m-0 bg-transparent border-none resize-none text-xs text-gray-800 dark:text-gray-200 font-mono'
+                    className={`w-full h-full p-0 m-0 bg-transparent border-none resize-none text-xs text-gray-800 dark:text-gray-200 font-mono ${isSubscribedConfig ? 'opacity-60' : ''}`}
                     style={{ minHeight: '500px' }}
                     spellCheck={false}
+                    disabled={isSubscribedConfig}
                   />
                 </div>
-                {jsonError && (
+                {jsonError && !isSubscribedConfig && (
                   <div className='p-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800'>
                     <div className='text-sm text-red-700 dark:text-red-300'>
                       JSON语法错误: {jsonError}
+                    </div>
+                  </div>
+                )}
+                {isSubscribedConfig && (
+                  <div className='p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 mt-2'>
+                    <div className='text-sm text-blue-700 dark:text-blue-300'>
+                      提示：订阅配置只能通过修改订阅URL或在视频源管理中进行管理
                     </div>
                   </div>
                 )}
@@ -233,68 +251,70 @@ const ConfigSubscription = ({
           </div>
         </div>
         
-        {/* 保存设置按钮 */}
-        <div className='flex justify-end'>
-          <button
-            onClick={async () => {
-              // 验证JSON语法
-              if (!validateJson(jsonConfig)) {
-                showAlert({
-                  type: 'error',
-                  title: 'JSON格式错误',
-                  message: jsonError || '无效的JSON格式',
-                  showConfirm: true,
-                });
-                return;
-              }
-              
-              await withLoading('saveConfigSubscription', async () => {
-                try {
-                  // 解析JSON配置
-                  const parsedConfig = JSON.parse(jsonConfig);
-                  
-                  // 更新配置状态
-                  setConfig(parsedConfig as AdminConfig);
-                  
-                  // 保存配置到数据库
-                  const saveResponse = await fetch('/api/admin/config', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: jsonConfig,
+        {/* 保存设置按钮 - 只有非订阅配置才能保存 */}
+        {!isSubscribedConfig && (
+          <div className='flex justify-end'>
+            <button
+              onClick={async () => {
+                // 验证JSON语法
+                if (!validateJson(jsonConfig)) {
+                  showAlert({
+                    type: 'error',
+                    title: 'JSON格式错误',
+                    message: jsonError || '无效的JSON格式',
+                    showConfirm: true,
                   });
-                  
-                  // 写入JSON文件
-                  const writeResponse = await fetch('/api/admin/config_file', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ configFile: jsonConfig }),
-                  });
-                  
-                  if (saveResponse.ok && writeResponse.ok) {
-                    showAlert({
-                      type: 'success',
-                      title: '保存成功',
-                      message: '配置已成功保存并写入JSON文件，视频源列表已更新',
-                      timer: 2000,
-                    });
-                    await refreshConfig();
-                  } else {
-                    throw new Error('保存配置失败');
-                  }
-                } catch (err) {
-                  showError(
-                    err instanceof Error ? err.message : '保存失败',
-                    showAlert
-                  );
+                  return;
                 }
-              });
-            }}
-            disabled={isLoading('saveConfigSubscription')}
-            className={`${buttonStyles.primary} ${isLoading('saveConfigSubscription') ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            保存设置
-          </button>
-        </div>
+                
+                await withLoading('saveConfigSubscription', async () => {
+                  try {
+                    // 解析JSON配置
+                    const parsedConfig = JSON.parse(jsonConfig);
+                    
+                    // 更新配置状态
+                    setConfig(parsedConfig as AdminConfig);
+                    
+                    // 保存配置到数据库
+                    const saveResponse = await fetch('/api/admin/config', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: jsonConfig,
+                    });
+                    
+                    // 写入JSON文件
+                    const writeResponse = await fetch('/api/admin/config_file', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ configFile: jsonConfig }),
+                    });
+                    
+                    if (saveResponse.ok && writeResponse.ok) {
+                      showAlert({
+                        type: 'success',
+                        title: '保存成功',
+                        message: '配置已成功保存并写入JSON文件，视频源列表已更新',
+                        timer: 2000,
+                      });
+                      await refreshConfig();
+                    } else {
+                      throw new Error('保存配置失败');
+                    }
+                  } catch (err) {
+                    showError(
+                      err instanceof Error ? err.message : '保存失败',
+                      showAlert
+                    );
+                  }
+                });
+              }}
+              disabled={isLoading('saveConfigSubscription')}
+              className={`${buttonStyles.primary} ${isLoading('saveConfigSubscription') ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              保存设置
+            </button>
+          </div>
+        )}
       </div>
     </CollapsibleTab>
   );
