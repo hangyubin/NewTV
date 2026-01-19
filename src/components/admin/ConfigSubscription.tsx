@@ -353,16 +353,62 @@ const ConfigSubscription = ({
                       throw new Error('解析后的配置必须是一个对象');
                     }
                     
-                    // 更新配置状态 - 添加错误捕获
+                    // 检测配置格式：旧格式只包含api_site等部分配置，新格式包含完整AdminConfig结构
+                    const isOldFormat = parsedConfig.hasOwnProperty('api_site') && !parsedConfig.hasOwnProperty('ConfigFile');
+                    console.log('配置格式检测结果:', isOldFormat ? '旧格式' : '新格式');
+                    
+                    // 根据格式执行不同的保存逻辑
+                    let finalConfigForDb: any;
+                    let finalConfigFile: string;
+                    
+                    if (isOldFormat) {
+                      // 旧格式：直接保存为ConfigFile，让后端refineConfig处理
+                      console.log('使用旧格式保存配置');
+                      finalConfigForDb = {
+                        ...config,
+                        ConfigFile: cleanedJson
+                      };
+                      finalConfigFile = cleanedJson;
+                    } else {
+                      // 新格式：提取ConfigFile部分，其余直接使用
+                      console.log('使用新格式保存配置');
+                      const newConfig = parsedConfig as AdminConfig;
+                      finalConfigForDb = newConfig;
+                      // 提取旧格式部分作为ConfigFile
+                      const oldFormatPart = {
+                        api_site: (newConfig.SourceConfig || []).reduce((acc, source) => {
+                          acc[source.key] = {
+                            name: source.name,
+                            api: source.api,
+                            detail: source.detail
+                          };
+                          return acc;
+                        }, {} as Record<string, { name: string; api: string; detail?: string }>),
+                        cache_time: newConfig.SiteConfig?.SiteInterfaceCacheTime,
+                        custom_category: newConfig.CustomCategories,
+                        lives: (newConfig.LiveConfig || []).reduce((acc, live) => {
+                          acc[live.key] = {
+                            name: live.name,
+                            url: live.url,
+                            ua: live.ua,
+                            epg: live.epg
+                          };
+                          return acc;
+                        }, {} as Record<string, { name: string; url: string; ua?: string; epg?: string }>)
+                      };
+                      finalConfigFile = JSON.stringify(oldFormatPart, null, 2);
+                    }
+                    
+                    // 更新配置状态
                     try {
-                      setConfig(parsedConfig as AdminConfig);
+                      setConfig(finalConfigForDb as AdminConfig);
                       console.log('配置状态更新成功');
                     } catch (setConfigErr) {
                       console.error('配置状态更新失败:', setConfigErr);
                       throw new Error(`配置状态更新失败: ${setConfigErr instanceof Error ? setConfigErr.message : '未知错误'}`);
                     }
                     
-                    // 保存配置到数据库 - 使用清理后的JSON
+                    // 保存配置到数据库
                     console.log('开始保存到数据库...');
                     let saveResponse: Response;
                     try {
@@ -370,7 +416,7 @@ const ConfigSubscription = ({
                       const savePromise = fetch('/api/admin/config', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: cleanedJson,
+                        body: JSON.stringify(finalConfigForDb),
                       });
                       saveResponse = await Promise.race([
                         savePromise,
@@ -384,7 +430,7 @@ const ConfigSubscription = ({
                       throw new Error(`数据库保存失败: ${saveErr instanceof Error ? saveErr.message : '未知错误'}`);
                     }
                     
-                    // 写入JSON文件 - 使用清理后的JSON
+                    // 写入JSON文件
                     console.log('开始写入JSON文件...');
                     let writeResponse: Response;
                     try {
@@ -392,7 +438,7 @@ const ConfigSubscription = ({
                       const writePromise = fetch('/api/admin/config_file', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ configFile: cleanedJson }),
+                        body: JSON.stringify({ configFile: finalConfigFile }),
                       });
                       writeResponse = await Promise.race([
                         writePromise,
