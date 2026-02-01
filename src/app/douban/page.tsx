@@ -303,19 +303,69 @@ function DoubanPageClient() {
             list: weekdayData.items.map((item) => ({
               id: item.id?.toString() || '',
               title: item.name_cn || item.name,
-              poster:
-                item.images.large ||
-                item.images.common ||
-                item.images.medium ||
-                item.images.small ||
-                item.images.grid,
+              poster: item.images.large || item.images.common || item.images.medium || item.images.small || item.images.grid,
               rate: item.rating?.score?.toFixed(1) || '',
               year: item.air_date?.split('-')?.[0] || '',
             })),
           };
         } else {
-          throw new Error('没有找到对应的日期');
+          // 如果没有找到对应的星期数据，返回空列表
+          data = {
+            code: 200,
+            message: 'success',
+            list: [],
+          };
         }
+      } else if (type === 'anime' && primarySelection === '热门番剧') {
+        // 热门番剧模式：结合豆瓣和Bangumi数据
+        const [doubanData, bangumiData] = await Promise.all([
+          getDoubanRecommends({
+            kind: 'tv',
+            pageLimit: 15,
+            pageStart: 0,
+            category: '动画',
+            format: '电视剧',
+            sort: 'T', // 按评分排序
+          }),
+          GetBangumiCalendarData()
+        ]);
+        
+        // 合并数据，去重
+        const combinedList = [...(doubanData.list || [])];
+        
+        // 添加Bangumi数据中不在豆瓣列表中的番剧
+        bangumiData.forEach(day => {
+          day.items.forEach(item => {
+            const exists = combinedList.some(doubanItem => 
+              doubanItem.title === (item.name_cn || item.name)
+            );
+            if (!exists) {
+              combinedList.push({
+                id: item.id?.toString() || '',
+                title: item.name_cn || item.name,
+                poster: item.images.large || item.images.common || item.images.medium || item.images.small || item.images.grid,
+                rate: item.rating?.score?.toFixed(1) || '',
+                year: item.air_date?.split('-')?.[0] || '',
+              });
+            }
+          });
+        });
+        
+        // 按评分排序
+        combinedList.sort((a, b) => {
+          const rateA = parseFloat(a.rate) || 0;
+          const rateB = parseFloat(b.rate) || 0;
+          return rateB - rateA;
+        });
+        
+        // 限制数量
+        const limitedList = combinedList.slice(0, 25);
+        
+        data = {
+          code: 200,
+          message: 'success',
+          list: limitedList,
+        };
       } else if (type === 'short-drama') {
         // 短剧数据处理
         const shortDramaResponse = await getShortDramaData({
@@ -345,38 +395,24 @@ function DoubanPageClient() {
           pageStart: 0,
           category: '动画',
           format: primarySelection === '番剧' ? '电视剧' : '',
-          region: multiLevelValues.region
-            ? (multiLevelValues.region as string)
-            : '',
+          region: multiLevelValues.region ? (multiLevelValues.region as string) : '',
           year: multiLevelValues.year ? (multiLevelValues.year as string) : '',
-          platform: multiLevelValues.platform
-            ? (multiLevelValues.platform as string)
-            : '',
+          platform: multiLevelValues.platform ? (multiLevelValues.platform as string) : '',
           sort: multiLevelValues.sort ? (multiLevelValues.sort as string) : '',
-          label: multiLevelValues.label
-            ? (multiLevelValues.label as string)
-            : '',
+          label: multiLevelValues.label ? (multiLevelValues.label as string) : '',
         });
       } else if (primarySelection === '全部') {
         data = await getDoubanRecommends({
           kind: type === 'show' ? 'tv' : (type as 'tv' | 'movie'),
           pageLimit: 25,
           pageStart: 0, // 初始数据加载始终从第一页开始
-          category: multiLevelValues.type
-            ? (multiLevelValues.type as string)
-            : '',
+          category: multiLevelValues.type ? (multiLevelValues.type as string) : '',
           format: type === 'show' ? '综艺' : type === 'tv' ? '电视剧' : '',
-          region: multiLevelValues.region
-            ? (multiLevelValues.region as string)
-            : '',
+          region: multiLevelValues.region ? (multiLevelValues.region as string) : '',
           year: multiLevelValues.year ? (multiLevelValues.year as string) : '',
-          platform: multiLevelValues.platform
-            ? (multiLevelValues.platform as string)
-            : '',
+          platform: multiLevelValues.platform ? (multiLevelValues.platform as string) : '',
           sort: multiLevelValues.sort ? (multiLevelValues.sort as string) : '',
-          label: multiLevelValues.label
-            ? (multiLevelValues.label as string)
-            : '',
+          label: multiLevelValues.label ? (multiLevelValues.label as string) : '',
         });
       } else {
         data = await getDoubanCategories(getRequestParams(0));
@@ -401,6 +437,14 @@ function DoubanPageClient() {
     } catch (err) {
       console.error(err);
       setLoading(false); // 发生错误时总是停止loading状态
+      // 显示错误提示
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('globalError', {
+            detail: { message: '获取数据失败，请稍后重试' },
+          })
+        );
+      }
     }
   }, [
     type,

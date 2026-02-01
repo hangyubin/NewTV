@@ -97,6 +97,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
   // 动漫一级选择器选项
   const animePrimaryOptions: SelectorOption[] = [
     { label: '每日放送', value: '每日放送' },
+    { label: '热门番剧', value: '热门番剧' },
     { label: '番剧', value: '番剧' },
     { label: '剧场版', value: '剧场版' },
   ];
@@ -482,6 +483,16 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
               </span>
               <div className='overflow-x-auto'>
                 <WeekdaySelector onWeekdayChange={onWeekdayChange} />
+              </div>
+            </div>
+          ) : (primarySelection || animePrimaryOptions[1].value) === '热门番剧' ? (
+            // 热门番剧分类下显示简要说明
+            <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+              <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+                说明
+              </span>
+              <div className='text-xs sm:text-sm text-gray-500 dark:text-gray-400'>
+                基于豆瓣和Bangumi数据的热门番剧推荐
               </div>
             </div>
           ) : (
