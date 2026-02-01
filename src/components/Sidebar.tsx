@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Cat, Clover, Clapperboard, Cloud, Film, Home, Menu, Radio, Search, Star, Tv, Youtube } from 'lucide-react';
+import { Cat, Clover, Clapperboard, Film, Home, Menu, Radio, Search, Star, Tv } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -173,11 +173,6 @@ const Sidebar = ({ onToggle, defaultCollapsed }: SidebarProps) => {
       label: '直播',
       href: '/live',
     },
-    {
-      icon: Youtube,
-      label: 'YouTube',
-      href: '/youtube',
-    },
   ]);
 
   useEffect(() => {
@@ -193,14 +188,6 @@ const Sidebar = ({ onToggle, defaultCollapsed }: SidebarProps) => {
         icon: Star,
         label: '纪录',
         href: '/douban?type=custom',
-      });
-    }
-
-    if (runtimeConfig?.CLOUD_DISK_CONFIG?.enabled) {
-      newItems.push({
-        icon: Cloud,
-        label: runtimeConfig.CLOUD_DISK_CONFIG.name || '网盘',
-        href: '/cloud-disk',
       });
     }
 
@@ -289,9 +276,7 @@ const Sidebar = ({ onToggle, defaultCollapsed }: SidebarProps) => {
 
                   const isActive = isInitialized && (item.href.startsWith('/douban')
                     ? typeMatch && decodedActive.includes(`type=${typeMatch}`)
-                    : item.href === '/youtube'
-                      ? decodedActive.startsWith('/youtube')
-                      : decodedActive === decodedItemHref);
+                    : decodedActive === decodedItemHref);
                   const Icon = item.icon;
                   return (
                     <Link

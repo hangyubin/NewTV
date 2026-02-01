@@ -14,7 +14,6 @@ interface Message {
   content: string;
   timestamp: Date;
   recommendations?: MovieRecommendation[];
-  youtubeVideos?: YouTubeVideo[];
   isMovieCard?: boolean;
   movieInfo?: {
     title: string;
@@ -32,48 +31,38 @@ interface MovieRecommendation {
   poster?: string;
 }
 
-interface YouTubeVideo {
-  id: string;
-  title: string;
-  description: string;
-  thumbnail: string;
-  channelTitle: string;
-  publishedAt: string;
-}
-
 const AIChatPage = () => {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       type: 'ai',
-      content: '你好！我是AI推荐助手，可以根据你的喜好为你推荐精彩的影视作品和YouTube视频。\n\n如果你想看电影、电视剧、动漫等影视内容，我会为你推荐相关作品；\n如果你想看新闻、教程、解说、音乐等视频内容，我会为你推荐YouTube视频。\n\n请告诉我你想看什么类型的内容吧！',
+      content: '你好！我是AI推荐助手，可以根据你的喜好为你推荐精彩的影视作品。\n\n如果你想看电影、电视剧、动漫等影视内容，我会为你推荐相关作品。\n\n请告诉我你想看什么类型的内容吧！',
       timestamp: new Date()
     }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try {
-      // 检查是否有预设的剧名内容
+      // 检查是否有预设的剧名内�?
       const presetContent = localStorage.getItem('ai-chat-preset');
       if (presetContent) {
         const { title, poster, doubanLink, hiddenContent, timestamp } = JSON.parse(presetContent);
         const now = Date.now();
-        // 5分钟内有效
+        // 5分钟内有�?
         if (now - timestamp < 5 * 60 * 1000) {
           // 清除预设内容
           localStorage.removeItem('ai-chat-preset');
           
-          // 模拟发送海报卡片消息
+          // 模拟发送海报卡片消�?
           const movieCardMessage: Message = {
             id: Date.now().toString(),
             type: 'user',
-            content: `[发送了《${title}》的海报卡片]`,
+            content: `[发送了�?{title}》的海报卡片]`,
             timestamp: new Date(),
             isMovieCard: true,
             movieInfo: {
@@ -88,13 +77,13 @@ const AIChatPage = () => {
           const aiPresetReply: Message = {
             id: (Date.now() + 1).toString(),
             type: 'ai',
-            content: `你想了解《${title}》的什么相关信息呢？`,
+            content: `你想了解�?{title}》的什么相关信息呢？`,
             timestamp: new Date()
           };
           
           setMessages(prev => [...prev, movieCardMessage, aiPresetReply]);
           
-          return; // 如果有预设内容，不加载缓存消息
+          return; // 如果有预设内容，不加载缓存消�?
         } else {
           // 过期的预设内容，清除
           localStorage.removeItem('ai-chat-preset');
@@ -158,10 +147,9 @@ const AIChatPage = () => {
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: data.content || '抱歉，我现在无法为你推荐内容，请稍后再试。',
+        content: data.content || '抱歉，我现在无法为你推荐内容，请稍后再试',
         timestamp: new Date(),
-        recommendations: data.recommendations || [],
-        youtubeVideos: data.youtubeVideos || []
+        recommendations: data.recommendations || []
       };
 
       setMessages(prev => [...prev, aiMessage]);
@@ -170,10 +158,9 @@ const AIChatPage = () => {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: '抱歉，网络连接出现问题，请检查网络后重试。如果问题持续存在，请稍后再试。',
+        content: '抱歉，网络连接出现问题，请检查网络后重试。如果问题持续存在，请稍后再试',
         timestamp: new Date(),
-        recommendations: [],
-        youtubeVideos: []
+        recommendations: []
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
@@ -184,13 +171,13 @@ const AIChatPage = () => {
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
 
-    // 检查最后一条消息是否是电影卡片消息，如果是则组合隐藏内容
+    // 检查最后一条消息是否是电影卡片消息，如果是则组合隐藏内�?
     const lastMessage = messages[messages.length - 1];
     let actualContent = inputValue.trim();
     
     if (lastMessage && lastMessage.isMovieCard && lastMessage.hiddenContent) {
-      // 组合隐藏内容和用户输入
-      actualContent = `${lastMessage.hiddenContent}\n\n用户问题：${inputValue.trim()}`;
+      // 组合隐藏内容和用户输�?
+      actualContent = `${lastMessage.hiddenContent}\n\n用户问题�?{inputValue.trim()}`;
     }
 
     const userMessage: Message = {
@@ -205,7 +192,7 @@ const AIChatPage = () => {
     setInputValue('');
     setIsLoading(true);
 
-    // 构建对话历史，使用实际内容（包含隐藏内容）
+    // 构建对话历史，使用实际内容（包含隐藏内容�?
     const conversationHistory = updatedMessages.slice(-8).map(msg => {
       if (msg === userMessage) {
         // 对于刚发送的消息，使用包含隐藏内容的实际内容
@@ -233,10 +220,9 @@ const AIChatPage = () => {
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: data.content || '抱歉，我现在无法为你推荐内容，请稍后再试。',
+        content: data.content || '抱歉，我现在无法为你推荐内容，请稍后再试',
         timestamp: new Date(),
-        recommendations: data.recommendations || [],
-        youtubeVideos: data.youtubeVideos || []
+        recommendations: data.recommendations || []
       };
 
       setMessages(prev => [...prev, aiMessage]);
@@ -245,7 +231,7 @@ const AIChatPage = () => {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: '抱歉，推荐服务暂时不可用，请稍后再试。',
+        content: '抱歉，推荐服务暂时不可用，请稍后再试',
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -262,13 +248,9 @@ const AIChatPage = () => {
   };
 
   const handleMovieSelect = (movie: MovieRecommendation) => {
-    // 跳转到搜索页面并搜索该影片
+    // 跳转到搜索页面并搜索该影�?
     const searchQuery = encodeURIComponent(movie.title);
     router.push(`/search?q=${searchQuery}`);
-  };
-
-  const handleYouTubeVideoSelect = (video: YouTubeVideo) => {
-    setPlayingVideoId(video.id);
   };
 
   return (
@@ -388,74 +370,6 @@ const AIChatPage = () => {
                   </div>
                 )}
 
-                {message.youtubeVideos && message.youtubeVideos.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    {message.youtubeVideos.map((video, index) => (
-                      <div key={index} className="relative">
-                        {playingVideoId === video.id ? (
-                          <div className="relative">
-                            <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                              <iframe
-                                src={`https://www.youtube.com/embed/${video.id}?autoplay=1`}
-                                title={video.title}
-                                className="w-full h-full"
-                                frameBorder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                              />
-                            </div>
-                            <button
-                              onClick={() => setPlayingVideoId(null)}
-                              className="absolute top-1 right-1 sm:top-2 sm:right-2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-70 transition-all"
-                            >
-                              <X className="w-3 h-3 sm:w-4 sm:h-4" />
-                            </button>
-                            <div className="mt-2">
-                              <h4 className="font-medium text-gray-900 dark:text-white text-xs sm:text-sm line-clamp-2">
-                                {video.title}
-                              </h4>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {video.channelTitle}
-                              </p>
-                            </div>
-                          </div>
-                        ) : (
-                          <div
-                            className="bg-gray-50 dark:bg-gray-700 rounded-lg p-2 sm:p-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                            onClick={() => handleYouTubeVideoSelect(video)}
-                          >
-                            <div className="flex gap-2 sm:gap-3">
-                              <div className="relative flex-shrink-0">
-                                <img
-                                  src={video.thumbnail}
-                                  alt={video.title}
-                                  className="w-16 h-12 sm:w-20 sm:h-14 object-cover rounded"
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded">
-                                  <div className="w-4 h-4 sm:w-6 sm:h-6 bg-red-600 rounded-full flex items-center justify-center">
-                                    <div className="w-0 h-0 border-l-[4px] sm:border-l-[6px] border-l-white border-t-[2px] sm:border-t-[3px] border-t-transparent border-b-[2px] sm:border-b-[3px] border-b-transparent ml-0.5"></div>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-gray-900 dark:text-white text-xs sm:text-sm line-clamp-2">
-                                  {video.title}
-                                </h4>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                  {video.channelTitle}
-                                </p>
-                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2 hidden sm:block">
-                                  {video.description}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
                 <p className="text-xs text-gray-400 mt-2">
                   {message.timestamp.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
                 </p>
@@ -487,7 +401,7 @@ const AIChatPage = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* 输入框 */}
+        {/* 输入�?*/}
         <div className="fixed bottom-14 left-0 right-0 p-3 border-t border-gray-200 dark:border-gray-700 md:relative md:bottom-auto backdrop-blur-md bg-white/80 dark:bg-gray-900/80">
           <div className="flex gap-2 items-center max-w-4xl mx-auto">
             <div className="flex-1 relative">
@@ -497,7 +411,7 @@ const AIChatPage = () => {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="描述你想看的影片类型或心情..."
+                placeholder="描述你想看的影片类型或心�?.."
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-none"
                 disabled={isLoading}
               />
