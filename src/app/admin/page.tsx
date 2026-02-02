@@ -1,17 +1,14 @@
-import React, { useState } from 'react';
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import Link from 'next/link';
+import React, { useState } from 'react';
 
-import SiteConfig from '@/components/admin/SiteConfig';
-import VideoSourceConfig from '@/components/admin/VideoSourceConfig';
-import LiveSourceConfig from '@/components/admin/LiveSourceConfig';
-import UserConfig from '@/components/admin/UserConfig';
 import AiConfig from '@/components/admin/AiConfig';
-import ThemeConfig from '@/components/admin/ThemeConfig';
 import BackupConfig from '@/components/admin/BackupConfig';
-
-const inter = Inter({ subsets: ['latin'] });
+import LiveSourceConfig from '@/components/admin/LiveSourceConfig';
+import SiteConfig from '@/components/admin/SiteConfig';
+import ThemeConfig from '@/components/admin/ThemeConfig';
+import UserConfig from '@/components/admin/UserConfig';
+import VideoSourceConfig from '@/components/admin/VideoSourceConfig';
 
 export const metadata: Metadata = {
   title: '管理后台',
