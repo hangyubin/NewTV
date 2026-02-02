@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+
 import { getConfig } from '@/lib/config';
 
 export async function POST(request: NextRequest) {

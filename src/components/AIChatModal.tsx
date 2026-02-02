@@ -1,7 +1,8 @@
 import { Bot, Send, User, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState, useRef, useEffect } from 'react';
+import { useEffect,useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+
 import { processImageUrl } from '@/lib/utils';
 
 interface Message {

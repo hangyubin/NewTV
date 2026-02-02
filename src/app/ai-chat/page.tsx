@@ -1,12 +1,12 @@
 'use client';
 
-import { Bot, Send, User, ArrowLeft, X } from 'lucide-react';
-import Link from 'next/link';
+import { Bot, Send, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState, useRef, useEffect } from 'react';
+import { useEffect,useRef, useState } from 'react';
+
+import { processImageUrl } from '@/lib/utils';
 
 import PageLayout from '@/components/PageLayout';
-import { processImageUrl } from '@/lib/utils';
 
 interface Message {
   id: string;
