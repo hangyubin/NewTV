@@ -542,7 +542,7 @@ export async function getDoubanDetails(id: string): Promise<{
 export function getDoubanCacheStats(): {
   totalItems: number;
   totalSize: number;
-  byType: Record<string, number>;
+  byPrefix: Record<string, number>;
 } {
   return doubanCache.getStats();
 }

@@ -24,11 +24,11 @@ function getCacheKey(query: string, username: string): string {
 
 function cleanExpiredCache(): void {
   const now = Date.now();
-  for (const [key, entry] of searchCache.entries()) {
+  Array.from(searchCache.entries()).forEach(([key, entry]) => {
     if (now - entry.timestamp > CACHE_TTL) {
       searchCache.delete(key);
     }
-  }
+  });
 }
 
 function limitCacheSize(): void {
@@ -159,27 +159,4 @@ export async function GET(request: NextRequest) {
     console.error('搜索错误:', error);
     return NextResponse.json({ error: '搜索失败' }, { status: 500 });
   }
-}
-
-export function clearSearchCache(): void {
-  searchCache.clear();
-  console.log('搜索缓存已清空');
-}
-
-export function getSearchCacheStats(): {
-  size: number;
-  maxSize: number;
-  entries: Array<{ query: string; timestamp: number; resultCount: number }>;
-} {
-  const entries = Array.from(searchCache.entries()).map(([key, entry]) => ({
-    query: entry.query,
-    timestamp: entry.timestamp,
-    resultCount: entry.results.length,
-  }));
-
-  return {
-    size: searchCache.size,
-    maxSize: MAX_CACHE_SIZE,
-    entries,
-  };
 }
