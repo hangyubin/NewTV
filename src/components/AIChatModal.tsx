@@ -10,7 +10,6 @@ interface Message {
   content: string;
   timestamp: Date;
   recommendations?: MovieRecommendation[];
-  youtubeVideos?: YouTubeVideo[];
   isMovieCard?: boolean;
   movieInfo?: {
     title: string;
@@ -28,15 +27,6 @@ interface MovieRecommendation {
   poster?: string;
 }
 
-interface YouTubeVideo {
-  id: string;
-  title: string;
-  description: string;
-  thumbnail: string;
-  channelTitle: string;
-  publishedAt: string;
-}
-
 interface AIChatModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -48,13 +38,12 @@ const AIChatModal = ({ isOpen, onClose }: AIChatModalProps) => {
     {
       id: '1',
       type: 'ai',
-      content: '你好！我是AI推荐助手，可以根据你的喜好为你推荐精彩的影视作品和YouTube视频。\n\n如果你想看电影、电视剧、动漫等影视内容，我会为你推荐相关作品；\n如果你想看新闻、教程、解说、音乐等视频内容，我会为你推荐YouTube视频。\n\n请告诉我你想看什么类型的内容吧！',
+      content: '你好！我是AI推荐助手，可以根据你的喜好为你推荐精彩的影视作品。\n\n请告诉我你想看什么类型的内容吧！',
       timestamp: new Date()
     }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -99,7 +88,7 @@ const AIChatModal = ({ isOpen, onClose }: AIChatModalProps) => {
               {
                 id: '1',
                 type: 'ai',
-                content: '你好！我是AI推荐助手，可以根据你的喜好为你推荐精彩的影视作品和YouTube视频。\n\n如果你想看电影、电视剧、动漫等影视内容，我会为你推荐相关作品；\n如果你想看新闻、教程、解说、音乐等视频内容，我会为你推荐YouTube视频。\n\n请告诉我你想看什么类型的内容吧！',
+                content: '你好！我是AI推荐助手，可以根据你的喜好为你推荐精彩的影视作品。\n\n请告诉我你想看什么类型的内容吧！',
                 timestamp: new Date()
               },
               movieCardMessage,
@@ -194,8 +183,7 @@ const AIChatModal = ({ isOpen, onClose }: AIChatModalProps) => {
         type: 'ai',
         content: data.content || '抱歉，我现在无法为你推荐内容，请稍后再试。',
         timestamp: new Date(),
-        recommendations: data.recommendations || [],
-        youtubeVideos: data.youtubeVideos || []
+        recommendations: data.recommendations || []
       };
 
       setMessages(prev => [...prev, aiMessage]);
@@ -206,8 +194,7 @@ const AIChatModal = ({ isOpen, onClose }: AIChatModalProps) => {
         type: 'ai',
         content: '抱歉，网络连接出现问题，请检查网络后重试。如果问题持续存在，请稍后再试。',
         timestamp: new Date(),
-        recommendations: [],
-        youtubeVideos: []
+        recommendations: []
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
@@ -226,10 +213,6 @@ const AIChatModal = ({ isOpen, onClose }: AIChatModalProps) => {
     const searchQuery = encodeURIComponent(movie.title);
     router.push(`/search?q=${searchQuery}`);
     onClose();
-  };
-
-  const handleYouTubeVideoSelect = (video: YouTubeVideo) => {
-    setPlayingVideoId(video.id);
   };
 
   // 处理点击背景遮罩层关闭模态框
@@ -317,57 +300,6 @@ const AIChatModal = ({ isOpen, onClose }: AIChatModalProps) => {
                             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{movie.description}</p>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {message.youtubeVideos && message.youtubeVideos.length > 0 && (
-                  <div className="mt-3 space-y-2 self-stretch">
-                    {message.youtubeVideos.map((video, index) => (
-                      <div key={index} className="glass-light rounded-lg overflow-hidden">
-                        {playingVideoId === video.id ? (
-                          <div className="relative">
-                            <div className="aspect-video">
-                              <iframe
-                                src={`https://www.youtube.com/embed/${video.id}?autoplay=1&rel=0`}
-                                className="w-full h-full"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                allowFullScreen
-                                title={video.title}
-                              />
-                            </div>
-                            <button
-                              onClick={() => setPlayingVideoId(null)}
-                              className="absolute top-2 right-2 bg-black bg-opacity-50 text-white rounded-full p-1 hover:bg-opacity-70 transition-opacity"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                            <div className="p-3">
-                              <h4 className="font-medium text-gray-900 dark:text-white text-sm">{video.title}</h4>
-                              <p className="text-xs text-red-600 dark:text-red-400 mt-1">{video.channelTitle}</p>
-                            </div>
-                          </div>
-                        ) : (
-                          <div onClick={() => handleYouTubeVideoSelect(video)} className="p-3 cursor-pointer hover:shadow-md hover:border-red-300 dark:hover:border-red-600 transition-all">
-                            <div className="flex items-start gap-3">
-                              <div className="relative">
-                                <img src={video.thumbnail} alt={video.title} className="w-16 h-12 object-cover rounded flex-shrink-0" />
-                                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded">
-                                  <div className="bg-red-600 text-white rounded-full p-1">
-                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                                      <path d="M8 5v14l11-7z" />
-                                    </svg>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-gray-900 dark:text-white text-sm line-clamp-2">{video.title}</h4>
-                                <p className="text-xs text-red-600 dark:text-red-400 mt-1">{video.channelTitle}</p>
-                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{video.description}</p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>

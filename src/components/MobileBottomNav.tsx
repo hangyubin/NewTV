@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Cat, Clapperboard, Clover, Cloud, Ellipsis, Film, Home, Radio, Star, Tv, Youtube } from 'lucide-react';
+import { Cat, Clapperboard, Clover, Ellipsis, Film, Home, Radio, Star, Tv } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -42,22 +42,15 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
     { icon: Film, label: '电影', href: '/douban?type=movie' },
     { icon: Tv, label: '剧集', href: '/douban?type=tv' },
     { icon: Radio, label: '直播', href: '/live' },
-    { icon: Youtube, label: 'YouTube', href: '/youtube' },
     { icon: Ellipsis, label: '更多', href: '#more' },
   ]);
 
   const [showMore, setShowMore] = useState(false);
   const [hasCustom, setHasCustom] = useState(false);
-  const [hasCloudDisk, setHasCloudDisk] = useState(false);
-  const [cloudDiskName, setCloudDiskName] = useState('网盘');
 
   useEffect(() => {
     const runtimeConfig = (window as any).RUNTIME_CONFIG;
     setHasCustom(!!(runtimeConfig?.CUSTOM_CATEGORIES?.length > 0));
-    setHasCloudDisk(!!(runtimeConfig?.CLOUD_DISK_CONFIG?.enabled));
-    if (runtimeConfig?.CLOUD_DISK_CONFIG?.name) {
-      setCloudDiskName(runtimeConfig.CLOUD_DISK_CONFIG.name);
-    }
   }, []);
 
   const isActive = (href: string) => {
@@ -77,11 +70,6 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
     // 直播页面匹配
     if (href === '/live') {
       return decodedActive === '/live' || decodedActive.startsWith('/live/');
-    }
-
-    // YouTube页面匹配
-    if (href === '/youtube') {
-      return decodedActive === '/youtube' || decodedActive.startsWith('/youtube/');
     }
 
     // 处理豆瓣类型页面的匹配
@@ -111,8 +99,7 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
     currentActive.includes('type=anime') ||
     currentActive.includes('type=show') ||
     currentActive.includes('type=short-drama') ||
-    currentActive.includes('type=custom') ||
-    currentActive.includes('/cloud-disk')
+    currentActive.includes('type=custom')
   ) : false;
 
   return (
@@ -148,7 +135,7 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
                     className={`transition-colors duration-200 ${active
                       ? 'text-blue-600 dark:text-blue-400'
                       : 'text-gray-600 dark:text-gray-300'
-                      } ${item.label === 'YouTube' ? 'text-[10px]' : 'text-xs'}`}
+                      } text-xs`}
                   >
                     {item.label}
                   </span>
@@ -207,15 +194,6 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
                   onClick={() => setShowMore(false)}
                 >
                   <Star className='h-4 w-4' /> 纪录
-                </Link>
-              )}
-              {hasCloudDisk && (
-                <Link
-                  href='/cloud-disk'
-                  className='flex-1 px-2 py-3 flex items-center justify-center gap-1 text-xs text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400'
-                  onClick={() => setShowMore(false)}
-                >
-                  <Cloud className='h-4 w-4' /> {cloudDiskName}
                 </Link>
               )}
             </div>
