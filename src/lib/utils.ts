@@ -123,33 +123,44 @@ function getDoubanImageProxyConfig(): {
 export function processImageUrl(originalUrl: string): string {
   if (!originalUrl) return originalUrl;
 
-  // 仅处理豆瓣图片代理
-  if (!originalUrl.includes('doubanio.com')) {
+  // 处理豆瓣图片代理
+  if (originalUrl.includes('doubanio.com')) {
+    const { proxyType, proxyUrl } = getDoubanImageProxyConfig();
+    switch (proxyType) {
+      case 'server':
+        return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
+      case 'img3':
+        return originalUrl.replace(/img\d+\.doubanio\.com/g, 'img3.doubanio.com');
+      case 'cmliussss-cdn-tencent':
+        return originalUrl.replace(
+          /img\d+\.doubanio\.com/g,
+          'img.doubanio.cmliussss.net'
+        );
+      case 'cmliussss-cdn-ali':
+        return originalUrl.replace(
+          /img\d+\.doubanio\.com/g,
+          'img.doubanio.cmliussss.com'
+        );
+      case 'custom':
+        return `${proxyUrl}${encodeURIComponent(originalUrl)}`;
+      case 'direct':
+      default:
+        return originalUrl;
+    }
+  }
+
+  // 处理短剧图片 - 确保返回有效的 URL
+  if (originalUrl) {
+    // 检查是否是相对路径
+    if (!originalUrl.startsWith('http://') && !originalUrl.startsWith('https://')) {
+      // 对于相对路径，返回原始 URL，让调用方处理
+      return originalUrl;
+    }
+    // 对于绝对路径，直接返回
     return originalUrl;
   }
 
-  const { proxyType, proxyUrl } = getDoubanImageProxyConfig();
-  switch (proxyType) {
-    case 'server':
-      return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
-    case 'img3':
-      return originalUrl.replace(/img\d+\.doubanio\.com/g, 'img3.doubanio.com');
-    case 'cmliussss-cdn-tencent':
-      return originalUrl.replace(
-        /img\d+\.doubanio\.com/g,
-        'img.doubanio.cmliussss.net'
-      );
-    case 'cmliussss-cdn-ali':
-      return originalUrl.replace(
-        /img\d+\.doubanio\.com/g,
-        'img.doubanio.cmliussss.com'
-      );
-    case 'custom':
-      return `${proxyUrl}${encodeURIComponent(originalUrl)}`;
-    case 'direct':
-    default:
-      return originalUrl;
-  }
+  return originalUrl;
 }
 
 /**
