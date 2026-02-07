@@ -421,7 +421,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>((props, ref) => {
 
     if (origin === 'live' && actualSource && actualId) {
       // 直播内容跳转到直播页面
-      const url = `/live?source=${actualSource.replace('live_', '')}&id=${actualId.replace('live_', '')}`;
+      const sourceParam = typeof actualSource === 'string' ? actualSource.replace('live_', '') : actualSource;
+      const idParam = typeof actualId === 'string' ? actualId.replace('live_', '') : actualId;
+      const url = `/live?source=${sourceParam}&id=${idParam}`;
       window.open(url, '_blank');
     } else if (from === 'douban' || (isAggregate && !actualSource && !actualId)) {
       const url = `/play?title=${encodeURIComponent(actualTitle.trim())}${actualYear ? `&year=${actualYear}` : ''}${doubanIdParam}${actualSearchType ? `&stype=${actualSearchType}` : ''}${isAggregate ? '&prefer=true' : ''}${actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''}`;
