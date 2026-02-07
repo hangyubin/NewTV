@@ -118,15 +118,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>((props, ref) => {
     setDynamicDoubanId(douban_id);
   }, [douban_id]);
 
-  // 清理定时器
-  useEffect(() => {
-    return () => {
-      if (hoverTimerRef.current) {
-        clearTimeout(hoverTimerRef.current);
-      }
-    };
-  }, []);
-
   useImperativeHandle(ref, () => ({
     setEpisodes: (eps?: number) => setDynamicEpisodes(eps),
     setSourceNames: (names?: string[]) => setDynamicSourceNames(names),
@@ -254,29 +245,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>((props, ref) => {
     },
     [from, actualSource, actualId, id, onDelete]
   );
-
-  // 悬停事件处理（仅豆瓣卡片）
-  const handleMouseEnter = useCallback(() => {
-    if (from !== 'douban') return;
-
-    setIsHovering(true);
-    // 清除之前的定时器
-    if (hoverTimerRef.current) {
-      clearTimeout(hoverTimerRef.current);
-    }
-  }, [from]);
-
-  const handleMouseLeave = useCallback(() => {
-    if (from !== 'douban') return;
-
-    setIsHovering(false);
-
-    // 清除定时器
-    if (hoverTimerRef.current) {
-      clearTimeout(hoverTimerRef.current);
-      hoverTimerRef.current = null;
-    }
-  }, [from]);
 
   // 跳转到播放页面的函数
   const navigateToPlay = useCallback(() => {
@@ -681,8 +649,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>((props, ref) => {
       <div
         className='group relative w-full glass-card cursor-pointer transition-transform duration-200 ease-out hover:scale-105 hover:shadow-elevated hover:z-10 flex flex-col h-full'
         onClick={handleClick}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
         {...longPressProps}
         style={{
           // 禁用所有默认的长按和选择效果
