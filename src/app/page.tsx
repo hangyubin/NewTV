@@ -6,17 +6,15 @@ import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 
-
-// 客户端收藏 API
+import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
+import { getDoubanCategories } from '@/lib/douban.client';
 import {
   clearAllFavorites,
   getAllFavorites,
   getAllPlayRecords,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
-import { getDoubanCategories, getDoubanRecommends } from '@/lib/douban.client';
 import { getRecommendedShortDramas } from '@/lib/short-drama.client';
-import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import { DoubanItem, ShortDramaItem } from '@/lib/types';
 
 import CapsuleSwitch from '@/components/CapsuleSwitch';

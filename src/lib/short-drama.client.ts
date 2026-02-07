@@ -93,7 +93,7 @@ export async function getRecommendedShortDramas(
 
     const result = await response.json();
     // 转换数据格式以匹配预期的 ShortDramaItem 结构
-    return result.results.map((item: any) => ({
+    return result.results.map((item: { id: string; title: string; pic?: string; cover?: string; remark?: string; type_name?: string; area?: string; year?: string; state?: string; actor?: string; director?: string; desc?: string; episodes?: number; source_name?: string }) => ({
       id: parseInt(item.id) || 0,
       name: item.title || '',
       pic: item.pic || item.cover || '',
@@ -109,7 +109,6 @@ export async function getRecommendedShortDramas(
       source_name: item.source_name || '短剧',
     }));
   } catch (error) {
-    console.error('获取推荐短剧失败:', error);
     return [];
   }
 }
@@ -172,10 +171,6 @@ export function cleanExpiredCache(): void {
       cleanedCount++;
     }
   });
-  
-  if (cleanedCount > 0) {
-    console.log(`LocalStorage 清理了 ${cleanedCount} 个过期的短剧缓存项`);
-  }
 }
 
 /**
@@ -188,5 +183,4 @@ export function clearAllCache(): void {
     key.startsWith('shortdrama-')
   );
   keys.forEach(key => localStorage.removeItem(key));
-  console.log(`清理了 ${keys.length} 个短剧缓存项`);
 }
