@@ -106,10 +106,6 @@ export async function POST(request: NextRequest) {
         ...(currentConfig.UserConfig || {}),
         ...(partialConfig.UserConfig || {}),
       },
-      AIConfig: {
-        ...(currentConfig.AIConfig || {}),
-        ...(partialConfig.AIConfig || {}),
-      },
       SiteConfig: {
         ...(currentConfig.SiteConfig || {}),
         ...(partialConfig.SiteConfig || {}),

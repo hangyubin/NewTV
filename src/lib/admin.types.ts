@@ -69,7 +69,6 @@ export interface AdminConfig {
     apiUrl: string;
     apiKey: string;
     model: string;
-    customModel?: string;
   };
 }
 

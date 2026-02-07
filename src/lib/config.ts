@@ -198,8 +198,7 @@ async function getInitConfig(configFile: string, subConfig: {
     cfgFile = {} as ConfigFileStruct;
   }
 
-  // 在初始化之前，先获取旧的配置
-  const oldConfig = await db.getAdminConfig();
+  
 
   const adminConfig: AdminConfig = {
     ConfigFile: configFile,
@@ -357,15 +356,6 @@ export function configSelfCheck(adminConfig: AdminConfig): AdminConfig {
   }
   if (!adminConfig.LiveConfig || !Array.isArray(adminConfig.LiveConfig)) {
     adminConfig.LiveConfig = [];
-  }
-  if (!adminConfig.AIConfig) {
-    adminConfig.AIConfig = {
-      enabled: false,
-      apiUrl: '',
-      apiKey: '',
-      model: 'gpt-3.5-turbo',
-      customModel: '',
-    };
   }
 
   // 站长变更自检

@@ -1,11 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any,react-hooks/exhaustive-deps,@typescript-eslint/no-empty-function */
 
-import { Bot, ExternalLink, Heart, Link, PlayCircleIcon, Radio, Trash2 } from 'lucide-react';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import React, {
   forwardRef,
-  memo,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -13,6 +9,9 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { ExternalLink, Heart, Link, PlayCircleIcon, Radio, Trash2 } from 'lucide-react';
 
 import {
   deleteFavorite,
@@ -30,7 +29,6 @@ import { ImagePlaceholder } from '@/components/ImagePlaceholder';
 import MobileActionSheet from '@/components/MobileActionSheet';
 import CombinedDetailModal from './CombinedDetailModal';
 import VideoDetailPreview from '@/components/VideoDetailPreview';
-import AIChatModal from '@/components/AIChatModal';
 import { SearchResult, DoubanDetail } from '@/lib/types';
 
 export interface VideoCardProps {
@@ -61,8 +59,8 @@ export type VideoCardHandle = {
   setDoubanId: (id?: number) => void;
 };
 
-const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard(
-  {
+const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>((props, ref) => {
+  const {
     id,
     title = '',
     query = '',
@@ -82,9 +80,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
     isBangumi = false,
     isAggregate = false,
     origin = 'vod',
-  }: VideoCardProps,
-  ref
-) {
+  } = props;
   const router = useRouter();
   const [favorited, setFavorited] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -98,15 +94,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
   const [videoDetail, setVideoDetail] = useState<SearchResult | null>(null);
   const [isLoadingModal, setIsLoadingModal] = useState(false);
   const autoPlayTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // 悬停AI功能相关状态（仅豆瓣卡片）
-  const [isHovering, setIsHovering] = useState(false);
-  const [showAIButton, setShowAIButton] = useState(false);
-  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // AI聊天模态框状态
-  const [isAIChatModalOpen, setIsAIChatModalOpen] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(false);
 
   // 可外部修改的可控字段
   const [dynamicEpisodes, setDynamicEpisodes] = useState<number | undefined>(
@@ -130,20 +117,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
   useEffect(() => {
     setDynamicDoubanId(douban_id);
   }, [douban_id]);
-
-  // 屏幕尺寸检测
-  useEffect(() => {
-    const checkScreenSize = () => {
-      setIsDesktop(window.innerWidth >= 768);
-    };
-
-    checkScreenSize();
-    window.addEventListener('resize', checkScreenSize);
-
-    return () => {
-      window.removeEventListener('resize', checkScreenSize);
-    };
-  }, []);
 
   // 清理定时器
   useEffect(() => {
@@ -282,7 +255,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
     [from, actualSource, actualId, id, onDelete]
   );
 
-  // 悬停AI功能事件处理（仅豆瓣卡片）
+  // 悬停事件处理（仅豆瓣卡片）
   const handleMouseEnter = useCallback(() => {
     if (from !== 'douban') return;
 
@@ -291,18 +264,12 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
     if (hoverTimerRef.current) {
       clearTimeout(hoverTimerRef.current);
     }
-
-    // 设置0.5秒定时器
-    hoverTimerRef.current = setTimeout(() => {
-      setShowAIButton(true);
-    }, 500);
   }, [from]);
 
   const handleMouseLeave = useCallback(() => {
     if (from !== 'douban') return;
 
     setIsHovering(false);
-    setShowAIButton(false);
 
     // 清除定时器
     if (hoverTimerRef.current) {
@@ -310,38 +277,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
       hoverTimerRef.current = null;
     }
   }, [from]);
-
-  const handleAIButtonClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    // 清除之前的聊天缓存，确保每次都显示新的剧信息
-    localStorage.removeItem('ai-chat-messages');
-
-    // 构建豆瓣链接
-    const doubanLink = actualDoubanId && actualDoubanId !== 0
-      ? (isBangumi
-        ? `https://bgm.tv/subject/${actualDoubanId}`
-        : `https://movie.douban.com/subject/${actualDoubanId}`)
-      : '';
-
-    // 存储剧名、海报和豆瓣链接信息到localStorage
-    const presetContent = {
-      title: actualTitle,
-      poster: processImageUrl(actualPoster),
-      doubanLink: doubanLink,
-      hiddenContent: `这部剧的名字叫《${actualTitle}》，这部剧豆瓣链接地址：${doubanLink}\n`,
-      timestamp: Date.now()
-    };
-    localStorage.setItem('ai-chat-preset', JSON.stringify(presetContent));
-
-    // PC端打开模态框，移动端跳转页面
-    if (isDesktop) {
-      setIsAIChatModalOpen(true);
-    } else {
-      router.push('/ai-chat');
-    }
-  }, [actualTitle, actualPoster, actualDoubanId, isBangumi, router, isDesktop]);
 
   // 跳转到播放页面的函数
   const navigateToPlay = useCallback(() => {
@@ -359,15 +294,10 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
       const url = `/live?source=${actualSource.replace('live_', '')}&id=${actualId.replace('live_', '')}`;
       router.push(url);
     } else if (from === 'douban' || (isAggregate && !actualSource && !actualId)) {
-      const url = `/play?title=${encodeURIComponent(actualTitle.trim())}${actualYear ? `&year=${actualYear}` : ''
-        }${doubanIdParam}${actualSearchType ? `&stype=${actualSearchType}` : ''}${isAggregate ? '&prefer=true' : ''}${actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''}`;
+      const url = `/play?title=${encodeURIComponent(actualTitle.trim())}${actualYear ? `&year=${actualYear}` : ''}${doubanIdParam}${actualSearchType ? `&stype=${actualSearchType}` : ''}${isAggregate ? '&prefer=true' : ''}${actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''}`;
       router.push(url);
     } else if (actualSource && actualId) {
-      const url = `/play?source=${actualSource}&id=${actualId}&title=${encodeURIComponent(
-        actualTitle
-      )}${actualYear ? `&year=${actualYear}` : ''}${doubanIdParam}${isAggregate ? '&prefer=true' : ''
-        }${actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''
-        }${actualSearchType ? `&stype=${actualSearchType}` : ''}`;
+      const url = `/play?source=${actualSource}&id=${actualId}&title=${encodeURIComponent(actualTitle)}${actualYear ? `&year=${actualYear}` : ''}${doubanIdParam}${isAggregate ? '&prefer=true' : ''}${actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''}${actualSearchType ? `&stype=${actualSearchType}` : ''}`;
       router.push(url);
     }
   }, [
@@ -383,8 +313,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
     actualSearchType,
     actualDoubanId,
   ]);
-
-
 
   const handleDoubanClick = useCallback(async () => {
     // 防止重复调用
@@ -413,8 +341,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
           }
           return { success: false, data: null };
         })
-        .catch(error => {
-          console.error('获取豆瓣详情失败:', error);
+        .catch(() => {
           return { success: false, data: null };
         });
       promises.push(doubanPromise);
@@ -432,8 +359,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
         }
         return { success: false, results: [] };
       })
-      .catch(error => {
-        console.error('搜索视频源失败:', error);
+      .catch(() => {
         return { success: false, results: [] };
       });
     promises.push(searchPromise);
@@ -531,11 +457,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
       const url = `/play?title=${encodeURIComponent(actualTitle.trim())}${actualYear ? `&year=${actualYear}` : ''}${doubanIdParam}${actualSearchType ? `&stype=${actualSearchType}` : ''}${isAggregate ? '&prefer=true' : ''}${actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''}`;
       window.open(url, '_blank');
     } else if (actualSource && actualId) {
-      const url = `/play?source=${actualSource}&id=${actualId}&title=${encodeURIComponent(
-        actualTitle
-      )}${actualYear ? `&year=${actualYear}` : ''}${doubanIdParam}${isAggregate ? '&prefer=true' : ''
-        }${actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''
-        }${actualSearchType ? `&stype=${actualSearchType}` : ''}`;
+      const url = `/play?source=${actualSource}&id=${actualId}&title=${encodeURIComponent(actualTitle)}${actualYear ? `&year=${actualYear}` : ''}${doubanIdParam}${isAggregate ? '&prefer=true' : ''}${actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''}${actualSearchType ? `&stype=${actualSearchType}` : ''}`;
       window.open(url, '_blank');
     }
   }, [
@@ -644,43 +566,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
       });
     }
 
-    // 问问AI操作 - 替换豆瓣详情页
-    actions.push({
-      id: 'ai-chat',
-      label: '问问AI',
-      icon: <Bot size={20} />,
-      onClick: () => {
-        // 清除之前的聊天缓存，确保每次都显示新的剧信息
-        localStorage.removeItem('ai-chat-messages');
-
-        // 构建豆瓣链接
-        const doubanLink = actualDoubanId && actualDoubanId !== 0
-          ? (isBangumi
-            ? `https://bgm.tv/subject/${actualDoubanId}`
-            : `https://movie.douban.com/subject/${actualDoubanId}`)
-          : '';
-
-        // 存储剧名、海报和豆瓣链接信息到localStorage
-        const presetContent = {
-          title: actualTitle,
-          poster: processImageUrl(actualPoster),
-          doubanLink: doubanLink,
-          hiddenContent: `这部剧的名字叫《${actualTitle}》，这部剧豆瓣链接地址：${doubanLink}\n`,
-          timestamp: Date.now()
-        };
-        localStorage.setItem('ai-chat-preset', JSON.stringify(presetContent));
-
-        // PC端打开模态框，移动端跳转页面
-        if (isDesktop) {
-          setIsAIChatModalOpen(true);
-        } else {
-          router.push('/ai-chat');
-        }
-      },
-      color: 'default' as const,
-    });
-
-    // 新标签页播放
     if (config.showPlayButton) {
       actions.push({
         id: 'play-new-tab',
@@ -787,8 +672,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
     handleToggleFavorite,
     handleDeleteRecord,
     handlePlayInNewTab,
-    isDesktop,
-    setIsAIChatModalOpen,
     router,
     origin,
   ]);
@@ -1014,10 +897,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
                 <Heart
                   onClick={handleToggleFavorite}
                   size={20}
-                  className={`transition-all duration-300 ease-out ${favorited
-                    ? 'fill-red-600 stroke-red-600'
-                    : 'fill-transparent stroke-white hover:stroke-red-400'
-                    } hover:scale-[1.1]`}
+                  className={`transition-all duration-300 ease-out ${favorited ? 'fill-red-600 stroke-red-600' : 'fill-transparent stroke-white hover:stroke-red-400'} hover:scale-[1.1]`}
                   style={{
                     WebkitUserSelect: 'none',
                     userSelect: 'none',
@@ -1115,6 +995,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
                   WebkitUserSelect: 'none',
                   userSelect: 'none',
                   WebkitTouchCallout: 'none',
+                  pointerEvents: 'none',
                 } as React.CSSProperties}
                 onContextMenu={(e) => {
                   e.preventDefault();
@@ -1283,84 +1164,65 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
           </div>
         )}
 
-        {/* 标题与来源 - 豆瓣卡片悬停时整个底栏变成问问AI按钮 */}
-        {from === 'douban' && showAIButton ? (
-          <button
-            onClick={handleAIButtonClick}
-            className='flex-1 flex flex-col justify-center px-2 py-3 text-center bg-blue-500 hover:bg-white hover:text-black text-white transition-all duration-300 ease-in-out rounded-b-lg'
-            style={{
-              WebkitUserSelect: 'none',
-              userSelect: 'none',
-              WebkitTouchCallout: 'none',
-            } as React.CSSProperties}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              return false;
-            }}
-          >
-            <span className='text-sm font-medium'>问问 AI</span>
-          </button>
-        ) : (
+        {/* 标题与来源 */}
+        <div
+          className='flex-1 flex flex-col justify-center px-2 py-3 text-center'
+          style={{
+            WebkitUserSelect: 'none',
+            userSelect: 'none',
+            WebkitTouchCallout: 'none',
+          } as React.CSSProperties}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            return false;
+          }}
+        >
           <div
-            className='flex-1 flex flex-col justify-center px-2 py-3 text-center'
+            className='relative'
             style={{
               WebkitUserSelect: 'none',
               userSelect: 'none',
               WebkitTouchCallout: 'none',
             } as React.CSSProperties}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              return false;
-            }}
           >
-            <div
-              className='relative'
+            {/* 标题文字 */}
+            <span
+              className={`block font-semibold text-gray-900 dark:text-gray-100 transition-all duration-300 ease-in-out group-hover:text-black dark:group-hover:text-white peer ${from === 'douban' && actualTitle.length > 8 ? 'text-xs' : 'text-sm'}`}
               style={{
                 WebkitUserSelect: 'none',
                 userSelect: 'none',
                 WebkitTouchCallout: 'none',
               } as React.CSSProperties}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                return false;
+              }}
             >
-              {/* 标题文字 */}
-              <span
-                className={`block font-semibold text-gray-900 dark:text-gray-100 transition-all duration-300 ease-in-out group-hover:text-black dark:group-hover:text-white peer ${from === 'douban' && actualTitle.length > 8 ? 'text-xs' : 'text-sm'
-                  }`}
-                style={{
-                  WebkitUserSelect: 'none',
-                  userSelect: 'none',
-                  WebkitTouchCallout: 'none',
-                } as React.CSSProperties}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  return false;
-                }}
-              >
-                {actualTitle.length <= 10 ? actualTitle : `${actualTitle.slice(0, 10)}...`}
-              </span>
+              {actualTitle.length <= 10 ? actualTitle : `${actualTitle.slice(0, 10)}...`}
+            </span>
 
-              {/* 自定义 tooltip */}
+            {/* 自定义 tooltip */}
+            <div
+              className='absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded-md shadow-lg opacity-0 invisible peer-hover:opacity-100 peer-hover:visible transition-all duration-200 ease-out delay-100 whitespace-nowrap pointer-events-none'
+              style={{
+                WebkitUserSelect: 'none',
+                userSelect: 'none',
+                WebkitTouchCallout: 'none',
+              } as React.CSSProperties}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                return false;
+              }}
+            >
+              {actualTitle}
               <div
-                className='absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded-md shadow-lg opacity-0 invisible peer-hover:opacity-100 peer-hover:visible transition-all duration-200 ease-out delay-100 whitespace-nowrap pointer-events-none'
+                className='absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800'
                 style={{
                   WebkitUserSelect: 'none',
                   userSelect: 'none',
                   WebkitTouchCallout: 'none',
                 } as React.CSSProperties}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  return false;
-                }}
-              >
-                {actualTitle}
-                <div
-                  className='absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800'
-                  style={{
-                    WebkitUserSelect: 'none',
-                    userSelect: 'none',
-                    WebkitTouchCallout: 'none',
-                  } as React.CSSProperties}
-                ></div>
-              </div>
+              ></div>
             </div>
             {config.showSourceName && source_name && (
               <span
@@ -1395,7 +1257,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
               </span>
             )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* 操作菜单 - 支持右键和长按触发 */}
@@ -1455,16 +1317,8 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
         poster={actualPoster}
         title={actualTitle}
       />
-      {isDesktop && (
-        <AIChatModal
-          isOpen={isAIChatModalOpen}
-          onClose={() => setIsAIChatModalOpen(false)}
-        />
-      )}
     </>
   );
-}
+});
 
-);
-
-export default memo(VideoCard);
+export default VideoCard;

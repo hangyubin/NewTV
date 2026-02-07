@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 
-import AIChatEntry from './AIChatEntry';
 import { BackButton } from './BackButton';
 import { useSite } from './SiteProvider';
 import { ThemeToggle } from './ThemeToggle';
@@ -17,7 +16,7 @@ const MobileHeader = ({ showBackButton = false }: MobileHeaderProps) => {
   return (
     <header className='md:hidden fixed top-0 left-0 right-0 z-[999] w-full glass-nav border-b border-white/20 shadow-glass dark:border-white/10'>
       <div className='h-12 flex items-center justify-between px-4'>
-        {/* 左侧：搜索按钮、AI推荐按钮、返回按钮和设置按钮 */}
+        {/* 左侧：搜索按钮、返回按钮和设置按钮 */}
         <div className='flex items-center gap-2'>
           <Link
             href='/search'
@@ -38,7 +37,6 @@ const MobileHeader = ({ showBackButton = false }: MobileHeaderProps) => {
               />
             </svg>
           </Link>
-          <AIChatEntry />
           {showBackButton && <BackButton />}
         </div>
 

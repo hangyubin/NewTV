@@ -24,7 +24,6 @@ import { CSS } from '@dnd-kit/utilities';
 import {
   AlertCircle,
   AlertTriangle,
-  Bot,
   Check,
   CheckCircle,
   ChevronDown,
@@ -47,7 +46,6 @@ import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 
 import DataMigration from '@/components/DataMigration';
 import PageLayout from '@/components/PageLayout';
-import ExternalAIConfigComponent from '@/components/AIConfigComponent';
 
 // 统一按钮样式系统
 const buttonStyles = {
@@ -4766,7 +4764,6 @@ function AdminPageClient() {
     videoSource: false,
     liveSource: false,
     siteConfig: false,
-    aiConfig: false,
     categoryConfig: false,
     configFile: false,
     dataMigration: false,
@@ -4912,21 +4909,6 @@ function AdminPageClient() {
             onToggle={() => toggleTab('siteConfig')}
           >
             <SiteConfigComponent config={config} refreshConfig={fetchConfig} />
-          </CollapsibleTab>
-
-          {/* AI配置标签 */}
-          <CollapsibleTab
-            title='AI推荐配置'
-            icon={
-              <Bot
-                size={20}
-                className='text-gray-600 dark:text-gray-400'
-              />
-            }
-            isExpanded={expandedTabs.aiConfig}
-            onToggle={() => toggleTab('aiConfig')}
-          >
-            <ExternalAIConfigComponent />
           </CollapsibleTab>
 
           <div className='space-y-4'>
