@@ -93,10 +93,10 @@ export async function getRecommendedShortDramas(
 
     const result = await response.json();
     // 转换数据格式以匹配预期的 ShortDramaItem 结构
-    return result.results.map((item: { id: string; title: string; pic?: string; cover?: string; remark?: string; type_name?: string; area?: string; year?: string; state?: string; actor?: string; director?: string; desc?: string; episodes?: number; source_name?: string }) => ({
+    return result.results.map((item: { id: string; title: string; pic?: string; cover?: string; poster?: string; remark?: string; type_name?: string; area?: string; year?: string; state?: string; actor?: string; director?: string; desc?: string; episodes?: number; source_name?: string }) => ({
       id: parseInt(item.id) || 0,
       name: item.title || '',
-      pic: item.pic || item.cover || '',
+      pic: item.poster || item.pic || item.cover || '',
       remark: item.remark || '',
       type: item.type_name || '',
       area: item.area || '',
