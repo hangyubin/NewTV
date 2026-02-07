@@ -269,6 +269,10 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>((props, ref) => {
     } else if (actualSource && actualId) {
       const url = `/play?source=${actualSource}&id=${actualId}&title=${encodeURIComponent(actualTitle)}${actualYear ? `&year=${actualYear}` : ''}${doubanIdParam}${isAggregate ? '&prefer=true' : ''}${actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''}${actualSearchType ? `&stype=${actualSearchType}` : ''}`;
       router.push(url);
+    } else if (from === 'short-drama' && actualId) {
+      // 短剧特殊处理 - 即使没有source也能跳转
+      const url = `/play?id=${actualId}&title=${encodeURIComponent(actualTitle)}${actualYear ? `&year=${actualYear}` : ''}${doubanIdParam}${actualSearchType ? `&stype=${actualSearchType}` : ''}`;
+      router.push(url);
     }
   }, [
     origin,
@@ -430,6 +434,10 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>((props, ref) => {
       window.open(url, '_blank');
     } else if (actualSource && actualId) {
       const url = `/play?source=${actualSource}&id=${actualId}&title=${encodeURIComponent(actualTitle)}${actualYear ? `&year=${actualYear}` : ''}${doubanIdParam}${isAggregate ? '&prefer=true' : ''}${actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''}${actualSearchType ? `&stype=${actualSearchType}` : ''}`;
+      window.open(url, '_blank');
+    } else if (from === 'short-drama' && actualId) {
+      // 短剧特殊处理 - 即使没有source也能跳转
+      const url = `/play?id=${actualId}&title=${encodeURIComponent(actualTitle)}${actualYear ? `&year=${actualYear}` : ''}${doubanIdParam}${actualSearchType ? `&stype=${actualSearchType}` : ''}`;
       window.open(url, '_blank');
     }
   }, [
@@ -728,6 +736,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>((props, ref) => {
                 setTimeout(() => {
                   img.src = processImageUrl(actualPoster);
                 }, 2000);
+              } else {
+                // 重试后仍然失败，显示图片加载失败状态
+                setIsLoading(true);
               }
             }}
             style={{

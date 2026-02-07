@@ -153,8 +153,8 @@ export function processImageUrl(originalUrl: string): string {
   if (originalUrl) {
     // 检查是否是相对路径
     if (!originalUrl.startsWith('http://') && !originalUrl.startsWith('https://')) {
-      // 对于相对路径，返回原始 URL，让调用方处理
-      return originalUrl;
+      // 对于相对路径，尝试使用图片代理
+      return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
     }
     // 对于绝对路径，直接返回
     return originalUrl;
