@@ -32,7 +32,7 @@ import VideoDetailPreview from '@/components/VideoDetailPreview';
 import { SearchResult, DoubanDetail } from '@/lib/types';
 
 export interface VideoCardProps {
-  id?: string;
+  id?: string | number;
   source?: string;
   title?: string;
   query?: string;
@@ -42,7 +42,7 @@ export interface VideoCardProps {
   source_names?: string[];
   progress?: number;
   year?: string;
-  from: 'playrecord' | 'favorite' | 'search' | 'douban';
+  from: 'playrecord' | 'favorite' | 'search' | 'douban' | 'short-drama';
   currentEpisode?: number;
   douban_id?: number;
   onDelete?: () => void;
@@ -127,10 +127,10 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>((props, ref) => {
   const actualTitle = title;
   const actualPoster = poster;
   // 对于播放记录，id是完整的存储key（source+id格式），需要解析
-  const actualSource = from === 'playrecord' && id?.includes('+') 
+  const actualSource = from === 'playrecord' && typeof id === 'string' && id.includes('+') 
     ? id.split('+')[0] 
     : source;
-  const actualId = from === 'playrecord' && id?.includes('+') 
+  const actualId = from === 'playrecord' && typeof id === 'string' && id.includes('+') 
     ? id.split('+')[1] 
     : id;
   const actualDoubanId = dynamicDoubanId;
@@ -229,7 +229,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>((props, ref) => {
       if (from !== 'playrecord' || !id) return;
       try {
         // 对于观看记录页面，id是完整的存储key，需要解析出source和id
-        if (from === 'playrecord') {
+        if (from === 'playrecord' && typeof id === 'string') {
           const [source, videoId] = id.split('+');
           if (source && videoId) {
             await deletePlayRecord(source, videoId);
@@ -514,6 +514,16 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>((props, ref) => {
         showDoubanLink: true,
         showRating: !!rate,
         showYear: false,
+      },
+      'short-drama': {
+        showSourceName: true,
+        showProgress: false,
+        showPlayButton: true,
+        showHeart: true,
+        showCheckCircle: false,
+        showDoubanLink: false,
+        showRating: false,
+        showYear: true,
       },
     };
     return configs[from] || configs.search;

@@ -695,7 +695,7 @@ async function fetchFromApi<T>(path: string): Promise<T> {
 /**
  * 生成存储key
  */
-export function generateStorageKey(source: string, id: string): string {
+export function generateStorageKey(source: string, id: string | number): string {
   return `${source}+${id}`;
 }
 
@@ -862,7 +862,7 @@ export async function savePlayRecord(
  */
 export async function deletePlayRecord(
   source: string,
-  id: string
+  id: string | number
 ): Promise<void> {
   const key = generateStorageKey(source, id);
   console.log('开始删除播放记录:', { source, id, key });
@@ -1229,7 +1229,7 @@ export async function getAllFavorites(): Promise<Record<string, Favorite>> {
  */
 export async function saveFavorite(
   source: string,
-  id: string,
+  id: string | number,
   favorite: Favorite
 ): Promise<void> {
   const key = generateStorageKey(source, id);
@@ -1293,7 +1293,7 @@ export async function saveFavorite(
  */
 export async function deleteFavorite(
   source: string,
-  id: string
+  id: string | number
 ): Promise<void> {
   const key = generateStorageKey(source, id);
 
@@ -1352,7 +1352,7 @@ export async function deleteFavorite(
  */
 export async function isFavorited(
   source: string,
-  id: string
+  id: string | number
 ): Promise<boolean> {
   const key = generateStorageKey(source, id);
 

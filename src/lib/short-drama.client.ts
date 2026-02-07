@@ -18,6 +18,23 @@ export interface ShortDramaResponse {
   totalPages: number;
 }
 
+export interface ShortDramaItem {
+  id: number;
+  name: string;
+  pic: string;
+  remark: string;
+  type: string;
+  area: string;
+  year: string;
+  state: string;
+  actor: string;
+  director: string;
+  des: string;
+  total_episodes: number;
+  source_name: string;
+  search_title?: string;
+}
+
 /**
  * 获取短剧数据
  */
@@ -56,6 +73,48 @@ export async function getShortDramaData(
 }
 
 /**
+ * 获取推荐短剧列表
+ */
+export async function getRecommendedShortDramas(
+  category?: number,
+  size = 10
+): Promise<ShortDramaItem[]> {
+  try {
+    // 使用现有的短剧 API 端点
+    const params = new URLSearchParams();
+    params.append('limit', size.toString());
+    const apiUrl = `/api/short-drama?${params.toString()}`;
+
+    const response = await fetch(apiUrl);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    // 转换数据格式以匹配预期的 ShortDramaItem 结构
+    return result.results.map((item: any) => ({
+      id: parseInt(item.id) || 0,
+      name: item.title || '',
+      pic: item.pic || item.cover || '',
+      remark: item.remark || '',
+      type: item.type_name || '',
+      area: item.area || '',
+      year: item.year || '',
+      state: item.state || '',
+      actor: item.actor || '',
+      director: item.director || '',
+      des: item.desc || '',
+      total_episodes: item.episodes || 0,
+      source_name: item.source_name || '短剧',
+    }));
+  } catch (error) {
+    console.error('获取推荐短剧失败:', error);
+    return [];
+  }
+}
+
+/**
  * 短剧类型选项
  */
 export const shortDramaTypeOptions = [
@@ -85,3 +144,49 @@ export const shortDramaRegionOptions = [
   { label: '英国', value: 'uk' },
   { label: '泰国', value: 'thailand' },
 ];
+
+/**
+ * 清理过期缓存
+ */
+export function cleanExpiredCache(): void {
+  if (typeof localStorage === 'undefined') return;
+  
+  const keys = Object.keys(localStorage).filter(key => 
+    key.startsWith('shortdrama-')
+  );
+  let cleanedCount = 0;
+  
+  keys.forEach(key => {
+    try {
+      const cached = localStorage.getItem(key);
+      if (cached) {
+        const { expire } = JSON.parse(cached);
+        if (Date.now() > expire) {
+          localStorage.removeItem(key);
+          cleanedCount++;
+        }
+      }
+    } catch (e) {
+      // 清理损坏的缓存数据
+      localStorage.removeItem(key);
+      cleanedCount++;
+    }
+  });
+  
+  if (cleanedCount > 0) {
+    console.log(`LocalStorage 清理了 ${cleanedCount} 个过期的短剧缓存项`);
+  }
+}
+
+/**
+ * 清理所有缓存
+ */
+export function clearAllCache(): void {
+  if (typeof localStorage === 'undefined') return;
+  
+  const keys = Object.keys(localStorage).filter(key => 
+    key.startsWith('shortdrama-')
+  );
+  keys.forEach(key => localStorage.removeItem(key));
+  console.log(`清理了 ${keys.length} 个短剧缓存项`);
+}

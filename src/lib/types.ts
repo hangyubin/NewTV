@@ -187,3 +187,21 @@ export interface DanmakuConfig {
   speed?: number; // 弹幕速度
   area?: number; // 弹幕显示区域 (0-1)
 }
+
+// 短剧数据结构
+export interface ShortDramaItem {
+  id: number;
+  name: string;
+  pic: string;
+  remark: string;
+  type: string;
+  area: string;
+  year: string;
+  state: string;
+  actor: string;
+  director: string;
+  des: string;
+  total_episodes: number;
+  source_name: string;
+  search_title?: string;
+}
