@@ -52,6 +52,7 @@ class WatchRoomSocketManager {
 
       this.socket = io(config.externalServerUrl, {
         ...socketOptions,
+        path: '/socket.io',
         auth: {
           token: config.externalServerAuth,
         },
