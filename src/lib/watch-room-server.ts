@@ -4,11 +4,11 @@ import type { ClientToServerEvents, ServerToClientEvents, Room, Member, PlayStat
 
 class WatchRoomServer {
   private socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
-  private serverUrl: string = '';
-  private authToken: string = '';
+  private serverUrl = '';
+  private authToken = '';
 
   // 初始化连接
-  connect(serverUrl: string, authToken: string = ''): Socket<ServerToClientEvents, ClientToServerEvents> {
+  connect(serverUrl: string, authToken = ''): Socket<ServerToClientEvents, ClientToServerEvents> {
     this.serverUrl = serverUrl;
     this.authToken = authToken;
 
