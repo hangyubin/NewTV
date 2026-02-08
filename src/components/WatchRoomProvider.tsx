@@ -220,19 +220,43 @@ export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
 
       // 尝试连接到观影室服务器
       try {
+        console.log('尝试连接到观影室服务器:', watchRoomConfig.externalServerUrl);
+        
         // 设置重连回调
         watchRoomSocketManager.setReconnectFailedCallback(() => {
+          console.log('观影室服务器重连失败');
           setReconnectFailed(true);
+          setToast({
+            message: '观影室服务器连接失败，请检查网络连接',
+            type: 'error',
+            duration: 5000,
+            onClose: () => setToast(null),
+          });
         });
 
         watchRoomSocketManager.setReconnectSuccessCallback(() => {
+          console.log('观影室服务器重连成功');
           setReconnectFailed(false);
+          setToast({
+            message: '观影室服务器连接成功',
+            type: 'success',
+            duration: 3000,
+            onClose: () => setToast(null),
+          });
         });
 
         await watchRoom.connect(watchRoomConfig);
+        console.log('成功连接到观影室服务器');
       } catch (error) {
         console.error('连接观影室服务器失败:', error);
         // 连接失败时仍然保持启用状态，让用户看到错误信息
+        setReconnectFailed(true);
+        setToast({
+          message: '无法连接到观影室服务器，请检查网络连接',
+          type: 'error',
+          duration: 5000,
+          onClose: () => setToast(null),
+        });
       }
     };
 
