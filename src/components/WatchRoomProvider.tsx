@@ -227,8 +227,24 @@ export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
           });
         });
 
+        console.log('开始连接到观影室服务器:', watchRoomConfig);
         await watchRoom.connect(watchRoomConfig);
         console.log('成功连接到观影室服务器');
+        
+        // 连接成功后，尝试获取房间列表
+        try {
+          console.log('尝试获取房间列表');
+          const rooms = await watchRoom.getRoomList();
+          console.log('成功获取房间列表，共', rooms.length, '个房间');
+        } catch (error) {
+          console.error('获取房间列表失败:', error);
+          setToast({
+            message: '连接成功，但获取房间列表失败，请稍后重试',
+            type: 'warning',
+            duration: 5000,
+            onClose: () => setToast(null),
+          });
+        }
       } catch (error) {
         console.error('连接观影室服务器失败:', error);
         // 连接失败时仍然保持启用状态，让用户看到错误信息
