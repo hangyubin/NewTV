@@ -192,9 +192,23 @@ export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
             watchRoomConfig.serverType === 'external' &&
             watchRoomConfig.enabled
           ) {
-            // 直接从环境变量读取认证信息
-            // 注意：在生产环境中，应该通过 API 获取认证信息以确保安全
-            watchRoomConfig.externalServerAuth = 'hang8743559@hao123.com';
+            // 检查用户是否已登录
+            if (isLoggedIn) {
+              try {
+                const authResponse = await fetch('/api/watch-room-auth');
+                if (authResponse.ok) {
+                  const authData = await authResponse.json();
+                  watchRoomConfig.externalServerAuth =
+                    authData.externalServerAuth;
+                } else {
+                  // 如果无法获取认证信息，禁用观影室
+                  watchRoomConfig.enabled = false;
+                }
+              } catch {
+                // 如果无法获取认证信息，禁用观影室
+                watchRoomConfig.enabled = false;
+              }
+            }
           }
 
           setConfig(watchRoomConfig);
