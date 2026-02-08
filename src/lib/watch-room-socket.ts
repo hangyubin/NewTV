@@ -80,14 +80,12 @@ class WatchRoomSocketManager {
 
       // 使用 once 而不是 on，避免重复注册
       this.socket.once('connect', () => {
-        console.log('[WatchRoom] Connected to server');
         if (this.socket) {
           resolve(this.socket);
         }
       });
 
       this.socket.once('connect_error', (error) => {
-        console.error('[WatchRoom] Connection error:', error);
         reject(error);
       });
     });
@@ -134,32 +132,30 @@ class WatchRoomSocketManager {
     if (!this.socket) return;
 
     this.socket.on('connect', () => {
-      console.log('[WatchRoom] Socket connected');
       // 重置心跳响应时间
       this.lastHeartbeatResponse = Date.now();
     });
 
-    this.socket.on('disconnect', (reason) => {
-      console.log('[WatchRoom] Socket disconnected:', reason);
+    this.socket.on('disconnect', () => {
+      // 断开连接处理
     });
 
-    this.socket.on('error', (error) => {
-      console.error('[WatchRoom] Socket error:', error);
+    this.socket.on('error', () => {
+      // 错误处理
     });
 
     // 监听心跳响应
-    this.socket.on('heartbeat:pong', (_data: { timestamp: number }) => {
+    this.socket.on('heartbeat:pong', () => {
       this.lastHeartbeatResponse = Date.now();
     });
 
     // 监听重连尝试
-    this.socket.io.on('reconnect_attempt', (attemptNumber) => {
-      console.log('[WatchRoom] Reconnect attempt:', attemptNumber);
+    this.socket.io.on('reconnect_attempt', () => {
+      // 重连尝试处理
     });
 
     // 监听重连成功
-    this.socket.io.on('reconnect', (attemptNumber) => {
-      console.log('[WatchRoom] Reconnected after', attemptNumber, 'attempts');
+    this.socket.io.on('reconnect', () => {
       // 重置心跳响应时间
       this.lastHeartbeatResponse = Date.now();
       this.reconnectSuccessCallback?.();
@@ -167,7 +163,6 @@ class WatchRoomSocketManager {
 
     // 监听重连失败
     this.socket.io.on('reconnect_failed', () => {
-      console.error('[WatchRoom] Reconnect failed after all attempts');
       this.reconnectFailedCallback?.();
     });
   }
@@ -201,13 +196,6 @@ class WatchRoomSocketManager {
 
       // 如果超过15秒没有收到心跳响应，认为连接可能有问题
       if (timeSinceLastResponse > 15000) {
-        console.warn('[WatchRoom] Heartbeat timeout detected, last response was', timeSinceLastResponse, 'ms ago');
-
-        // 不要强制断开连接，让 Socket.IO 的自动重连机制处理
-        // Socket.IO 会自动检测连接问题并尝试重连
-        // 只记录警告，不主动断开
-        console.warn('[WatchRoom] Waiting for Socket.IO auto-reconnect mechanism');
-
         // 重置心跳响应时间，避免重复触发警告
         this.lastHeartbeatResponse = Date.now();
       }
@@ -220,11 +208,8 @@ class WatchRoomSocketManager {
 
     this.visibilityChangeHandler = () => {
       if (document.visibilityState === 'visible') {
-        console.log('[WatchRoom] Page became visible, checking connection...');
-
         // 页面可见时检查连接状态
         if (this.socket && !this.socket.connected) {
-          console.log('[WatchRoom] Socket disconnected, attempting to reconnect...');
           this.socket.connect();
         }
       }
@@ -254,13 +239,10 @@ class WatchRoomSocketManager {
   // 手动重连
   async reconnect(): Promise<boolean> {
     if (!this.config) {
-      console.error('[WatchRoom] No config available for reconnection');
       return false;
     }
 
     try {
-      console.log('[WatchRoom] Manual reconnection initiated...');
-
       // 如果socket存在且未连接，尝试重新连接
       if (this.socket && !this.socket.connected) {
         this.socket.connect();
@@ -271,23 +253,28 @@ class WatchRoomSocketManager {
             resolve(false);
           }, 5000); // 5秒超时
 
-          this.socket!.once('connect', () => {
-            clearTimeout(timeout);
-            resolve(true);
-          });
+          const socketRef = this.socket;
+          if (socketRef) {
+            socketRef.once('connect', () => {
+              clearTimeout(timeout);
+              resolve(true);
+            });
 
-          this.socket!.once('connect_error', () => {
+            socketRef.once('connect_error', () => {
+              clearTimeout(timeout);
+              resolve(false);
+            });
+          } else {
             clearTimeout(timeout);
             resolve(false);
-          });
+          }
         });
       }
 
       // 如果socket不存在，重新创建连接
       await this.connect(this.config);
       return true;
-    } catch (error) {
-      console.error('[WatchRoom] Manual reconnection failed:', error);
+    } catch {
       return false;
     }
   }

@@ -9,10 +9,10 @@ import Toast, { ToastProps } from '@/components/Toast';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 
-import type { ChatMessage, Member, Room, WatchRoomConfig } from '@/types/watch-room';
+import type { ChatMessage, LiveState, Member, PlayState, Room, WatchRoomConfig } from '@/types/watch-room';
 
-// Import type from watch-room-socket
-type WatchRoomSocket = import('@/lib/watch-room-socket').WatchRoomSocket;
+import type { WatchRoomSocket } from '@/lib/watch-room-socket';
+import { watchRoomSocketManager } from '@/lib/watch-room-socket';
 
 interface WatchRoomContextType {
   socket: WatchRoomSocket | null;
@@ -45,12 +45,12 @@ interface WatchRoomContextType {
   sendChatMessage: (content: string, type?: 'text' | 'emoji') => void;
 
   // 播放控制（供 play/live 页面使用）
-  updatePlayState: (state: any) => void;
+  updatePlayState: (state: PlayState) => void;
   seekPlayback: (currentTime: number) => void;
   play: () => void;
   pause: () => void;
-  changeVideo: (state: any) => void;
-  changeLiveChannel: (state: any) => void;
+  changeVideo: (state: PlayState) => void;
+  changeLiveChannel: (state: LiveState) => void;
   clearRoomState: () => void;
 
   // 重连
@@ -85,8 +85,6 @@ export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
 
   // 处理房间删除的回调
   const handleRoomDeleted = useCallback((data?: { reason?: string }) => {
-    console.log('[WatchRoomProvider] Room deleted:', data);
-
     // 显示Toast提示
     if (data?.reason === 'owner_left') {
       setToast({
@@ -107,8 +105,6 @@ export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
 
   // 处理房间状态清除的回调（房主离开超过30秒）
   const handleStateCleared = useCallback(() => {
-    console.log('[WatchRoomProvider] Room state cleared');
-
     setToast({
       message: '房主已离开，播放状态已清除',
       type: 'info',
@@ -138,31 +134,26 @@ export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
 
   // 手动重连
   const manualReconnect = useCallback(async () => {
-    console.log('[WatchRoomProvider] Manual reconnect initiated');
     setReconnectFailed(false);
 
-    const { watchRoomSocketManager } = await import('@/lib/watch-room-socket');
     const success = await watchRoomSocketManager.reconnect();
 
     if (success) {
-      console.log('[WatchRoomProvider] Manual reconnect succeeded');
       // 尝试重新加入房间
       const storedInfo = localStorage.getItem('watch_room_info');
       if (storedInfo && watchRoom.socket) {
         try {
           const info = JSON.parse(storedInfo);
-          console.log('[WatchRoomProvider] Attempting to rejoin room after reconnect');
           await watchRoom.joinRoom({
             roomId: info.roomId,
             password: info.password,
             userName: info.userName,
           });
-        } catch (error) {
-          console.error('[WatchRoomProvider] Failed to rejoin room after reconnect:', error);
+        } catch {
+          // 忽略重连房间失败的错误
         }
       }
     } else {
-      console.error('[WatchRoomProvider] Manual reconnect failed');
       setReconnectFailed(true);
     }
   }, [watchRoom]);
@@ -185,22 +176,17 @@ export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
           // 如果使用外部服务器，需要获取认证信息（需要登录）
           if (watchRoomConfig.serverType === 'external' && watchRoomConfig.enabled) {
             // 检查用户是否已登录
-            if (!isLoggedIn) {
-              console.log('[WatchRoom] User not logged in, skipping auth info request');
-              // 用户未登录，不调用认证接口
-            } else {
+            if (isLoggedIn) {
               try {
                 const authResponse = await fetch('/api/watch-room-auth');
                 if (authResponse.ok) {
                   const authData = await authResponse.json();
                   watchRoomConfig.externalServerAuth = authData.externalServerAuth;
                 } else {
-                  console.error('[WatchRoom] Failed to load auth info:', authResponse.status);
                   // 如果无法获取认证信息，禁用观影室
                   watchRoomConfig.enabled = false;
                 }
-              } catch (error) {
-                console.error('[WatchRoom] Error loading auth info:', error);
+              } catch {
                 // 如果无法获取认证信息，禁用观影室
                 watchRoomConfig.enabled = false;
               }
@@ -212,26 +198,18 @@ export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
 
           // 只在启用了观影室时才连接
           if (watchRoomConfig.enabled) {
-            console.log('[WatchRoom] Connecting with config:', watchRoomConfig);
-
             // 设置重连回调
-            const { watchRoomSocketManager } = await import('@/lib/watch-room-socket');
             watchRoomSocketManager.setReconnectFailedCallback(() => {
-              console.log('[WatchRoomProvider] Reconnect failed callback triggered');
               setReconnectFailed(true);
             });
 
             watchRoomSocketManager.setReconnectSuccessCallback(() => {
-              console.log('[WatchRoomProvider] Reconnect success callback triggered');
               setReconnectFailed(false);
             });
 
             await watchRoom.connect(watchRoomConfig);
-          } else {
-            console.log('[WatchRoom] Watch room is disabled, skipping connection');
           }
         } else {
-          console.error('[WatchRoom] Failed to load config:', response.status);
           // 加载配置失败时，不连接，保持禁用状态
           const defaultConfig: WatchRoomConfig = {
             enabled: false,
@@ -240,8 +218,7 @@ export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
           setConfig(defaultConfig);
           setIsEnabled(false);
         }
-      } catch (error) {
-        console.error('[WatchRoom] Error loading config:', error);
+      } catch {
         // 加载配置失败时，不连接，保持禁用状态
         const defaultConfig: WatchRoomConfig = {
           enabled: false,
@@ -258,7 +235,7 @@ export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
     return () => {
       watchRoom.disconnect();
     };
-  }, [isLoggedIn]); // 添加 isLoggedIn 作为依赖
+  }, [isLoggedIn, watchRoom]); // 添加 isLoggedIn 和 watchRoom 作为依赖
 
   const contextValue: WatchRoomContextType = {
     socket: watchRoom.socket,
