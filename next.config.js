@@ -12,11 +12,7 @@ const nextConfig = {
   experimental: {
     instrumentationHook: process.env.NODE_ENV === 'production',
     optimizeCss: true,
-    optimizePackageImports: [
-      'lucide-react',
-      'react-icons',
-      '@heroicons/react',
-    ],
+    optimizePackageImports: ['lucide-react', 'react-icons', '@heroicons/react'],
   },
 
   images: {
@@ -73,7 +69,7 @@ const nextConfig = {
 
   compress: true,
   poweredByHeader: false,
-  
+
   headers: async () => {
     return [
       {
@@ -81,23 +77,23 @@ const nextConfig = {
         headers: [
           {
             key: 'X-DNS-Prefetch-Control',
-            value: 'on'
+            value: 'on',
           },
           {
             key: 'X-Frame-Options',
-            value: 'SAMEORIGIN'
+            value: 'SAMEORIGIN',
           },
           {
             key: 'X-Content-Type-Options',
-            value: 'nosniff'
+            value: 'nosniff',
           },
           {
             key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin'
+            value: 'origin-when-cross-origin',
           },
           {
             key: 'X-XSS-Protection',
-            value: '1; mode=block'
+            value: '1; mode=block',
           },
         ],
       },

@@ -16,6 +16,11 @@ export interface AdminConfig {
     DoubanImageProxy: string;
     DisableYellowFilter: boolean;
     FluidSearch: boolean;
+    WatchRoom?: {
+      enabled: boolean;
+      serverType: 'internal' | 'external';
+      externalServerUrl?: string;
+    };
   };
   UserConfig: {
     AllowRegister?: boolean; // 是否允许用户注册，默认 true
@@ -57,7 +62,7 @@ export interface AdminConfig {
   LiveConfig?: {
     key: string;
     name: string;
-    url: string;  // m3u 地址
+    url: string; // m3u 地址
     ua?: string;
     epg?: string; // 节目单
     from: 'config' | 'custom';

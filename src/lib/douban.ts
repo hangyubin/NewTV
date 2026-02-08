@@ -29,7 +29,7 @@ function getSmartDelay(url: string): { min: number; max: number } {
 function smartRandomDelay(url: string): Promise<void> {
   const { min, max } = getSmartDelay(url);
   const delay = Math.floor(Math.random() * (max - min + 1)) + min;
-  return new Promise(resolve => setTimeout(resolve, delay));
+  return new Promise((resolve) => setTimeout(resolve, delay));
 }
 
 /**
@@ -42,7 +42,7 @@ export async function fetchDoubanData<T>(url: string): Promise<T> {
   const now = Date.now();
   const timeSinceLastRequest = now - lastRequestTime;
   if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
-    await new Promise(resolve => 
+    await new Promise((resolve) =>
       setTimeout(resolve, MIN_REQUEST_INTERVAL - timeSinceLastRequest)
     );
   }
@@ -60,10 +60,10 @@ export async function fetchDoubanData<T>(url: string): Promise<T> {
     signal: controller.signal,
     headers: {
       'User-Agent': getRandomUserAgent(),
-      'Accept': 'application/json, text/plain, */*',
-      'Referer': 'https://movie.douban.com/',
+      Accept: 'application/json, text/plain, */*',
+      Referer: 'https://movie.douban.com/',
       // 随机添加Origin，但概率更低以减少复杂性
-      ...(Math.random() > 0.8 ? { 'Origin': 'https://movie.douban.com' } : {}),
+      ...(Math.random() > 0.8 ? { Origin: 'https://movie.douban.com' } : {}),
     },
   };
 

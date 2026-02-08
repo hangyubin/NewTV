@@ -1,4 +1,3 @@
-
 import MobileBottomNav from './MobileBottomNav';
 import MobileHeader from './MobileHeader';
 import Sidebar from './Sidebar';
@@ -11,7 +10,11 @@ interface PageLayoutProps {
   defaultSidebarCollapsed?: boolean;
 }
 
-const PageLayout = ({ children, activePath, defaultSidebarCollapsed }: PageLayoutProps) => {
+const PageLayout = ({
+  children,
+  activePath,
+  defaultSidebarCollapsed,
+}: PageLayoutProps) => {
   return (
     <div className='w-full min-h-screen'>
       {/* 移动端头部 */}
@@ -27,7 +30,6 @@ const PageLayout = ({ children, activePath, defaultSidebarCollapsed }: PageLayou
         {/* 主内容区域 */}
         <div className='relative min-w-0 flex-1 transition-all duration-300'>
           {/* 桌面端左上角返回按钮 */}
-
 
           {/* 桌面端顶部按钮 */}
           <div className='absolute top-2 right-4 z-20 hidden md:flex items-center gap-2'>
@@ -56,4 +58,3 @@ const PageLayout = ({ children, activePath, defaultSidebarCollapsed }: PageLayou
 };
 
 export default PageLayout;
-

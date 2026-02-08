@@ -3,7 +3,14 @@
 import { Redis } from '@upstash/redis';
 
 import { AdminConfig } from './admin.types';
-import { DanmakuConfig, Favorite, IStorage, PlayRecord, SkipConfig, UserStats } from './types';
+import {
+  DanmakuConfig,
+  Favorite,
+  IStorage,
+  PlayRecord,
+  SkipConfig,
+  UserStats,
+} from './types';
 
 // 搜索历史最大条数
 const SEARCH_HISTORY_LIMIT = 20;
@@ -69,7 +76,11 @@ export class UpstashRedisStorage implements IStorage {
     return await withRetry(() => this.client.get(key));
   }
 
-  async set(key: string, value: string, options?: { EX?: number }): Promise<void> {
+  async set(
+    key: string,
+    value: string,
+    options?: { EX?: number }
+  ): Promise<void> {
     if (options?.EX) {
       await withRetry(() => this.client.setex(key, options.EX!, value));
     } else {
@@ -377,12 +388,19 @@ export class UpstashRedisStorage implements IStorage {
   }
 
   async getDanmakuConfig(userName: string): Promise<DanmakuConfig | null> {
-    const val = await withRetry(() => this.client.get(this.danmakuConfigKey(userName)));
+    const val = await withRetry(() =>
+      this.client.get(this.danmakuConfigKey(userName))
+    );
     return val ? (val as DanmakuConfig) : null;
   }
 
-  async setDanmakuConfig(userName: string, config: DanmakuConfig): Promise<void> {
-    await withRetry(() => this.client.set(this.danmakuConfigKey(userName), config));
+  async setDanmakuConfig(
+    userName: string,
+    config: DanmakuConfig
+  ): Promise<void> {
+    await withRetry(() =>
+      this.client.set(this.danmakuConfigKey(userName), config)
+    );
   }
 
   async deleteDanmakuConfig(userName: string): Promise<void> {
@@ -400,21 +418,29 @@ export class UpstashRedisStorage implements IStorage {
       console.log(`getUserStats: 查询用户 ${userName} 的统计数据，键: ${key}`);
 
       const result = await withRetry(() => this.client.get(key));
-      console.log(`getUserStats: 从数据库获取的原始结果:`, result, `类型: ${typeof result}`);
+      console.log(
+        `getUserStats: 从数据库获取的原始结果:`,
+        result,
+        `类型: ${typeof result}`
+      );
 
       if (!result) {
-        console.log('getUserStats: 数据库中没有找到统计数据，为新用户初始化默认统计数据');
+        console.log(
+          'getUserStats: 数据库中没有找到统计数据，为新用户初始化默认统计数据'
+        );
 
         // 为新用户创建初始化统计数据
         const defaultStats: UserStats = {
           totalWatchTime: 0,
           totalMovies: 0,
           firstWatchDate: 0, // 初始化为0，将在第一次观看时设置为实际时间
-          lastUpdateTime: Date.now()
+          lastUpdateTime: Date.now(),
         };
 
         // 将默认统计数据保存到数据库
-        await withRetry(() => this.client.set(key, JSON.stringify(defaultStats)));
+        await withRetry(() =>
+          this.client.set(key, JSON.stringify(defaultStats))
+        );
         console.log(`为新用户 ${userName} 初始化统计数据:`, defaultStats);
 
         return defaultStats;
@@ -441,11 +467,16 @@ export class UpstashRedisStorage implements IStorage {
             totalWatchTime: 0,
             totalMovies: 0,
             firstWatchDate: 0, // 初始化为0，将在第一次观看时设置为实际时间
-            lastUpdateTime: Date.now()
+            lastUpdateTime: Date.now(),
           };
 
-          await withRetry(() => this.client.set(key, JSON.stringify(defaultStats)));
-          console.log(`数据解析失败，为用户 ${userName} 重新初始化统计数据:`, defaultStats);
+          await withRetry(() =>
+            this.client.set(key, JSON.stringify(defaultStats))
+          );
+          console.log(
+            `数据解析失败，为用户 ${userName} 重新初始化统计数据:`,
+            defaultStats
+          );
 
           return defaultStats;
         }
@@ -458,11 +489,14 @@ export class UpstashRedisStorage implements IStorage {
         totalWatchTime: 0,
         totalMovies: 0,
         firstWatchDate: 0, // 初始化为0，将在第一次观看时设置为实际时间
-        lastUpdateTime: Date.now()
+        lastUpdateTime: Date.now(),
       };
 
       await withRetry(() => this.client.set(key, JSON.stringify(defaultStats)));
-      console.log(`未知数据格式，为用户 ${userName} 重新初始化统计数据:`, defaultStats);
+      console.log(
+        `未知数据格式，为用户 ${userName} 重新初始化统计数据:`,
+        defaultStats
+      );
 
       return defaultStats;
     } catch (error) {
@@ -473,13 +507,18 @@ export class UpstashRedisStorage implements IStorage {
         totalWatchTime: 0,
         totalMovies: 0,
         firstWatchDate: 0, // 初始化为0，将在第一次观看时设置为实际时间
-        lastUpdateTime: Date.now()
+        lastUpdateTime: Date.now(),
       };
 
       try {
         const key = this.userStatsKey(userName);
-        await withRetry(() => this.client.set(key, JSON.stringify(defaultStats)));
-        console.log(`发生错误，为用户 ${userName} 初始化统计数据:`, defaultStats);
+        await withRetry(() =>
+          this.client.set(key, JSON.stringify(defaultStats))
+        );
+        console.log(
+          `发生错误，为用户 ${userName} 初始化统计数据:`,
+          defaultStats
+        );
       } catch (initError) {
         console.error('初始化统计数据也失败:', initError);
       }
@@ -488,12 +527,15 @@ export class UpstashRedisStorage implements IStorage {
     }
   }
 
-  async updateUserStats(userName: string, updateData: {
-    watchTime: number;
-    movieKey: string;
-    timestamp: number;
-    isFullReset?: boolean;
-  }): Promise<void> {
+  async updateUserStats(
+    userName: string,
+    updateData: {
+      watchTime: number;
+      movieKey: string;
+      timestamp: number;
+      isFullReset?: boolean;
+    }
+  ): Promise<void> {
     try {
       const key = this.userStatsKey(userName);
 
@@ -502,18 +544,22 @@ export class UpstashRedisStorage implements IStorage {
         console.log('执行完整重置统计数据...');
 
         // 解析movieKey中的所有影片
-        const movieKeys = updateData.movieKey.split(',').filter(k => k.trim());
+        const movieKeys = updateData.movieKey
+          .split(',')
+          .filter((k) => k.trim());
 
         const stats: UserStats = {
           totalWatchTime: updateData.watchTime,
           totalMovies: movieKeys.length,
           firstWatchDate: updateData.timestamp,
-          lastUpdateTime: Date.now()
+          lastUpdateTime: Date.now(),
         };
 
         // 重置已观看影片集合
         const watchedMoviesKey = `watched_movies:${userName}`;
-        await withRetry(() => this.client.set(watchedMoviesKey, JSON.stringify(movieKeys)));
+        await withRetry(() =>
+          this.client.set(watchedMoviesKey, JSON.stringify(movieKeys))
+        );
 
         // 设置统计数据
         await withRetry(() => this.client.set(key, JSON.stringify(stats)));
@@ -527,22 +573,36 @@ export class UpstashRedisStorage implements IStorage {
       if (existingStats && existingStats.firstWatchDate > 0) {
         // 用户已有观看记录，进行增量更新
         const watchedMoviesKey = `watched_movies:${userName}`;
-        const watchedMoviesResult = await withRetry(() => this.client.get(watchedMoviesKey));
+        const watchedMoviesResult = await withRetry(() =>
+          this.client.get(watchedMoviesKey)
+        );
 
         let movieSet: Set<string>;
         if (watchedMoviesResult) {
           try {
             // 检查数据类型
-            if (typeof watchedMoviesResult === 'object' && Array.isArray(watchedMoviesResult)) {
+            if (
+              typeof watchedMoviesResult === 'object' &&
+              Array.isArray(watchedMoviesResult)
+            ) {
               movieSet = new Set(watchedMoviesResult);
             } else if (typeof watchedMoviesResult === 'string') {
               movieSet = new Set(JSON.parse(watchedMoviesResult));
             } else {
-              console.error('watchedMovies数据格式异常:', typeof watchedMoviesResult, watchedMoviesResult);
+              console.error(
+                'watchedMovies数据格式异常:',
+                typeof watchedMoviesResult,
+                watchedMoviesResult
+              );
               movieSet = new Set();
             }
           } catch (parseError) {
-            console.error('解析watchedMovies失败:', parseError, '原始数据:', watchedMoviesResult);
+            console.error(
+              '解析watchedMovies失败:',
+              parseError,
+              '原始数据:',
+              watchedMoviesResult
+            );
             movieSet = new Set();
           }
         } else {
@@ -554,18 +614,29 @@ export class UpstashRedisStorage implements IStorage {
         // 更新现有统计数据
         stats = {
           totalWatchTime: existingStats.totalWatchTime + updateData.watchTime,
-          totalMovies: isNewMovie ? existingStats.totalMovies + 1 : existingStats.totalMovies,
+          totalMovies: isNewMovie
+            ? existingStats.totalMovies + 1
+            : existingStats.totalMovies,
           firstWatchDate: existingStats.firstWatchDate,
-          lastUpdateTime: updateData.timestamp
+          lastUpdateTime: updateData.timestamp,
         };
 
         // 如果是新影片，添加到已观看影片集合中
         if (isNewMovie) {
           movieSet.add(updateData.movieKey);
-          await withRetry(() => this.client.set(watchedMoviesKey, JSON.stringify(Array.from(movieSet))));
-          console.log(`新影片记录: ${updateData.movieKey}, 总影片数: ${stats.totalMovies}`);
+          await withRetry(() =>
+            this.client.set(
+              watchedMoviesKey,
+              JSON.stringify(Array.from(movieSet))
+            )
+          );
+          console.log(
+            `新影片记录: ${updateData.movieKey}, 总影片数: ${stats.totalMovies}`
+          );
         } else {
-          console.log(`已观看影片: ${updateData.movieKey}, 总影片数保持: ${stats.totalMovies}`);
+          console.log(
+            `已观看影片: ${updateData.movieKey}, 总影片数保持: ${stats.totalMovies}`
+          );
         }
       } else {
         // 新用户第一次观看，创建新的统计数据
@@ -573,12 +644,17 @@ export class UpstashRedisStorage implements IStorage {
           totalWatchTime: updateData.watchTime,
           totalMovies: 1,
           firstWatchDate: updateData.timestamp, // 使用实际观看时间
-          lastUpdateTime: updateData.timestamp
+          lastUpdateTime: updateData.timestamp,
         };
 
         // 初始化已观看影片集合
         const watchedMoviesKey = `watched_movies:${userName}`;
-        await withRetry(() => this.client.set(watchedMoviesKey, JSON.stringify([updateData.movieKey])));
+        await withRetry(() =>
+          this.client.set(
+            watchedMoviesKey,
+            JSON.stringify([updateData.movieKey])
+          )
+        );
         console.log(`初始化用户统计: ${updateData.movieKey}, 总影片数: 1`);
       }
 

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any,no-console */
 
 import { NextRequest, NextResponse } from 'next/server';
+
 import { getAuthInfoFromCookie } from '@/lib/auth';
 import { getAvailableApiSites, getCacheTime, getConfig } from '@/lib/config';
 import { searchFromApi } from '@/lib/downstream';
@@ -33,8 +34,9 @@ function cleanExpiredCache(): void {
 
 function limitCacheSize(): void {
   if (searchCache.size > MAX_CACHE_SIZE) {
-    const entries = Array.from(searchCache.entries())
-      .sort((a, b) => a[1].timestamp - b[1].timestamp);
+    const entries = Array.from(searchCache.entries()).sort(
+      (a, b) => a[1].timestamp - b[1].timestamp
+    );
 
     const toRemove = entries.slice(0, searchCache.size - MAX_CACHE_SIZE);
     toRemove.forEach(([key]) => searchCache.delete(key));
@@ -53,7 +55,11 @@ function getCachedResults(query: string, username: string): any[] | null {
   return null;
 }
 
-function setCachedResults(query: string, username: string, results: any[]): void {
+function setCachedResults(
+  query: string,
+  username: string,
+  results: any[]
+): void {
   const key = getCacheKey(query, username);
   searchCache.set(key, {
     results,
@@ -114,7 +120,10 @@ export async function GET(request: NextRequest) {
     Promise.race([
       searchFromApi(site, query),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error(`${site.name} timeout`)), 15000 + index * 1000)
+        setTimeout(
+          () => reject(new Error(`${site.name} timeout`)),
+          15000 + index * 1000
+        )
       ),
     ]).catch((err) => {
       console.warn(`搜索失败 ${site.name}:`, err.message);

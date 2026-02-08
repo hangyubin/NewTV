@@ -93,7 +93,10 @@ export async function POST(req: NextRequest) {
       }
     } catch (err) {
       console.error('检查注册配置失败', err);
-      return NextResponse.json({ error: '注册失败，请稍后重试' }, { status: 500 });
+      return NextResponse.json(
+        { error: '注册失败，请稍后重试' },
+        { status: 500 }
+      );
     }
 
     // 验证输入
@@ -106,7 +109,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (password !== confirmPassword) {
-      return NextResponse.json({ error: '两次输入的密码不一致' }, { status: 400 });
+      return NextResponse.json(
+        { error: '两次输入的密码不一致' },
+        { status: 400 }
+      );
     }
 
     if (password.length < 6) {
@@ -130,12 +136,16 @@ export async function POST(req: NextRequest) {
       // 检查用户是否已存在
       const userExists = await db.checkUserExist(username);
       if (userExists) {
-        return NextResponse.json({ error: '该用户名已被注册' }, { status: 400 });
+        return NextResponse.json(
+          { error: '该用户名已被注册' },
+          { status: 400 }
+        );
       }
 
       // 获取配置判断是否需要审核
       const config = await getConfig();
-      const requireApproval = (config.UserConfig as any).RequireApproval === true;
+      const requireApproval =
+        (config.UserConfig as any).RequireApproval === true;
 
       if (requireApproval) {
         // 加密保存密码到待审核队列，使用站长 PASSWORD 作为加密密钥
@@ -149,7 +159,8 @@ export async function POST(req: NextRequest) {
 
         // 防重：如果已在待审核队列中，返回提示
         const existsInPending = (config.UserConfig as any).PendingUsers.find(
-          (u: any) => (u.username || '').trim().toLowerCase() === username.toLowerCase()
+          (u: any) =>
+            (u.username || '').trim().toLowerCase() === username.toLowerCase()
         );
         if (existsInPending) {
           return NextResponse.json(
@@ -166,7 +177,11 @@ export async function POST(req: NextRequest) {
         });
         await db.saveAdminConfig(config);
         clearConfigCache();
-        return NextResponse.json({ ok: true, pending: true, message: '已提交注册申请，等待管理员审核' });
+        return NextResponse.json({
+          ok: true,
+          pending: true,
+          message: '已提交注册申请，等待管理员审核',
+        });
       }
 
       // 不需要审核：直接创建账号
@@ -189,7 +204,7 @@ export async function POST(req: NextRequest) {
       // 注册成功后自动登录
       const response = NextResponse.json({
         ok: true,
-        message: '注册成功，已自动登录'
+        message: '注册成功，已自动登录',
       });
 
       const cookieValue = await generateAuthCookie(
@@ -212,7 +227,10 @@ export async function POST(req: NextRequest) {
       return response;
     } catch (err) {
       console.error('注册用户失败', err);
-      return NextResponse.json({ error: '注册失败，请稍后重试' }, { status: 500 });
+      return NextResponse.json(
+        { error: '注册失败，请稍后重试' },
+        { status: 500 }
+      );
     }
   } catch (error) {
     console.error('注册接口异常', error);

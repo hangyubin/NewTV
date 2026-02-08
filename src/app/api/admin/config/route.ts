@@ -85,7 +85,9 @@ export async function POST(request: NextRequest) {
 
     // 只有站长或管理员可以修改配置
     const isOwner = username === process.env.USERNAME;
-    const user = currentConfig.UserConfig.Users.find((u) => u.username === username);
+    const user = currentConfig.UserConfig.Users.find(
+      (u) => u.username === username
+    );
     const isAdmin = user && user.role === 'admin' && !user.banned;
 
     if (!isOwner && !isAdmin) {

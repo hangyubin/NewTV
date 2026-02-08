@@ -42,7 +42,7 @@ export async function getShortDramaData(
   params: ShortDramaSearchParams = {}
 ): Promise<ShortDramaResponse> {
   const searchParams = new URLSearchParams();
-  
+
   if (params.type && params.type !== 'all') {
     searchParams.append('type', params.type);
   }
@@ -59,8 +59,10 @@ export async function getShortDramaData(
     searchParams.append('limit', params.limit.toString());
   }
 
-  const url = `/api/short-drama${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
-  
+  const url = `/api/short-drama${
+    searchParams.toString() ? `?${searchParams.toString()}` : ''
+  }`;
+
   const response = await fetch(url, {
     credentials: 'include',
   });
@@ -93,21 +95,39 @@ export async function getRecommendedShortDramas(
 
     const result = await response.json();
     // 转换数据格式以匹配预期的 ShortDramaItem 结构
-    return result.results.map((item: { id: string; title: string; pic?: string; cover?: string; poster?: string; remark?: string; type_name?: string; area?: string; year?: string; state?: string; actor?: string; director?: string; desc?: string; episodes?: number; source_name?: string }) => ({
-      id: parseInt(item.id) || 0,
-      name: item.title || '',
-      pic: item.poster || item.pic || item.cover || '',
-      remark: item.remark || '',
-      type: item.type_name || '',
-      area: item.area || '',
-      year: item.year || '',
-      state: item.state || '',
-      actor: item.actor || '',
-      director: item.director || '',
-      des: item.desc || '',
-      total_episodes: item.episodes || 0,
-      source_name: item.source_name || '短剧',
-    }));
+    return result.results.map(
+      (item: {
+        id: string;
+        title: string;
+        pic?: string;
+        cover?: string;
+        poster?: string;
+        remark?: string;
+        type_name?: string;
+        area?: string;
+        year?: string;
+        state?: string;
+        actor?: string;
+        director?: string;
+        desc?: string;
+        episodes?: number;
+        source_name?: string;
+      }) => ({
+        id: parseInt(item.id) || 0,
+        name: item.title || '',
+        pic: item.poster || item.pic || item.cover || '',
+        remark: item.remark || '',
+        type: item.type_name || '',
+        area: item.area || '',
+        year: item.year || '',
+        state: item.state || '',
+        actor: item.actor || '',
+        director: item.director || '',
+        des: item.desc || '',
+        total_episodes: item.episodes || 0,
+        source_name: item.source_name || '短剧',
+      })
+    );
   } catch (error) {
     return [];
   }
@@ -149,13 +169,13 @@ export const shortDramaRegionOptions = [
  */
 export function cleanExpiredCache(): void {
   if (typeof localStorage === 'undefined') return;
-  
-  const keys = Object.keys(localStorage).filter(key => 
+
+  const keys = Object.keys(localStorage).filter((key) =>
     key.startsWith('shortdrama-')
   );
   let cleanedCount = 0;
-  
-  keys.forEach(key => {
+
+  keys.forEach((key) => {
     try {
       const cached = localStorage.getItem(key);
       if (cached) {
@@ -178,9 +198,9 @@ export function cleanExpiredCache(): void {
  */
 export function clearAllCache(): void {
   if (typeof localStorage === 'undefined') return;
-  
-  const keys = Object.keys(localStorage).filter(key => 
+
+  const keys = Object.keys(localStorage).filter((key) =>
     key.startsWith('shortdrama-')
   );
-  keys.forEach(key => localStorage.removeItem(key));
+  keys.forEach((key) => localStorage.removeItem(key));
 }

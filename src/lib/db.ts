@@ -3,7 +3,14 @@
 import { AdminConfig } from './admin.types';
 import { KvrocksStorage } from './kvrocks.db';
 import { RedisStorage } from './redis.db';
-import { DanmakuConfig, Favorite, IStorage, PlayRecord, SkipConfig, UserStats } from './types';
+import {
+  DanmakuConfig,
+  Favorite,
+  IStorage,
+  PlayRecord,
+  SkipConfig,
+  UserStats,
+} from './types';
 import { UpstashRedisStorage } from './upstash.db';
 
 // storage type 常量: 'localstorage' | 'redis' | 'upstash'，默认 'localstorage'
@@ -52,7 +59,10 @@ export class DbManager {
   constructor() {
     console.log('DbManager 构造函数 - 存储类型:', STORAGE_TYPE);
     this.storage = getStorage();
-    console.log('DbManager 构造函数 - 存储实例创建完成:', this.storage?.constructor?.name);
+    console.log(
+      'DbManager 构造函数 - 存储实例创建完成:',
+      this.storage?.constructor?.name
+    );
   }
 
   // 测试数据库连接
@@ -248,9 +258,7 @@ export class DbManager {
   }
 
   // ---------- 弹幕配置 ----------
-  async getDanmakuConfig(
-    userName: string
-  ): Promise<DanmakuConfig | null> {
+  async getDanmakuConfig(userName: string): Promise<DanmakuConfig | null> {
     if (!this.storage) {
       throw new Error('Storage not available');
     }
@@ -285,10 +293,13 @@ export class DbManager {
           totalWatchTime: 0,
           totalMovies: 0,
           firstWatchDate: 0, // 初始化为0，将在第一次观看时设置为实际时间
-          lastUpdateTime: Date.now()
+          lastUpdateTime: Date.now(),
         };
 
-        console.log(`数据库层为新用户 ${userName} 提供默认统计数据:`, defaultStats);
+        console.log(
+          `数据库层为新用户 ${userName} 提供默认统计数据:`,
+          defaultStats
+        );
         return defaultStats;
       }
 
@@ -300,16 +311,19 @@ export class DbManager {
       totalWatchTime: 0,
       totalMovies: 0,
       firstWatchDate: 0, // 初始化为0，将在第一次观看时设置为实际时间
-      lastUpdateTime: Date.now()
+      lastUpdateTime: Date.now(),
     };
   }
 
-  async updateUserStats(userName: string, updateData: {
-    watchTime: number;
-    movieKey: string;
-    timestamp: number;
-    isFullReset?: boolean;
-  }): Promise<void> {
+  async updateUserStats(
+    userName: string,
+    updateData: {
+      watchTime: number;
+      movieKey: string;
+      timestamp: number;
+      isFullReset?: boolean;
+    }
+  ): Promise<void> {
     if (typeof (this.storage as any).updateUserStats === 'function') {
       await (this.storage as any).updateUserStats(userName, updateData);
     }

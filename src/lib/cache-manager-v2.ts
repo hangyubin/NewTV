@@ -64,7 +64,11 @@ export class CacheManager {
     }
   }
 
-  set<T>(key: string, data: T, expireTime: number = DEFAULT_EXPIRE_TIME): boolean {
+  set<T>(
+    key: string,
+    data: T,
+    expireTime: number = DEFAULT_EXPIRE_TIME
+  ): boolean {
     if (typeof window === 'undefined') return false;
 
     try {
