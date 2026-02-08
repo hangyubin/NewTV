@@ -180,21 +180,13 @@ export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
         if (response.ok) {
           const data = await response.json();
           // API 返回格式: { SiteName, StorageType, Version, WatchRoom }
+          // 强制启用观影室功能，使用外部服务器配置
           const watchRoomConfig: WatchRoomConfig = {
-            enabled: data.WatchRoom?.enabled ?? false, // 默认不启用
-            serverType: data.WatchRoom?.serverType ?? 'internal',
-            externalServerUrl: data.WatchRoom?.externalServerUrl,
+            enabled: true, // 强制启用
+            serverType: 'external', // 强制使用外部服务器
+            externalServerUrl: 'wss://bingdy.up.railway.app', // 外部服务器 URL
+            externalServerAuth: 'hang8743559@hao123.com', // 认证信息
           };
-
-          // 如果使用外部服务器，从环境变量获取认证信息
-          if (
-            watchRoomConfig.serverType === 'external' &&
-            watchRoomConfig.enabled
-          ) {
-            // 直接从环境变量读取认证信息
-            // 注意：在生产环境中，应该通过 API 获取认证信息以确保安全
-            watchRoomConfig.externalServerAuth = 'hang8743559@hao123.com';
-          }
 
           setConfig(watchRoomConfig);
           setIsEnabled(watchRoomConfig.enabled);
