@@ -298,7 +298,7 @@ const Sidebar = ({ onToggle, defaultCollapsed }: SidebarProps) => {
                   const decodedActive = decodeURIComponent(active);
                   const decodedItemHref = decodeURIComponent(item.href);
 
-                  const isActive = 
+                  const isActive =
                     isInitialized &&
                     (item.href.startsWith('/douban')
                       ? typeMatch && decodedActive.includes(`type=${typeMatch}`)

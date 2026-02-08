@@ -13,12 +13,12 @@ export async function GET(request: NextRequest) {
     // 无论数据库连接是否成功，都从环境变量读取观影室配置
     const watchRoomConfig = {
       enabled: process.env.WATCH_ROOM_ENABLED === 'true',
-      serverType: (process.env.WATCH_ROOM_SERVER_TYPE ||
-        'internal') as 'internal' | 'external',
-      externalServerUrl:
-        process.env.WATCH_ROOM_EXTERNAL_SERVER_URL || '',
+      serverType: (process.env.WATCH_ROOM_SERVER_TYPE || 'internal') as
+        | 'internal'
+        | 'external',
+      externalServerUrl: process.env.WATCH_ROOM_EXTERNAL_SERVER_URL || '',
     };
-    
+
     const result = {
       SiteName: config.SiteConfig.SiteName,
       StorageType: process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage',
@@ -34,10 +34,10 @@ export async function GET(request: NextRequest) {
       Version: CURRENT_VERSION,
       WatchRoom: {
         enabled: process.env.WATCH_ROOM_ENABLED === 'true',
-        serverType: (process.env.WATCH_ROOM_SERVER_TYPE ||
-          'internal') as 'internal' | 'external',
-        externalServerUrl:
-          process.env.WATCH_ROOM_EXTERNAL_SERVER_URL || '',
+        serverType: (process.env.WATCH_ROOM_SERVER_TYPE || 'internal') as
+          | 'internal'
+          | 'external',
+        externalServerUrl: process.env.WATCH_ROOM_EXTERNAL_SERVER_URL || '',
       },
     };
     return NextResponse.json(defaultResult);

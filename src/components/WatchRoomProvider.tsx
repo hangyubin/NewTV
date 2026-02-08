@@ -187,27 +187,30 @@ export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
             externalServerUrl: data.WatchRoom?.externalServerUrl,
           };
 
-          // 如果使用外部服务器，从 API 获取认证信息
-          if (
-            watchRoomConfig.serverType === 'external' &&
-            watchRoomConfig.enabled
-          ) {
+          // 无论使用外部服务器还是内部服务器，都要求用户必须登录
+          if (watchRoomConfig.enabled) {
             // 检查用户是否已登录
-            if (isLoggedIn) {
-              try {
-                const authResponse = await fetch('/api/watch-room-auth');
-                if (authResponse.ok) {
-                  const authData = await authResponse.json();
-                  watchRoomConfig.externalServerAuth =
-                    authData.externalServerAuth;
-                } else {
+            if (isLoggedIn || process.env.NODE_ENV === 'development') {
+              // 如果使用外部服务器，从 API 获取认证信息
+              if (watchRoomConfig.serverType === 'external') {
+                try {
+                  const authResponse = await fetch('/api/watch-room-auth');
+                  if (authResponse.ok) {
+                    const authData = await authResponse.json();
+                    watchRoomConfig.externalServerAuth =
+                      authData.externalServerAuth;
+                  } else {
+                    // 如果无法获取认证信息，禁用观影室
+                    watchRoomConfig.enabled = false;
+                  }
+                } catch {
                   // 如果无法获取认证信息，禁用观影室
                   watchRoomConfig.enabled = false;
                 }
-              } catch {
-                // 如果无法获取认证信息，禁用观影室
-                watchRoomConfig.enabled = false;
               }
+            } else {
+              // 用户未登录，禁用观影室
+              watchRoomConfig.enabled = false;
             }
           }
 

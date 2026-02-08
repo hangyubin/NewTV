@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm gen:manifest && node server.js",
+    "dev": "set PORT=3001 && pnpm gen:manifest && node server.js",
     "build": "pnpm gen:manifest && next build",
-    "start": "node server.js",
+    "start": "set PORT=3001 && node server.js",
     "lint": "next lint",
     "lint:fix": "eslint src --fix && pnpm format",
     "lint:strict": "eslint --max-warnings=0 src",

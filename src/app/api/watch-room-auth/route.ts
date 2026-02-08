@@ -12,10 +12,7 @@ export async function GET() {
     const externalServerAuth = process.env.WATCH_ROOM_EXTERNAL_SERVER_AUTH;
 
     if (!externalServerAuth) {
-      return NextResponse.json(
-        { error: '认证信息未配置' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: '认证信息未配置' }, { status: 400 });
     }
 
     return NextResponse.json({
@@ -23,9 +20,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error('获取观影室认证信息失败:', error);
-    return NextResponse.json(
-      { error: '获取认证信息失败' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: '获取认证信息失败' }, { status: 500 });
   }
 }

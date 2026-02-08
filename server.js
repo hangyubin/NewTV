@@ -1,13 +1,13 @@
 // Next.js 自定义服务器 + Socket.IO
-import 'dotenv/config';
 import { createServer } from 'http';
 import next from 'next';
 import { Server } from 'socket.io';
 import { parse } from 'url';
+import 'dotenv/config';
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.HOSTNAME || '0.0.0.0';
-const port = parseInt(process.env.PORT || '3000', 10);
+const port = 3001;
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
