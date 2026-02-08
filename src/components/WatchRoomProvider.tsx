@@ -174,123 +174,65 @@ export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
   // 加载配置
   useEffect(() => {
     const loadConfig = async () => {
+      // 无论如何都启用观影室功能
+      const watchRoomConfig: WatchRoomConfig = {
+        enabled: true,
+        serverType: 'external',
+        externalServerUrl: 'wss://bingdy.up.railway.app',
+        externalServerAuth: 'hang8743559@hao123.com',
+      };
+
+      // 尝试从 API 获取配置，即使失败也不影响启用状态
       try {
         // 使用公共 API 获取观影室配置（不需要管理员权限）
         const response = await fetch('/api/server-config');
         if (response.ok) {
           const data = await response.json();
-          // API 返回格式: { SiteName, StorageType, Version, WatchRoom }
-          // 从 API 获取配置
-          const watchRoomConfig: WatchRoomConfig = {
-            enabled: data.WatchRoom?.enabled ?? false, // 默认不启用
-            serverType: data.WatchRoom?.serverType ?? 'internal',
-            externalServerUrl: data.WatchRoom?.externalServerUrl,
-          };
-
-          // 如果使用外部服务器，从 API 获取认证信息
-          if (watchRoomConfig.serverType === 'external' && watchRoomConfig.enabled) {
-            try {
-              const authResponse = await fetch('/api/watch-room-auth');
-              if (authResponse.ok) {
-                const authData = await authResponse.json();
-                watchRoomConfig.externalServerAuth = authData.externalServerAuth;
-              } else {
-                // 如果无法获取认证信息，使用默认值
-                console.warn('无法获取观影室认证信息，使用默认值');
-                watchRoomConfig.externalServerAuth = 'hang8743559@hao123.com';
-              }
-            } catch (error) {
-              // 如果无法获取认证信息，使用默认值
-              console.warn('获取观影室认证信息失败，使用默认值:', error);
-              watchRoomConfig.externalServerAuth = 'hang8743559@hao123.com';
-            }
+          // 从 API 获取配置，但保持启用状态
+          if (data.WatchRoom) {
+            watchRoomConfig.serverType = data.WatchRoom.serverType || 'external';
+            watchRoomConfig.externalServerUrl = data.WatchRoom.externalServerUrl || 'wss://bingdy.up.railway.app';
           }
+        }
 
-          // 简化逻辑：在开发环境中始终启用，生产环境中根据配置启用
-          const isDev = process.env.NODE_ENV === 'development';
-          if (isDev) {
-            watchRoomConfig.enabled = true;
-            // 开发环境中使用默认的外部服务器配置
-            if (!watchRoomConfig.externalServerUrl) {
-              watchRoomConfig.serverType = 'external';
-              watchRoomConfig.externalServerUrl = 'wss://bingdy.up.railway.app';
-              watchRoomConfig.externalServerAuth = 'hang8743559@hao123.com';
+        // 尝试从 API 获取认证信息，即使失败也不影响启用状态
+        if (watchRoomConfig.serverType === 'external') {
+          try {
+            const authResponse = await fetch('/api/watch-room-auth');
+            if (authResponse.ok) {
+              const authData = await authResponse.json();
+              watchRoomConfig.externalServerAuth = authData.externalServerAuth || 'hang8743559@hao123.com';
             }
-          } else {
-            // 生产环境中，只要环境变量设置为 true，就启用观影室
-            // 这里通过 API 已经获取了配置，但为了保险起见，再强制检查一次
-            watchRoomConfig.enabled = true;
-            // 确保外部服务器配置完整
-            if (!watchRoomConfig.externalServerUrl) {
-              watchRoomConfig.serverType = 'external';
-              watchRoomConfig.externalServerUrl = 'wss://bingdy.up.railway.app';
-              watchRoomConfig.externalServerAuth = 'hang8743559@hao123.com';
-            }
-          }
-
-          setConfig(watchRoomConfig);
-          setIsEnabled(watchRoomConfig.enabled);
-
-          // 只在启用了观影室时才连接
-          if (watchRoomConfig.enabled) {
-            // 设置重连回调
-            watchRoomSocketManager.setReconnectFailedCallback(() => {
-              setReconnectFailed(true);
-            });
-
-            watchRoomSocketManager.setReconnectSuccessCallback(() => {
-              setReconnectFailed(false);
-            });
-
-            try {
-              await watchRoom.connect(watchRoomConfig);
-            } catch (error) {
-              console.error('连接观影室服务器失败:', error);
-              // 连接失败时仍然保持启用状态，让用户看到错误信息
-            }
-          }
-        } else {
-          // 加载配置失败时，在开发环境中仍然启用
-          const isDev = process.env.NODE_ENV === 'development';
-          const watchRoomConfig: WatchRoomConfig = {
-            enabled: isDev,
-            serverType: 'external',
-            externalServerUrl: 'wss://bingdy.up.railway.app',
-            externalServerAuth: 'hang8743559@hao123.com',
-          };
-          setConfig(watchRoomConfig);
-          setIsEnabled(watchRoomConfig.enabled);
-
-          // 只在启用了观影室时才连接
-          if (watchRoomConfig.enabled) {
-            try {
-              await watchRoom.connect(watchRoomConfig);
-            } catch (error) {
-              console.error('连接观影室服务器失败:', error);
-            }
+          } catch (error) {
+            console.warn('获取观影室认证信息失败，使用默认值:', error);
           }
         }
       } catch (error) {
-        console.error('加载观影室配置失败:', error);
-        // 即使出错，在开发环境中仍然启用
-        const isDev = process.env.NODE_ENV === 'development';
-        const fallbackConfig: WatchRoomConfig = {
-          enabled: isDev,
-          serverType: 'external',
-          externalServerUrl: 'wss://bingdy.up.railway.app',
-          externalServerAuth: 'hang8743559@hao123.com',
-        };
-        setConfig(fallbackConfig);
-        setIsEnabled(fallbackConfig.enabled);
+        console.warn('加载观影室配置失败，使用默认值:', error);
+      }
 
-        // 只在启用了观影室时才连接
-        if (fallbackConfig.enabled) {
-          try {
-            await watchRoom.connect(fallbackConfig);
-          } catch (error) {
-            console.error('连接观影室服务器失败:', error);
-          }
-        }
+      // 强制启用观影室功能
+      watchRoomConfig.enabled = true;
+
+      // 更新状态
+      setConfig(watchRoomConfig);
+      setIsEnabled(true);
+
+      // 尝试连接到观影室服务器
+      try {
+        // 设置重连回调
+        watchRoomSocketManager.setReconnectFailedCallback(() => {
+          setReconnectFailed(true);
+        });
+
+        watchRoomSocketManager.setReconnectSuccessCallback(() => {
+          setReconnectFailed(false);
+        });
+
+        await watchRoom.connect(watchRoomConfig);
+      } catch (error) {
+        console.error('连接观影室服务器失败:', error);
+        // 连接失败时仍然保持启用状态，让用户看到错误信息
       }
     };
 
