@@ -34,8 +34,9 @@ class WatchRoomSocketManager {
       transports: ['websocket', 'polling'] as ('websocket' | 'polling')[],
       reconnection: true,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5,
+      reconnectionDelayMax: 10000,
+      reconnectionAttempts: 10,
+      timeout: 10000,
     };
 
     if (config.serverType === 'internal') {
