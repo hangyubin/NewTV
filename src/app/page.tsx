@@ -2,9 +2,9 @@
 
 'use client';
 
-import { ChevronRight } from 'lucide-react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Suspense, useEffect, useState } from 'react';
+import { ChevronRight } from 'lucide-react';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import { getDoubanCategories } from '@/lib/douban.client';
@@ -35,18 +35,6 @@ function HomeClient() {
 
   const [showAnnouncement, setShowAnnouncement] = useState(false);
 
-  // 检查公告弹窗状态
-  useEffect(() => {
-    if (typeof window !== 'undefined' && announcement) {
-      const hasSeenAnnouncement = localStorage.getItem('hasSeenAnnouncement');
-      if (hasSeenAnnouncement !== announcement) {
-        setShowAnnouncement(true);
-      } else {
-        setShowAnnouncement(Boolean(!hasSeenAnnouncement && announcement));
-      }
-    }
-  }, [announcement]);
-
   // 收藏夹数据
   type FavoriteItem = {
     id: string;
@@ -62,56 +50,20 @@ function HomeClient() {
 
   const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
 
+  // 检查公告弹窗状态
   useEffect(() => {
-    const fetchRecommendData = async () => {
-      try {
-        setLoading(true);
-
-        // 并行获取热门电影、热门剧集、热门动漫、热门综艺和热门短剧
-        const [moviesData, tvShowsData, animeData, varietyShowsData, shortDramasData] =
-          await Promise.all([
-            getDoubanCategories({
-              kind: 'movie',
-              category: '热门',
-              type: '全部',
-            }),
-            getDoubanCategories({ kind: 'tv', category: 'tv', type: 'tv' }),
-            getDoubanCategories({ kind: 'tv', category: 'tv', type: 'tv_animation' }),
-            getDoubanCategories({ kind: 'tv', category: 'show', type: 'show' }),
-            getRecommendedShortDramas(undefined, 8),
-          ]);
-
-        if (moviesData.code === 200) {
-          setHotMovies(moviesData.list);
-        }
-
-        if (tvShowsData.code === 200) {
-          setHotTvShows(tvShowsData.list);
-        }
-
-        if (animeData.code === 200) {
-          setHotAnime(animeData.list);
-        }
-
-        if (varietyShowsData.code === 200) {
-          setHotVarietyShows(varietyShowsData.list);
-        }
-
-        if (Array.isArray(shortDramasData)) {
-          setHotShortDramas(shortDramasData);
-        }
-      } catch (error) {
-        console.error('获取推荐数据失败:', error);
-      } finally {
-        setLoading(false);
+    if (typeof window !== 'undefined' && announcement) {
+      const hasSeenAnnouncement = localStorage.getItem('hasSeenAnnouncement');
+      if (hasSeenAnnouncement !== announcement) {
+        setShowAnnouncement(true);
+      } else {
+        setShowAnnouncement(Boolean(!hasSeenAnnouncement && announcement));
       }
-    };
-
-    fetchRecommendData();
-  }, []);
+    }
+  }, [announcement]);
 
   // 处理收藏数据更新的函数
-  const updateFavoriteItems = async (allFavorites: Record<string, any>) => {
+  const updateFavoriteItems = useCallback(async (allFavorites: Record<string, any>) => {
     const allPlayRecords = await getAllPlayRecords();
 
     // 根据保存时间排序（从近到远）
@@ -140,7 +92,56 @@ function HomeClient() {
         } as FavoriteItem;
       });
     setFavoriteItems(sorted);
-  };
+  }, []);
+
+  // 数据获取函数
+  const fetchRecommendData = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      // 并行获取热门电影、热门剧集、热门动漫、热门综艺和热门短剧
+      const [moviesData, tvShowsData, animeData, varietyShowsData, shortDramasData] = await Promise.all([
+        getDoubanCategories({
+          kind: 'movie',
+          category: '热门',
+          type: '全部',
+        }),
+        getDoubanCategories({ kind: 'tv', category: 'tv', type: 'tv' }),
+        getDoubanCategories({ kind: 'tv', category: 'tv', type: 'tv_animation' }),
+        getDoubanCategories({ kind: 'tv', category: 'show', type: 'show' }),
+        getRecommendedShortDramas(undefined, 8),
+      ]);
+
+      if (moviesData.code === 200) {
+        setHotMovies(moviesData.list);
+      }
+
+      if (tvShowsData.code === 200) {
+        setHotTvShows(tvShowsData.list);
+      }
+
+      if (animeData.code === 200) {
+        setHotAnime(animeData.list);
+      }
+
+      if (varietyShowsData.code === 200) {
+        setHotVarietyShows(varietyShowsData.list);
+      }
+
+      if (Array.isArray(shortDramasData)) {
+        setHotShortDramas(shortDramasData);
+      }
+    } catch (error) {
+      console.error('获取推荐数据失败:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 初始加载数据
+  useEffect(() => {
+    fetchRecommendData();
+  }, [fetchRecommendData]);
 
   // 当切换到收藏夹时加载收藏数据
   useEffect(() => {
@@ -178,7 +179,7 @@ function HomeClient() {
     );
 
     return unsubscribe;
-  }, [activeTab]);
+  }, [activeTab, updateFavoriteItems]);
 
   const handleCloseAnnouncement = (announcement: string) => {
     setShowAnnouncement(false);

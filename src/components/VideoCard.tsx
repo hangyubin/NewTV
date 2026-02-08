@@ -386,7 +386,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>((props, ref) => {
     }
 
     setIsLoading(false);
-  }, [actualDoubanId, actualTitle]);
+  }, [actualDoubanId, actualTitle, navigateToPlay]);
 
   // 组件卸载时清理自动播放计时器
   useEffect(() => {
@@ -650,19 +650,10 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>((props, ref) => {
     actualId,
     favorited,
     searchFavorited,
-    actualDoubanId,
-    isBangumi,
-    isAggregate,
-    dynamicSourceNames,
-    actualTitle,
-    actualPoster,
-    actualYear,
-    type,
     handleClick,
     handleToggleFavorite,
     handleDeleteRecord,
     handlePlayInNewTab,
-    router,
     origin,
   ]);
 
