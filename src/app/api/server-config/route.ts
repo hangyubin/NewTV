@@ -10,11 +10,20 @@ export const runtime = 'nodejs';
 export async function GET(request: NextRequest) {
   try {
     const config = await getConfig();
+    // 无论数据库连接是否成功，都从环境变量读取观影室配置
+    const watchRoomConfig = {
+      enabled: process.env.WATCH_ROOM_ENABLED === 'true',
+      serverType: (process.env.WATCH_ROOM_SERVER_TYPE ||
+        'internal') as 'internal' | 'external',
+      externalServerUrl:
+        process.env.WATCH_ROOM_EXTERNAL_SERVER_URL || '',
+    };
+    
     const result = {
       SiteName: config.SiteConfig.SiteName,
       StorageType: process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage',
       Version: CURRENT_VERSION,
-      WatchRoom: config.SiteConfig.WatchRoom,
+      WatchRoom: watchRoomConfig,
     };
     return NextResponse.json(result);
   } catch (error) {
@@ -24,11 +33,11 @@ export async function GET(request: NextRequest) {
       StorageType: process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage',
       Version: CURRENT_VERSION,
       WatchRoom: {
-        enabled: process.env.NEXT_PUBLIC_WATCH_ROOM_ENABLED === 'true',
-        serverType: (process.env.NEXT_PUBLIC_WATCH_ROOM_SERVER_TYPE ||
+        enabled: process.env.WATCH_ROOM_ENABLED === 'true',
+        serverType: (process.env.WATCH_ROOM_SERVER_TYPE ||
           'internal') as 'internal' | 'external',
         externalServerUrl:
-          process.env.NEXT_PUBLIC_WATCH_ROOM_EXTERNAL_URL || '',
+          process.env.WATCH_ROOM_EXTERNAL_SERVER_URL || '',
       },
     };
     return NextResponse.json(defaultResult);
