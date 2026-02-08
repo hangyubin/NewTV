@@ -9,7 +9,7 @@ import React, {
   useState,
 } from 'react';
 
-import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
+
 import type { WatchRoomSocket } from '@/lib/watch-room-socket';
 import { watchRoomSocketManager } from '@/lib/watch-room-socket';
 import { useWatchRoom } from '@/hooks/useWatchRoom';
@@ -91,10 +91,9 @@ interface WatchRoomProviderProps {
 
 export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
   const [config, setConfig] = useState<WatchRoomConfig | null>(null);
-  const [isEnabled, setIsEnabled] = useState(false);
+  const [isEnabled, setIsEnabled] = useState(true);
   const [toast, setToast] = useState<ToastProps | null>(null);
   const [reconnectFailed, setReconnectFailed] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // 处理房间删除的回调
   const handleRoomDeleted = useCallback((data?: { reason?: string }) => {
@@ -127,23 +126,6 @@ export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
   }, []);
 
   const watchRoom = useWatchRoom(handleRoomDeleted, handleStateCleared);
-
-  // 检查登录状态
-  useEffect(() => {
-    const checkLoginStatus = () => {
-      const authInfo = getAuthInfoFromBrowserCookie();
-      const loggedIn = !!(authInfo && authInfo.username);
-      setIsLoggedIn(loggedIn);
-    };
-
-    // 初始检查
-    checkLoginStatus();
-
-    // 定期检查登录状态（每10秒检查一次，减少频率）
-    const interval = setInterval(checkLoginStatus, 10000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   // 手动重连
   const manualReconnect = useCallback(async () => {
