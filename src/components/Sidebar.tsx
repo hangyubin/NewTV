@@ -13,6 +13,7 @@ import {
   Search,
   Star,
   Tv,
+  Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -186,6 +187,11 @@ const Sidebar = ({ onToggle, defaultCollapsed }: SidebarProps) => {
       label: '直播',
       href: '/live',
     },
+    {
+      icon: Users,
+      label: '观影室',
+      href: '/watch-room',
+    },
   ]);
 
   useEffect(() => {
@@ -261,7 +267,7 @@ const Sidebar = ({ onToggle, defaultCollapsed }: SidebarProps) => {
               </Link>
               <Link
                 href='/search'
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent<HTMLAnchorElement>) => {
                   e.preventDefault();
                   handleSearchClick();
                 }}
@@ -292,7 +298,7 @@ const Sidebar = ({ onToggle, defaultCollapsed }: SidebarProps) => {
                   const decodedActive = decodeURIComponent(active);
                   const decodedItemHref = decodeURIComponent(item.href);
 
-                  const isActive =
+                  const isActive = 
                     isInitialized &&
                     (item.href.startsWith('/douban')
                       ? typeMatch && decodedActive.includes(`type=${typeMatch}`)
