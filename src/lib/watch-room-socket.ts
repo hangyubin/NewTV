@@ -8,7 +8,10 @@ import type {
   WatchRoomConfig,
 } from '@/types/watch-room';
 
-export type WatchRoomSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
+export type WatchRoomSocket = Socket<
+  ServerToClientEvents,
+  ClientToServerEvents
+>;
 
 class WatchRoomSocketManager {
   private socket: WatchRoomSocket | null = null;
@@ -220,9 +223,13 @@ class WatchRoomSocketManager {
 
   // 移除浏览器可见性监听
   private removeVisibilityListener() {
-    if (typeof document === 'undefined' || !this.visibilityChangeHandler) return;
+    if (typeof document === 'undefined' || !this.visibilityChangeHandler)
+      return;
 
-    document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+    document.removeEventListener(
+      'visibilitychange',
+      this.visibilityChangeHandler
+    );
     this.visibilityChangeHandler = null;
   }
 

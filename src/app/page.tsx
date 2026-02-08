@@ -2,26 +2,26 @@
 
 'use client';
 
-import { Suspense, useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
-
-import CapsuleSwitch from '@/components/CapsuleSwitch';
-import PageLayout from '@/components/PageLayout';
-import ScrollableRow from '@/components/ScrollableRow';
-import { useSite } from '@/components/SiteProvider';
-import VideoCard from '@/components/VideoCard';
+import Link from 'next/link';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
-import { getDoubanCategories } from '@/lib/douban.client';
 import {
   clearAllFavorites,
   getAllFavorites,
   getAllPlayRecords,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
+import { getDoubanCategories } from '@/lib/douban.client';
 import { getRecommendedShortDramas } from '@/lib/short-drama.client';
 import { DoubanItem, ShortDramaItem } from '@/lib/types';
+
+import CapsuleSwitch from '@/components/CapsuleSwitch';
+import PageLayout from '@/components/PageLayout';
+import ScrollableRow from '@/components/ScrollableRow';
+import { useSite } from '@/components/SiteProvider';
+import VideoCard from '@/components/VideoCard';
 
 function HomeClient() {
   const [activeTab, setActiveTab] = useState<'home' | 'favorites'>('home');

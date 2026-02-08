@@ -8,8 +8,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
-// import artplayerPluginChromecast from '@/lib/artplayer-plugin-chromecast';
-import { useWatchRoomContextSafe } from '@/components/WatchRoomProvider';
 import {
   deleteFavorite,
   deletePlayRecord,
@@ -26,6 +24,9 @@ import {
 import { getDoubanDetails } from '@/lib/douban.client';
 import { DanmakuConfig, SearchResult } from '@/lib/types';
 import { checkVideoUpdate } from '@/lib/watching-updates';
+
+// import artplayerPluginChromecast from '@/lib/artplayer-plugin-chromecast';
+import { useWatchRoomContextSafe } from '@/components/WatchRoomProvider';
 
 // 弹幕配置相关函数
 const getDanmakuConfig = async (): Promise<DanmakuConfig | null> => {
@@ -426,23 +427,25 @@ function PlayPageClient() {
   const lastSaveTimeRef = useRef<number>(0);
 
   // 观影室相关
-  const updateWatchRoomState = useRef((currentTime: number, isPlaying: boolean) => {
-    if (watchRoom && watchRoom.isConnected && watchRoom.currentRoom) {
-      const playState = {
-        type: 'play' as const,
-        url: videoUrl,
-        currentTime,
-        isPlaying,
-        videoId: currentId,
-        videoName: videoTitle,
-        videoYear: videoYear,
-        searchTitle: searchTitle,
-        episode: currentEpisodeIndex + 1,
-        source: currentSource,
-      };
-      watchRoom.updatePlayState(playState);
+  const updateWatchRoomState = useRef(
+    (currentTime: number, isPlaying: boolean) => {
+      if (watchRoom && watchRoom.isConnected && watchRoom.currentRoom) {
+        const playState = {
+          type: 'play' as const,
+          url: videoUrl,
+          currentTime,
+          isPlaying,
+          videoId: currentId,
+          videoName: videoTitle,
+          videoYear: videoYear,
+          searchTitle: searchTitle,
+          episode: currentEpisodeIndex + 1,
+          source: currentSource,
+        };
+        watchRoom.updatePlayState(playState);
+      }
     }
-  });
+  );
 
   const handleWatchRoomSeek = useRef((currentTime: number) => {
     if (watchRoom && watchRoom.isConnected && watchRoom.currentRoom) {
@@ -463,7 +466,12 @@ function PlayPageClient() {
   });
 
   const handleWatchRoomChangeVideo = useRef(() => {
-    if (watchRoom && watchRoom.isConnected && watchRoom.currentRoom && watchRoom.isOwner) {
+    if (
+      watchRoom &&
+      watchRoom.isConnected &&
+      watchRoom.currentRoom &&
+      watchRoom.isOwner
+    ) {
       const playState = {
         type: 'play' as const,
         url: videoUrl,

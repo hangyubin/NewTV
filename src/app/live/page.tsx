@@ -513,7 +513,12 @@ function LivePageClient() {
     setVideoUrl(channel.url);
 
     // 通知观影室频道切换
-    if (watchRoom && watchRoom.isConnected && watchRoom.currentRoom && watchRoom.isOwner) {
+    if (
+      watchRoom &&
+      watchRoom.isConnected &&
+      watchRoom.currentRoom &&
+      watchRoom.isOwner
+    ) {
       const liveState = {
         type: 'live' as const,
         channelId: channel.id,

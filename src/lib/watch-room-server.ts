@@ -1,14 +1,26 @@
 // 观影室服务器通信模块
 import { io, Socket } from 'socket.io-client';
-import type { ClientToServerEvents, ServerToClientEvents, Room, Member, PlayState, LiveState } from '@/types/watch-room';
+
+import type {
+  ClientToServerEvents,
+  LiveState,
+  Member,
+  PlayState,
+  Room,
+  ServerToClientEvents,
+} from '@/types/watch-room';
 
 class WatchRoomServer {
-  private socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
+  private socket: Socket<ServerToClientEvents, ClientToServerEvents> | null =
+    null;
   private serverUrl = '';
   private authToken = '';
 
   // 初始化连接
-  connect(serverUrl: string, authToken = ''): Socket<ServerToClientEvents, ClientToServerEvents> {
+  connect(
+    serverUrl: string,
+    authToken = ''
+  ): Socket<ServerToClientEvents, ClientToServerEvents> {
     this.serverUrl = serverUrl;
     this.authToken = authToken;
 
@@ -85,7 +97,12 @@ class WatchRoomServer {
     password?: string;
     userName: string;
     ownerToken?: string;
-  }): Promise<{ success: boolean; room?: Room; members?: Member[]; error?: string }> {
+  }): Promise<{
+    success: boolean;
+    room?: Room;
+    members?: Member[];
+    error?: string;
+  }> {
     return new Promise((resolve) => {
       if (!this.socket) {
         resolve({ success: false, error: 'Not connected to server' });

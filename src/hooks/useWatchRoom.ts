@@ -3,7 +3,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { type WatchRoomSocket, watchRoomSocketManager } from '@/lib/watch-room-socket';
+import {
+  type WatchRoomSocket,
+  watchRoomSocketManager,
+} from '@/lib/watch-room-socket';
 
 import type {
   ChatMessage,
@@ -31,54 +34,73 @@ export function useWatchRoom(
 
   // 重新加入房间（自动重连）
   const rejoinRoom = useCallback(async (info: StoredRoomInfo) => {
+    console.log('[WatchRoom] Auto-rejoining room:', info);
     try {
       const sock = watchRoomSocketManager.getSocket();
       if (!sock || !watchRoomSocketManager.isConnected()) {
+        console.error('[WatchRoom] Not connected, cannot rejoin');
         return;
       }
 
-      const result = await new Promise<{ room: Room; members: Member[] }>((resolve, reject) => {
-        sock.emit('room:join', {
-          roomId: info.roomId,
-          password: info.password,
-          userName: info.userName,
-          ownerToken: info.ownerToken, // 发送房主令牌
-        }, (response) => {
-          if (response.success && response.room && response.members) {
-            resolve({ room: response.room, members: response.members });
-          } else {
-            reject(new Error(response.error || '重新加入房间失败'));
-          }
-        });
-      });
+      const result = await new Promise<{ room: Room; members: Member[] }>(
+        (resolve, reject) => {
+          sock.emit(
+            'room:join',
+            {
+              roomId: info.roomId,
+              password: info.password,
+              userName: info.userName,
+              ownerToken: info.ownerToken, // 发送房主令牌
+            },
+            (response) => {
+              if (response.success && response.room && response.members) {
+                resolve({ room: response.room, members: response.members });
+              } else {
+                reject(new Error(response.error || '重新加入房间失败'));
+              }
+            }
+          );
+        }
+      );
 
       setCurrentRoom(result.room);
       setMembers(result.members);
       // 根据服务器返回的 room.ownerId 判断是否是房主
       setIsOwner(result.room.ownerId === sock.id);
-    } catch {
+      console.log('[WatchRoom] Successfully rejoined room:', result.room.name);
+    } catch (error) {
+      console.error('[WatchRoom] Failed to rejoin room:', error);
       clearStoredRoomInfo();
     }
   }, []);
 
   // 连接到服务器
-  const connect = useCallback(async (config: WatchRoomConfig) => {
-    try {
-      const sock = await watchRoomSocketManager.connect(config);
-      setSocket(sock);
-      setIsConnected(true);
+  const connect = useCallback(
+    async (config: WatchRoomConfig) => {
+      try {
+        console.log('[WatchRoom] Connecting to server with config:', config);
+        const sock = await watchRoomSocketManager.connect(config);
+        setSocket(sock);
+        setIsConnected(true);
 
-      // 尝试自动重连房间
-      const storedInfo = getStoredRoomInfo();
-      if (storedInfo) {
-        reconnectTimeoutRef.current = setTimeout(() => {
-          rejoinRoom(storedInfo);
-        }, 1000);
+        // 尝试自动重连房间
+        const storedInfo = getStoredRoomInfo();
+        if (storedInfo) {
+          console.log(
+            '[WatchRoom] Attempting to reconnect to room:',
+            storedInfo.roomId
+          );
+          reconnectTimeoutRef.current = setTimeout(() => {
+            rejoinRoom(storedInfo);
+          }, 1000);
+        }
+      } catch (error) {
+        console.error('[WatchRoom] Failed to connect:', error);
+        setIsConnected(false);
       }
-    } catch {
-      setIsConnected(false);
-    }
-  }, [rejoinRoom]);
+    },
+    [rejoinRoom]
+  );
 
   // 断开连接
   const disconnect = useCallback(() => {
@@ -95,7 +117,13 @@ export function useWatchRoom(
 
   // 创建房间
   const createRoom = useCallback(
-    async (data: { name: string; description: string; password?: string; isPublic: boolean; userName: string }) => {
+    async (data: {
+      name: string;
+      description: string;
+      password?: string;
+      isPublic: boolean;
+      userName: string;
+    }) => {
       const sock = watchRoomSocketManager.getSocket();
       if (!sock || !watchRoomSocketManager.isConnected()) {
         throw new Error('Not connected');
@@ -107,12 +135,14 @@ export function useWatchRoom(
             setCurrentRoom(response.room);
             setIsOwner(true);
             // 创建房间时，手动设置房主的成员信息
-            setMembers([{
-              id: sock.id || '',
-              name: data.userName,
-              isOwner: true,
-              lastHeartbeat: Date.now(),
-            }]);
+            setMembers([
+              {
+                id: sock.id || '',
+                name: data.userName,
+                isOwner: true,
+                lastHeartbeat: Date.now(),
+              },
+            ]);
             storeRoomInfo({
               roomId: response.room.id,
               roomName: response.room.name,
@@ -140,29 +170,31 @@ export function useWatchRoom(
         throw new Error('Not connected');
       }
 
-      return new Promise<{ room: Room; members: Member[] }>((resolve, reject) => {
-        sock.emit('room:join', data, (response) => {
-          if (response.success && response.room && response.members) {
-            setCurrentRoom(response.room);
-            setMembers(response.members);
-            // 根据服务器返回的 room.ownerId 判断是否是房主
-            const isRoomOwner = response.room.ownerId === sock.id;
-            setIsOwner(isRoomOwner);
-            storeRoomInfo({
-              roomId: response.room.id,
-              roomName: response.room.name,
-              isOwner: isRoomOwner,
-              userName: data.userName,
-              password: data.password,
-              ownerToken: isRoomOwner ? response.room.ownerToken : undefined,
-              timestamp: Date.now(),
-            });
-            resolve({ room: response.room, members: response.members });
-          } else {
-            reject(new Error(response.error || '加入房间失败'));
-          }
-        });
-      });
+      return new Promise<{ room: Room; members: Member[] }>(
+        (resolve, reject) => {
+          sock.emit('room:join', data, (response) => {
+            if (response.success && response.room && response.members) {
+              setCurrentRoom(response.room);
+              setMembers(response.members);
+              // 根据服务器返回的 room.ownerId 判断是否是房主
+              const isRoomOwner = response.room.ownerId === sock.id;
+              setIsOwner(isRoomOwner);
+              storeRoomInfo({
+                roomId: response.room.id,
+                roomName: response.room.name,
+                isOwner: isRoomOwner,
+                userName: data.userName,
+                password: data.password,
+                ownerToken: isRoomOwner ? response.room.ownerToken : undefined,
+                timestamp: Date.now(),
+              });
+              resolve({ room: response.room, members: response.members });
+            } else {
+              reject(new Error(response.error || '加入房间失败'));
+            }
+          });
+        }
+      );
     },
     []
   );
@@ -210,34 +242,40 @@ export function useWatchRoom(
     (state: PlayState) => {
       const sock = watchRoomSocketManager.getSocket();
       if (!sock || !isOwner) {
+        console.log('[WatchRoom] Cannot update play state:', {
+          hasSocket: !!sock,
+          isOwner,
+        });
         return;
       }
 
+      console.log('[WatchRoom] Emitting play:update with state:', state);
       sock.emit('play:update', state);
     },
     [isOwner]
   );
 
   // 跳转播放进度
-  const seekPlayback = useCallback(
-    (currentTime: number) => {
-      const sock = watchRoomSocketManager.getSocket();
-      if (!sock) {
-        return;
-      }
+  const seekPlayback = useCallback((currentTime: number) => {
+    const sock = watchRoomSocketManager.getSocket();
+    if (!sock) {
+      console.log('[WatchRoom] Cannot seek - no socket');
+      return;
+    }
 
-      sock.emit('play:seek', currentTime);
-    },
-    []
-  );
+    console.log('[WatchRoom] Emitting play:seek with time:', currentTime);
+    sock.emit('play:seek', currentTime);
+  }, []);
 
   // 播放
   const play = useCallback(() => {
     const sock = watchRoomSocketManager.getSocket();
     if (!sock) {
+      console.log('[WatchRoom] Cannot play - no socket');
       return;
     }
 
+    console.log('[WatchRoom] Emitting play:play');
     sock.emit('play:play');
   }, []);
 
@@ -245,9 +283,11 @@ export function useWatchRoom(
   const pause = useCallback(() => {
     const sock = watchRoomSocketManager.getSocket();
     if (!sock) {
+      console.log('[WatchRoom] Cannot pause - no socket');
       return;
     }
 
+    console.log('[WatchRoom] Emitting play:pause');
     sock.emit('play:pause');
   }, []);
 
@@ -256,12 +296,15 @@ export function useWatchRoom(
     (state: PlayState) => {
       const sock = watchRoomSocketManager.getSocket();
       if (!sock) {
+        console.log('[WatchRoom] Cannot change video - no socket');
         return;
       }
       if (!isOwner) {
+        console.log('[WatchRoom] Cannot change video - not owner');
         return;
       }
 
+      console.log('[WatchRoom] Emitting play:change with state:', state);
       sock.emit('play:change', state);
     },
     [isOwner]
@@ -282,12 +325,15 @@ export function useWatchRoom(
   const clearRoomState = useCallback(() => {
     const sock = watchRoomSocketManager.getSocket();
     if (!sock) {
+      console.log('[WatchRoom] Cannot clear state - no socket');
       return;
     }
     if (!isOwner) {
+      console.log('[WatchRoom] Cannot clear state - not owner');
       return;
     }
 
+    console.log('[WatchRoom] Emitting state:clear');
     sock.emit('state:clear');
   }, [isOwner]);
 
@@ -296,20 +342,18 @@ export function useWatchRoom(
     if (!socket) return;
 
     // 房间事件
-    socket.on('room:joined', (data) => {
-      setCurrentRoom(data.room);
-      setMembers(data.members);
-    });
-
     socket.on('room:member-joined', (member) => {
+      console.log('[WatchRoom] Member joined:', member);
       setMembers((prev) => [...prev, member]);
     });
 
     socket.on('room:member-left', (userId) => {
+      console.log('[WatchRoom] Member left:', userId);
       setMembers((prev) => prev.filter((m) => m.id !== userId));
     });
 
     socket.on('room:deleted', (data?: { reason?: string }) => {
+      console.log('[WatchRoom] Room deleted:', data);
       // 调用回调显示Toast
       onRoomDeleted?.(data);
 
@@ -321,32 +365,43 @@ export function useWatchRoom(
 
     // 播放事件
     socket.on('play:update', (state) => {
+      console.log('[WatchRoom] Play state updated:', state);
       if (currentRoom) {
-        setCurrentRoom((prev) => (prev ? { ...prev, currentState: state } : null));
+        setCurrentRoom((prev) =>
+          prev ? { ...prev, currentState: state } : null
+        );
       }
     });
 
     // 视频切换事件（换集、换源）
     socket.on('play:change', (state) => {
+      console.log('[WatchRoom] Video changed:', state);
       if (currentRoom) {
-        setCurrentRoom((prev) => (prev ? { ...prev, currentState: state } : null));
+        setCurrentRoom((prev) =>
+          prev ? { ...prev, currentState: state } : null
+        );
       }
     });
 
     // 直播频道切换事件
     socket.on('live:change', (state) => {
+      console.log('[WatchRoom] Live channel changed:', state);
       if (currentRoom) {
-        setCurrentRoom((prev) => (prev ? { ...prev, currentState: state } : null));
+        setCurrentRoom((prev) =>
+          prev ? { ...prev, currentState: state } : null
+        );
       }
     });
 
     // 聊天事件
     socket.on('chat:message', (message) => {
+      console.log('[WatchRoom] New chat message:', message);
       setChatMessages((prev) => [...prev, message]);
     });
 
     // 状态清除事件（房主心跳超时）
     socket.on('state:cleared', () => {
+      console.log('[WatchRoom] Room state cleared by server (owner inactive)');
       // 清除当前房间的播放/直播状态
       setCurrentRoom((prev) => (prev ? { ...prev, currentState: null } : null));
 
@@ -356,15 +411,16 @@ export function useWatchRoom(
 
     // 连接状态
     socket.on('connect', () => {
+      console.log('[WatchRoom] Socket connected');
       setIsConnected(true);
     });
 
     socket.on('disconnect', () => {
+      console.log('[WatchRoom] Socket disconnected');
       setIsConnected(false);
     });
 
     return () => {
-      socket.off('room:joined');
       socket.off('room:member-joined');
       socket.off('room:member-left');
       socket.off('room:deleted');

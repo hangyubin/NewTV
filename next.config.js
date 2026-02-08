@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-/* eslint-disable @typescript-eslint/no-var-requires */
+import withPWA from 'next-pwa';
 
 const nextConfig = {
   output: 'standalone',
@@ -101,7 +101,7 @@ const nextConfig = {
   },
 };
 
-const withPWA = require('next-pwa')({
+const withPWAConfig = withPWA({
   dest: 'public',
   disable: process.env.NODE_ENV === 'development',
   register: true,
@@ -143,4 +143,4 @@ const withPWA = require('next-pwa')({
   ],
 });
 
-module.exports = withPWA(nextConfig);
+export default withPWAConfig(nextConfig);

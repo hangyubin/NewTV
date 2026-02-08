@@ -223,8 +223,10 @@ async function getInitConfig(
       FluidSearch: process.env.NEXT_PUBLIC_FLUID_SEARCH !== 'false',
       WatchRoom: {
         enabled: process.env.NEXT_PUBLIC_WATCH_ROOM_ENABLED === 'true',
-        serverType: (process.env.NEXT_PUBLIC_WATCH_ROOM_SERVER_TYPE || 'internal') as 'internal' | 'external',
-        externalServerUrl: process.env.NEXT_PUBLIC_WATCH_ROOM_EXTERNAL_URL || '',
+        serverType: (process.env.NEXT_PUBLIC_WATCH_ROOM_SERVER_TYPE ||
+          'internal') as 'internal' | 'external',
+        externalServerUrl:
+          process.env.NEXT_PUBLIC_WATCH_ROOM_EXTERNAL_URL || '',
       },
     },
     UserConfig: {

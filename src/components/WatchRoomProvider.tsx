@@ -1,18 +1,29 @@
 // WatchRoom 全局状态管理 Provider
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 
+import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
+import type { WatchRoomSocket } from '@/lib/watch-room-socket';
+import { watchRoomSocketManager } from '@/lib/watch-room-socket';
 import { useWatchRoom } from '@/hooks/useWatchRoom';
 
 import Toast, { ToastProps } from '@/components/Toast';
 
-import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
-
-import type { ChatMessage, LiveState, Member, PlayState, Room, WatchRoomConfig } from '@/types/watch-room';
-
-import type { WatchRoomSocket } from '@/lib/watch-room-socket';
-import { watchRoomSocketManager } from '@/lib/watch-room-socket';
+import type {
+  ChatMessage,
+  LiveState,
+  Member,
+  PlayState,
+  Room,
+  WatchRoomConfig,
+} from '@/types/watch-room';
 
 interface WatchRoomContextType {
   socket: WatchRoomSocket | null;
@@ -62,7 +73,9 @@ const WatchRoomContext = createContext<WatchRoomContextType | null>(null);
 export const useWatchRoomContext = () => {
   const context = useContext(WatchRoomContext);
   if (!context) {
-    throw new Error('useWatchRoomContext must be used within WatchRoomProvider');
+    throw new Error(
+      'useWatchRoomContext must be used within WatchRoomProvider'
+    );
   }
   return context;
 };
@@ -126,8 +139,8 @@ export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
     // 初始检查
     checkLoginStatus();
 
-    // 定期检查登录状态（每秒检查一次）
-    const interval = setInterval(checkLoginStatus, 1000);
+    // 定期检查登录状态（每10秒检查一次，减少频率）
+    const interval = setInterval(checkLoginStatus, 10000);
 
     return () => clearInterval(interval);
   }, []);
@@ -174,14 +187,18 @@ export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
           };
 
           // 如果使用外部服务器，需要获取认证信息（需要登录）
-          if (watchRoomConfig.serverType === 'external' && watchRoomConfig.enabled) {
+          if (
+            watchRoomConfig.serverType === 'external' &&
+            watchRoomConfig.enabled
+          ) {
             // 检查用户是否已登录
             if (isLoggedIn) {
               try {
                 const authResponse = await fetch('/api/watch-room-auth');
                 if (authResponse.ok) {
                   const authData = await authResponse.json();
-                  watchRoomConfig.externalServerAuth = authData.externalServerAuth;
+                  watchRoomConfig.externalServerAuth =
+                    authData.externalServerAuth;
                 } else {
                   // 如果无法获取认证信息，禁用观影室
                   watchRoomConfig.enabled = false;
@@ -235,7 +252,7 @@ export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
     return () => {
       watchRoom.disconnect();
     };
-  }, [isLoggedIn, watchRoom]); // 添加 isLoggedIn 和 watchRoom 作为依赖
+  }, [isLoggedIn]); // 只依赖 isLoggedIn，避免循环依赖
 
   const contextValue: WatchRoomContextType = {
     socket: watchRoom.socket,

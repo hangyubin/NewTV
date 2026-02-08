@@ -1,5 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any,react-hooks/exhaustive-deps,@typescript-eslint/no-empty-function */
 
+import {
+  ExternalLink,
+  Heart,
+  Link,
+  PlayCircleIcon,
+  Radio,
+  Trash2,
+} from 'lucide-react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import React, {
   forwardRef,
   useCallback,
@@ -9,23 +19,6 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import {
-  ExternalLink,
-  Heart,
-  Link,
-  PlayCircleIcon,
-  Radio,
-  Trash2,
-} from 'lucide-react';
-
-import { useLongPress } from '@/hooks/useLongPress';
-
-import { ImagePlaceholder } from '@/components/ImagePlaceholder';
-import MobileActionSheet from '@/components/MobileActionSheet';
-import CombinedDetailModal from './CombinedDetailModal';
-import VideoDetailPreview from '@/components/VideoDetailPreview';
 
 import {
   deleteFavorite,
@@ -38,6 +31,13 @@ import {
 import { getDoubanDetails } from '@/lib/douban.client';
 import { DoubanDetail, SearchResult } from '@/lib/types';
 import { processImageUrl } from '@/lib/utils';
+import { useLongPress } from '@/hooks/useLongPress';
+
+import { ImagePlaceholder } from '@/components/ImagePlaceholder';
+import MobileActionSheet from '@/components/MobileActionSheet';
+import VideoDetailPreview from '@/components/VideoDetailPreview';
+
+import CombinedDetailModal from './CombinedDetailModal';
 
 export interface VideoCardProps {
   id?: string | number;

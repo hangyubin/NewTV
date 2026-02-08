@@ -10,7 +10,12 @@ export interface ToastProps {
   onClose: () => void;
 }
 
-const Toast: React.FC<ToastProps> = ({ message, type, duration = 3000, onClose }) => {
+const Toast: React.FC<ToastProps> = ({
+  message,
+  type,
+  duration = 3000,
+  onClose,
+}) => {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
@@ -40,7 +45,7 @@ const Toast: React.FC<ToastProps> = ({ message, type, duration = 3000, onClose }
       className={`fixed top-4 right-4 z-50 px-4 py-2 rounded-lg shadow-lg transition-opacity duration-300 ${getTypeStyles()}
         ${isVisible ? 'opacity-100' : 'opacity-0'}`}
     >
-      <p className="text-sm font-medium">{message}</p>
+      <p className='text-sm font-medium'>{message}</p>
     </div>
   );
 };
