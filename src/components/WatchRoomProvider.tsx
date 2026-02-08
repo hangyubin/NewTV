@@ -163,6 +163,9 @@ export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
         externalServerUrl: 'wss://bingdy.up.railway.app',
         externalServerAuth: 'hang8743559@hao123.com',
       };
+      
+      // 打印配置值，确保正确
+      console.log('初始配置:', watchRoomConfig);
 
       // 尝试从 API 获取配置，即使失败也不影响启用状态
       try {
@@ -170,10 +173,14 @@ export function WatchRoomProvider({ children }: WatchRoomProviderProps) {
         const response = await fetch('/api/server-config');
         if (response.ok) {
           const data = await response.json();
+          console.log('API 返回的配置:', data);
           // 从 API 获取配置，但保持启用状态
           if (data.WatchRoom) {
-            watchRoomConfig.serverType = data.WatchRoom.serverType || 'external';
+            console.log('API 返回的 WatchRoom 配置:', data.WatchRoom);
+            // 强制使用外部服务器
+            watchRoomConfig.serverType = 'external';
             watchRoomConfig.externalServerUrl = data.WatchRoom.externalServerUrl || 'wss://bingdy.up.railway.app';
+            console.log('更新后的配置:', watchRoomConfig);
           }
         }
 
