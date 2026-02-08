@@ -32,8 +32,8 @@ const WatchRoomPage: React.FC = () => {
 
   // 获取房间列表
   const fetchRoomList = useCallback(async () => {
-    if (!watchRoom.isEnabled || !watchRoom.isConnected) {
-      setError('观影室功能未启用或未连接');
+    if (!watchRoom.isEnabled) {
+      setError('观影室功能未启用');
       return;
     }
 
@@ -44,12 +44,12 @@ const WatchRoomPage: React.FC = () => {
       const rooms = await watchRoom.getRoomList();
       setRoomList(rooms);
     } catch (err) {
-      setError('获取房间列表失败');
+      setError('获取房间列表失败，请检查网络连接');
       console.error('Failed to fetch room list:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [watchRoom.isEnabled, watchRoom.isConnected, watchRoom.getRoomList]);
+  }, [watchRoom.isEnabled, watchRoom.getRoomList]);
 
   // 初始加载房间列表
   useEffect(() => {
@@ -142,7 +142,7 @@ const WatchRoomPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className='bg-red-100 text-red-700 p-4 rounded-lg mb-6'>
+        <div className='glass-card bg-red-100/80 text-red-700 p-4 mb-6'>
           {error}
         </div>
       )}
@@ -150,19 +150,19 @@ const WatchRoomPage: React.FC = () => {
       <div className='flex justify-center gap-4 mb-8'>
         <button
           onClick={() => setShowCreateModal(true)}
-          className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors'
+          className='glass-button bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors'
         >
           创建房间
         </button>
         <button
           onClick={() => setShowJoinModal(true)}
-          className='bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors'
+          className='glass-button bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors'
         >
           加入房间
         </button>
         <button
           onClick={fetchRoomList}
-          className='bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors'
+          className='glass-button bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors'
         >
           刷新房间列表
         </button>
@@ -186,7 +186,7 @@ const WatchRoomPage: React.FC = () => {
               .map((room) => (
                 <div
                   key={room.id}
-                  className='border rounded-lg p-4 hover:shadow-md transition-shadow'
+                  className='glass-card p-4 hover:shadow-md transition-shadow video-card-hover'
                 >
                   <h3 className='font-semibold text-lg mb-2'>{room.name}</h3>
                   <p className='text-gray-600 text-sm mb-2'>
@@ -207,7 +207,7 @@ const WatchRoomPage: React.FC = () => {
                       });
                       setShowJoinModal(true);
                     }}
-                    className='w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors'
+                    className='w-full glass-button bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors'
                   >
                     加入房间
                   </button>
@@ -220,7 +220,7 @@ const WatchRoomPage: React.FC = () => {
       {/* 创建房间模态框 */}
       {showCreateModal && (
         <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-          <div className='bg-white rounded-lg p-6 max-w-md w-full'>
+          <div className='glass-card p-6 max-w-md w-full'>
             <h2 className='text-xl font-semibold mb-4'>创建房间</h2>
             <form onSubmit={handleCreateRoom}>
               <div className='mb-4'>
@@ -233,7 +233,7 @@ const WatchRoomPage: React.FC = () => {
                   onChange={(e) =>
                     setCreateForm({ ...createForm, name: e.target.value })
                   }
-                  className='w-full border rounded-lg px-3 py-2'
+                  className='w-full border rounded-lg px-3 py-2 bg-white/80'
                   required
                 />
               </div>
@@ -249,7 +249,7 @@ const WatchRoomPage: React.FC = () => {
                       description: e.target.value,
                     })
                   }
-                  className='w-full border rounded-lg px-3 py-2'
+                  className='w-full border rounded-lg px-3 py-2 bg-white/80'
                   rows={3}
                 />
               </div>
@@ -263,7 +263,7 @@ const WatchRoomPage: React.FC = () => {
                   onChange={(e) =>
                     setCreateForm({ ...createForm, password: e.target.value })
                   }
-                  className='w-full border rounded-lg px-3 py-2'
+                  className='w-full border rounded-lg px-3 py-2 bg-white/80'
                 />
               </div>
               <div className='mb-4 flex items-center'>
@@ -293,7 +293,7 @@ const WatchRoomPage: React.FC = () => {
                   onChange={(e) =>
                     setCreateForm({ ...createForm, userName: e.target.value })
                   }
-                  className='w-full border rounded-lg px-3 py-2'
+                  className='w-full border rounded-lg px-3 py-2 bg-white/80'
                   required
                 />
               </div>
@@ -301,14 +301,14 @@ const WatchRoomPage: React.FC = () => {
                 <button
                   type='button'
                   onClick={() => setShowCreateModal(false)}
-                  className='flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors'
+                  className='flex-1 glass-button bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors'
                 >
                   取消
                 </button>
                 <button
                   type='submit'
                   disabled={isLoading}
-                  className='flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors'
+                  className='flex-1 glass-button bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors'
                 >
                   {isLoading ? '创建中...' : '创建房间'}
                 </button>
@@ -321,7 +321,7 @@ const WatchRoomPage: React.FC = () => {
       {/* 加入房间模态框 */}
       {showJoinModal && (
         <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-          <div className='bg-white rounded-lg p-6 max-w-md w-full'>
+          <div className='glass-card p-6 max-w-md w-full'>
             <h2 className='text-xl font-semibold mb-4'>加入房间</h2>
             <form onSubmit={handleJoinRoom}>
               <div className='mb-4'>
@@ -334,7 +334,7 @@ const WatchRoomPage: React.FC = () => {
                   onChange={(e) =>
                     setJoinForm({ ...joinForm, roomId: e.target.value })
                   }
-                  className='w-full border rounded-lg px-3 py-2'
+                  className='w-full border rounded-lg px-3 py-2 bg-white/80'
                   required
                 />
               </div>
@@ -348,7 +348,7 @@ const WatchRoomPage: React.FC = () => {
                   onChange={(e) =>
                     setJoinForm({ ...joinForm, password: e.target.value })
                   }
-                  className='w-full border rounded-lg px-3 py-2'
+                  className='w-full border rounded-lg px-3 py-2 bg-white/80'
                 />
               </div>
               <div className='mb-4'>
@@ -361,7 +361,7 @@ const WatchRoomPage: React.FC = () => {
                   onChange={(e) =>
                     setJoinForm({ ...joinForm, userName: e.target.value })
                   }
-                  className='w-full border rounded-lg px-3 py-2'
+                  className='w-full border rounded-lg px-3 py-2 bg-white/80'
                   required
                 />
               </div>
@@ -369,14 +369,14 @@ const WatchRoomPage: React.FC = () => {
                 <button
                   type='button'
                   onClick={() => setShowJoinModal(false)}
-                  className='flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors'
+                  className='flex-1 glass-button bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors'
                 >
                   取消
                 </button>
                 <button
                   type='submit'
                   disabled={isLoading}
-                  className='flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors'
+                  className='flex-1 glass-button bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors'
                 >
                   {isLoading ? '加入中...' : '加入房间'}
                 </button>
