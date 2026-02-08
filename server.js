@@ -1,4 +1,5 @@
 // Next.js 自定义服务器 + Socket.IO
+import 'dotenv/config';
 import { createServer } from 'http';
 import next from 'next';
 import { Server } from 'socket.io';
